@@ -1,0 +1,29 @@
+# Environment files
+.env
+!.env.example
+
+# Uploads directory contents (keep directory structure)
+public/uploads/*
+!public/uploads/.gitkeep
+
+# Composer dependencies
+/vendor/
+
+# Logs and temporary files
+*.log
+.temp/
+.cache/
+
+# OS generated files
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# IDE and editor files
+.idea/
+.vscode/
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
