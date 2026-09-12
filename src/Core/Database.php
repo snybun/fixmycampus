@@ -45,7 +45,7 @@ class Database
         $port     = Env::get('DB_PORT', 3306);
         $dbname   = Env::get('DB_DATABASE', 'fixmycampus_db');
         $username = Env::get('DB_USERNAME', 'fmc_user');
-        $password = Env::get('DB_PASSWORD', 'fmc_secure_password_2026');
+        $password = Env::get('DB_PASSWORD', 'admin');
         $charset  = 'utf8mb4';
 
         $dsn = "mysql:host={$host};port={$port};dbname={$dbname};charset={$charset}";

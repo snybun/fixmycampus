@@ -83,7 +83,7 @@ docker compose up -d --build
 - **phpMyAdmin Web GUI**: [http://localhost:8081](http://localhost:8081)
   - **Server**: `database`
   - **Username**: `fmc_user` (or `root`)
-  - **Password**: `fmc_secure_password_2026` (or `fmc_root_secret_2026` for root)
+  - **Password**: `admin`
 
 ### 4. Stop Services
 ```bash
@@ -150,8 +150,8 @@ DB_HOST=database
 DB_PORT=3306
 DB_DATABASE=fixmycampus_db
 DB_USERNAME=fmc_user
-DB_PASSWORD=fmc_secure_password_2026
-DB_ROOT_PASSWORD=fmc_root_secret_2026
+DB_PASSWORD=admin
+DB_ROOT_PASSWORD=admin
 
 # phpMyAdmin
 PMA_PORT=8081

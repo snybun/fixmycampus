@@ -22,7 +22,7 @@ services:
       DB_PORT: ${DB_PORT:-3306}
       DB_DATABASE: ${DB_DATABASE:-fixmycampus_db}
       DB_USERNAME: ${DB_USERNAME:-fmc_user}
-      DB_PASSWORD: ${DB_PASSWORD:-fmc_secure_password_2026}
+      DB_PASSWORD: ${DB_PASSWORD:-admin}
     depends_on:
       database:
         condition: service_healthy
@@ -40,15 +40,15 @@ services:
       - "${DB_PORT:-3306}:3306"
     command: --default-authentication-plugin=mysql_native_password
     environment:
-      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-fmc_root_secret_2026}
+      MYSQL_ROOT_PASSWORD: ${DB_ROOT_PASSWORD:-admin}
       MYSQL_DATABASE: ${DB_DATABASE:-fixmycampus_db}
       MYSQL_USER: ${DB_USERNAME:-fmc_user}
-      MYSQL_PASSWORD: ${DB_PASSWORD:-fmc_secure_password_2026}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-admin}
     volumes:
       - db_data:/var/lib/mysql
       - ./database/init:/docker-entrypoint-initdb.d:ro
     healthcheck:
-      test: ["CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}"]
+      test: [ "CMD-SHELL", "mysqladmin ping -h localhost -u root -p$${MYSQL_ROOT_PASSWORD}" ]
       interval: 10s
       timeout: 5s
       retries: 5
