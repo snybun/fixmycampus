@@ -1,6 +1,6 @@
 # Environment files
 .env
-!.env.example
+.env.example
 
 # Uploads directory contents (keep directory structure)
 public/uploads/*
