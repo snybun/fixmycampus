@@ -3,13 +3,23 @@
 declare(strict_types=1);
 
 /**
- * FixMyCampus Front Controller Entry Point
+ * FixMyCampus Entry Point & API Gateway
  *
- * Bootstraps configuration, initializes security and session,
- * loads helper utilities, and dispatches the initial controller.
+ * Serves the React Single Page Application (SPA) production build,
+ * or provides JSON API gateway information if accessed directly.
  */
 
-// 1. Load application configuration & environment
+$spaFile = __DIR__ . '/dist/index.html';
+$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+
+// 1. Serve compiled React SPA for root and client routes
+if (file_exists($spaFile) && !str_starts_with($requestUri, '/api') && !str_starts_with($requestUri, '/health.php')) {
+    header('Content-Type: text/html; charset=utf-8');
+    readfile($spaFile);
+    exit;
+}
+
+// 2. Load application configuration & environment
 $config = require_once dirname(__DIR__) . '/src/config/app.php';
 
 // Configure runtime error display based on environment
@@ -22,38 +32,19 @@ if ($config['debug']) {
     error_reporting(0);
 }
 
-// 2. Load Core Components & Database
-require_once SRC_PATH . '/Core/Database.php';
-require_once SRC_PATH . '/Core/Response.php';
-
-// 3. Load Reusable Helpers
-require_once SRC_PATH . '/helpers/escape.php';
-require_once SRC_PATH . '/helpers/session.php';
-require_once SRC_PATH . '/helpers/auth.php';
-require_once SRC_PATH . '/helpers/redirect.php';
-require_once SRC_PATH . '/helpers/db.php';
-
-// 4. Initialize Secure Session
-session_start_safe();
-
-// 5. Load Base Models & Controllers
-require_once SRC_PATH . '/models/BaseModel.php';
-require_once SRC_PATH . '/controllers/BaseController.php';
-require_once SRC_PATH . '/controllers/HomeController.php';
-
-// 6. Dispatch Foundation Controller
-try {
-    $controller = new \FixMyCampus\Controllers\HomeController();
-    $controller->index();
-} catch (\Throwable $e) {
-    if ($config['debug']) {
-        http_response_code(500);
-        echo '<h1>Application Error</h1>';
-        echo '<p><strong>Message:</strong> ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</p>';
-        echo '<pre>' . htmlspecialchars($e->getTraceAsString(), ENT_QUOTES, 'UTF-8') . '</pre>';
-    } else {
-        http_response_code(500);
-        echo '<h1>500 - Service Temporarily Unavailable</h1>';
-        echo '<p>An unexpected error occurred. Please contact the campus physical plant administrator.</p>';
-    }
-}
+// 3. Informational response when frontend bundle is missing
+header('Content-Type: application/json; charset=utf-8');
+echo json_encode([
+    'app'       => $config['name'] ?? 'FixMyCampus',
+    'status'    => 'ready',
+    'message'   => 'FixMyCampus API backend is running. React frontend has not been compiled yet.',
+    'endpoints' => [
+        'health'     => '/health.php',
+        'stats'      => '/api/stats.php',
+        'reports'    => '/api/reports.php',
+        'categories' => '/api/categories.php',
+        'buildings'  => '/api/buildings.php',
+        'auth'       => '/api/auth.php',
+    ],
+    'instructions' => "Run 'cd frontend && npm run build' to build the React application into /public/dist.",
+], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);

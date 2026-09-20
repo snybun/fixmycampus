@@ -17,9 +17,6 @@ if (!defined('SRC_PATH')) {
     define('SRC_PATH', APP_ROOT . '/src');
 }
 
-if (!defined('VIEW_PATH')) {
-    define('VIEW_PATH', SRC_PATH . '/views');
-}
 
 if (!defined('STORAGE_PATH')) {
     define('STORAGE_PATH', APP_ROOT . '/storage');

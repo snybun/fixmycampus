@@ -87,8 +87,10 @@ if (!function_exists('auth_login')) {
     function auth_login(array $user): void
     {
         session_start_safe();
-        // Prevent session fixation attack
-        session_regenerate_id(true);
+        // Prevent session fixation attack if session is active and headers not yet sent
+        if (!headers_sent() && session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
 
         // Sanitize user data before storing in session
         unset($user['password_hash']);
@@ -104,6 +106,8 @@ if (!function_exists('auth_logout')) {
     {
         session_start_safe();
         session_remove('user');
-        session_regenerate_id(true);
+        if (!headers_sent() && session_status() === PHP_SESSION_ACTIVE) {
+            session_regenerate_id(true);
+        }
     }
 }

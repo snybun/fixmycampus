@@ -1,0 +1,23 @@
+import React from 'react';
+
+export default function CtaBanner() {
+  return (
+    <section className="landing-cta-banner">
+      <div className="cta-container">
+        <span className="cta-eyebrow">START REPORTING TODAY</span>
+        <h2 className="cta-headline">
+          A better campus starts with one<br />clear report.
+        </h2>
+        <p className="cta-subtitle">
+          Join thousands of students, faculty, and maintenance staff keeping university facilities safe and working every day.
+        </p>
+
+        <div className="cta-action">
+          <button type="button" className="btn-cta-white" onClick={(e) => e.preventDefault()}>
+            Report a defect
+          </button>
+        </div>
+      </div>
+    </section>
+  );
+}
