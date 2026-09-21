@@ -1,0 +1,11 @@
+{
+  "name": "fixmycampus",
+  "private": true,
+  "version": "1.0.0",
+  "description": "FixMyCampus - Facility Defect & Maintenance Reporting System",
+  "scripts": {
+    "dev": "npm --prefix frontend run dev",
+    "build": "npm --prefix frontend run build",
+    "preview": "npm --prefix frontend run preview"
+  }
+}
