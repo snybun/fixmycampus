@@ -2,10 +2,10 @@ import React from 'react';
 
 export default function StatsStrip() {
   const stats = [
-    { value: '1,200+', label: 'Defects resolved to date' },
-    { value: '27 min', label: 'Average first response' },
-    { value: '98%', label: 'Resolution satisfaction' },
-    { value: '99.4%', label: 'Facility uptime maintained' },
+    { value: '?', label: 'Defects resolved to date' },
+    { value: '?', label: 'Average first response' },
+    { value: '?', label: 'Resolution satisfaction' },
+    { value: '?', label: 'Facility uptime maintained' },
   ];
 
   return (
