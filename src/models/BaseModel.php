@@ -13,6 +13,7 @@ require_once dirname(__DIR__) . '/helpers/db.php';
  *
  * Provides active-record-like convenience methods using prepared statements.
  */
+
 abstract class BaseModel
 {
     /**
