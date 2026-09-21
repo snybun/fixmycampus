@@ -1,8 +1,12 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { Menu, X } from 'lucide-react';
 
 export default function Navbar({ onNavigate, onScrollTo }) {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
   const handleNavClick = (e, targetId) => {
     e.preventDefault();
+    setMobileMenuOpen(false);
     if (onScrollTo) {
       onScrollTo(targetId);
     } else {
@@ -13,15 +17,24 @@ export default function Navbar({ onNavigate, onScrollTo }) {
 
   const handleBrandClick = (e) => {
     e.preventDefault();
+    setMobileMenuOpen(false);
     if (onNavigate) {
       onNavigate('landing');
     }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
+  const handleReportClick = () => {
+    setMobileMenuOpen(false);
+    if (onNavigate) {
+      onNavigate('login');
+    }
+  };
+
   return (
     <header className="landing-navbar">
       <div className="landing-nav-container">
+        {/* Brand */}
         <button
           type="button"
           className="landing-brand"
@@ -37,6 +50,7 @@ export default function Navbar({ onNavigate, onScrollTo }) {
           <span className="landing-brand-name">FixMyCampus</span>
         </button>
 
+        {/* Desktop Navigation Links */}
         <nav className="landing-nav-links" aria-label="Landing Navigation">
           <a href="#process" className="landing-nav-link" onClick={(e) => handleNavClick(e, 'process')}>
             How it works
@@ -49,16 +63,66 @@ export default function Navbar({ onNavigate, onScrollTo }) {
           </a>
         </nav>
 
+        {/* Desktop Actions & Mobile Menu Toggle */}
         <div className="landing-nav-actions">
           <button
             type="button"
             className="btn-landing-primary"
-            onClick={() => onNavigate && onNavigate('login')}
+            onClick={handleReportClick}
           >
             Report a defect
           </button>
+
+          {/* Hamburger toggle button for mobile */}
+          <button
+            type="button"
+            className="landing-nav-toggle"
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+          >
+            {mobileMenuOpen ? <X size={22} /> : <Menu size={22} />}
+          </button>
         </div>
       </div>
+
+      {/* Mobile Slide-down Menu */}
+      {mobileMenuOpen && (
+        <div className="landing-mobile-menu">
+          <nav className="mobile-nav-links" aria-label="Mobile Landing Navigation">
+            <a
+              href="#process"
+              className="mobile-nav-link"
+              onClick={(e) => handleNavClick(e, 'process')}
+            >
+              How it works
+            </a>
+            <a
+              href="#roles"
+              className="mobile-nav-link"
+              onClick={(e) => handleNavClick(e, 'roles')}
+            >
+              Roles &amp; Access
+            </a>
+            <a
+              href="#impact"
+              className="mobile-nav-link"
+              onClick={(e) => handleNavClick(e, 'impact')}
+            >
+              Impact
+            </a>
+            <div className="mobile-nav-cta">
+              <button
+                type="button"
+                className="btn-hero-primary"
+                style={{ width: '100%' }}
+                onClick={handleReportClick}
+              >
+                Report a defect
+              </button>
+            </div>
+          </nav>
+        </div>
+      )}
     </header>
   );
 }
