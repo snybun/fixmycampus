@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function CtaBanner() {
+export default function CtaBanner({ onNavigate }) {
   return (
     <section className="landing-cta-banner">
       <div className="cta-container">
@@ -13,7 +13,11 @@ export default function CtaBanner() {
         </p>
 
         <div className="cta-action">
-          <button type="button" className="btn-cta-white" onClick={(e) => e.preventDefault()}>
+          <button
+            type="button"
+            className="btn-cta-white"
+            onClick={() => onNavigate && onNavigate('login')}
+          >
             Report a defect
           </button>
         </div>

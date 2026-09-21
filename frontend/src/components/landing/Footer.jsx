@@ -1,7 +1,17 @@
 import React from 'react';
 
-export default function Footer() {
+export default function Footer({ onScrollTo }) {
   const year = new Date().getFullYear();
+
+  const handleLinkClick = (e, targetId) => {
+    e.preventDefault();
+    if (onScrollTo) {
+      onScrollTo(targetId);
+    } else {
+      const el = document.getElementById(targetId);
+      if (el) el.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
 
   return (
     <footer className="landing-footer">
@@ -26,8 +36,8 @@ export default function Footer() {
           <div className="footer-links-col">
             <div className="footer-links-group">
               <span className="footer-group-title">Platform</span>
-              <a href="#process" className="footer-link" onClick={(e) => e.preventDefault()}>How it works</a>
-              <a href="#roles" className="footer-link" onClick={(e) => e.preventDefault()}>Role Access</a>
+              <a href="#process" className="footer-link" onClick={(e) => handleLinkClick(e, 'process')}>How it works</a>
+              <a href="#roles" className="footer-link" onClick={(e) => handleLinkClick(e, 'roles')}>Role Access</a>
               <a href="/health.php" target="_blank" rel="noopener noreferrer" className="footer-link">Health API</a>
             </div>
 

@@ -12,7 +12,7 @@ import {
   Search
 } from 'lucide-react';
 
-export default function Hero() {
+export default function Hero({ onNavigate, onScrollTo }) {
   return (
     <section className="landing-hero">
       <div className="hero-content">
@@ -24,10 +24,18 @@ export default function Hero() {
         </p>
 
         <div className="hero-actions">
-          <button type="button" className="btn-hero-primary" onClick={(e) => e.preventDefault()}>
+          <button
+            type="button"
+            className="btn-hero-primary"
+            onClick={() => onNavigate && onNavigate('login')}
+          >
             Report a defect
           </button>
-          <button type="button" className="btn-hero-secondary" onClick={(e) => e.preventDefault()}>
+          <button
+            type="button"
+            className="btn-hero-secondary"
+            onClick={() => onScrollTo ? onScrollTo('process') : document.getElementById('process')?.scrollIntoView({ behavior: 'smooth' })}
+          >
             Explore Demo
           </button>
         </div>
@@ -74,7 +82,11 @@ export default function Hero() {
                 <h3 className="mockup-greeting">Good morning, Maya</h3>
                 <p className="mockup-subtext">Here's what needs attention across campus facilities today.</p>
               </div>
-              <button type="button" className="mockup-action-btn" onClick={(e) => e.preventDefault()}>
+              <button
+                type="button"
+                className="mockup-action-btn"
+                onClick={() => onNavigate && onNavigate('login')}
+              >
                 <Plus size={14} />
                 <span>New Report</span>
               </button>

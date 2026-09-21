@@ -31,6 +31,7 @@ export default function ProcessSteps() {
 
   return (
     <section className="landing-section" id="process">
+      <div id="demo" style={{ position: 'relative', top: '-80px' }} />
       <div className="section-container">
         <div className="section-header">
           <span className="section-eyebrow">THE FIXMYCAMPUS PROCESS</span>

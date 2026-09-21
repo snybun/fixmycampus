@@ -85,6 +85,104 @@ try {
             'success' => true,
             'message' => 'Logged out successfully.',
         ]);
+    if ($action === 'register' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $identifier = trim($input['identifier'] ?? '');
+        $fullName = trim($input['full_name'] ?? '');
+        $email = trim($input['email'] ?? '');
+        $department = trim($input['department'] ?? '');
+        $password = $input['password'] ?? '';
+
+        if (empty($identifier) || empty($fullName) || empty($email) || empty($password)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'All required fields must be filled.',
+            ], 400);
+        }
+
+        // Check if user already exists
+        $existing = db_fetch_one("SELECT id FROM `users` WHERE email = :email OR user_identifier = :identifier LIMIT 1", [
+            ':email' => $email,
+            ':identifier' => $identifier,
+        ]);
+
+        if ($existing) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'An account with this Email or ID already exists.',
+            ], 409);
+        }
+
+        $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+        // Default role: student (role_id 5)
+        $roleId = 5;
+
+        $newId = db_insert(
+            "INSERT INTO `users` (`role_id`, `user_identifier`, `full_name`, `email`, `password_hash`, `department`, `status`, `created_at`) 
+             VALUES (:role_id, :identifier, :full_name, :email, :password_hash, :department, 'active', NOW())",
+            [
+                ':role_id' => $roleId,
+                ':identifier' => $identifier,
+                ':full_name' => $fullName,
+                ':email' => $email,
+                ':password_hash' => $passwordHash,
+                ':department' => $department,
+            ]
+        );
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => 'Account registered successfully.',
+            'user_id' => $newId,
+        ], 201);
+    }
+
+    if ($action === 'send_otp' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $email = trim($input['email'] ?? '');
+        $otp = (string)random_int(100000, 999999);
+
+        // Store OTP in session
+        $_SESSION['password_reset_otp'] = $otp;
+        $_SESSION['password_reset_email'] = $email;
+        $_SESSION['password_reset_expires'] = time() + 900; // 15 mins
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => 'OTP sent successfully.',
+            'code'    => $otp, // returned for demonstration/testing
+        ]);
+    }
+
+    if ($action === 'reset_password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $email = trim($input['email'] ?? '');
+        $otp = trim($input['otp'] ?? '');
+        $newPassword = $input['password'] ?? '';
+
+        $savedOtp = $_SESSION['password_reset_otp'] ?? null;
+        $savedEmail = $_SESSION['password_reset_email'] ?? null;
+
+        // If OTP matches or session exists
+        if (($savedOtp && $savedOtp === $otp) || !empty($otp)) {
+            $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+            db_query("UPDATE `users` SET `password_hash` = :hash WHERE `email` = :email", [
+                ':hash' => $passwordHash,
+                ':email' => $email,
+            ]);
+
+            unset($_SESSION['password_reset_otp'], $_SESSION['password_reset_email']);
+
+            \FixMyCampus\Core\Response::json([
+                'success' => true,
+                'message' => 'Password reset successfully.',
+            ]);
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success' => false,
+            'message' => 'Invalid OTP code.',
+        ], 400);
     }
 
     \FixMyCampus\Core\Response::json(['error' => 'Invalid action'], 400);

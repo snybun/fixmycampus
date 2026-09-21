@@ -10,7 +10,7 @@ export default function AnalyticsFeature() {
   ];
 
   return (
-    <section className="landing-section">
+    <section className="landing-section" id="impact">
       <div className="section-container">
         <div className="section-header">
           <span className="section-eyebrow">CAMPUS-WIDE INSIGHTS</span>
