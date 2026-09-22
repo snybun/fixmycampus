@@ -3,40 +3,47 @@ import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { loginUser } from '../../services/api';
 import './auth.css';
 
-export default function LoginPage({ onNavigate }) {
-  const [email, setEmail] = useState('mafe.cerna.up@phinmaed.com');
-  const [password, setPassword] = useState('renebaterbonians99');
+export default function LoginPage({ onNavigate, onLoginSuccess }) {
+  const [loginInput, setLoginInput] = useState('');
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
+  const handleFillDemo = (demoEmail, demoPass) => {
+    setLoginInput(demoEmail);
+    setPassword(demoPass);
+    setError('');
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
     setSuccessMsg('');
 
-    if (!email || !password) {
-      setError('Please fill in all required fields.');
+    if (!loginInput || !password) {
+      setError('Please fill in both Email / ID and Password.');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await loginUser({ email, password, remember: rememberMe });
+      const res = await loginUser({ email: loginInput, password, remember: rememberMe });
       if (res.success) {
-        setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Redirecting...`);
+        setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Authentication successful.`);
+        if (onLoginSuccess) {
+          onLoginSuccess(res.user);
+        }
         setTimeout(() => {
-          // If we had a dashboard or report defect page, navigate there
-          alert(`Logged in successfully as ${res.user?.full_name || email}`);
-        }, 800);
+          onNavigate('landing');
+        }, 1000);
       } else {
-        // Provide friendly fallback for demo environment
         setError(res.message || 'Invalid email or password.');
       }
     } catch (err) {
-      setError('Connection error. Please try again.');
+      setError('Connection error. Please ensure Docker backend is running.');
     } finally {
       setLoading(false);
     }
@@ -93,19 +100,19 @@ export default function LoginPage({ onNavigate }) {
             )}
 
             <form className="auth-form" onSubmit={handleSubmit}>
-              {/* Email Address */}
+              {/* Email Address or Identifier */}
               <div className="auth-field">
                 <label className="auth-label" htmlFor="login-email">
-                  Email Address <span className="auth-required">*</span>
+                  Email Address or Student / Employee ID <span className="auth-required">*</span>
                 </label>
                 <div className="auth-input-wrapper">
                   <input
                     id="login-email"
-                    type="email"
+                    type="text"
                     className="auth-input"
-                    placeholder="mafe.cerna.up@phinmaed.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. student.alex@fixmycampus.edu or STU-202401"
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value)}
                     required
                   />
                 </div>
@@ -166,6 +173,34 @@ export default function LoginPage({ onNavigate }) {
                 {loading ? 'Logging in...' : 'Login'}
               </button>
             </form>
+
+            {/* Quick Demo Test Credential Helpers */}
+            <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px dashed var(--border-subtle, #e2e8f0)', fontSize: '0.78rem', color: '#64748b' }}>
+              <div style={{ marginBottom: '0.35rem', fontWeight: 600 }}>Quick Test Accounts:</div>
+              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
+                <button
+                  type="button"
+                  onClick={() => handleFillDemo('student.alex@fixmycampus.edu', 'Student@1234')}
+                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', cursor: 'pointer', color: '#334155' }}
+                >
+                  Student (Alex)
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFillDemo('admin@fixmycampus.edu', 'Admin@1234')}
+                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', cursor: 'pointer', color: '#334155' }}
+                >
+                  Admin
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleFillDemo('worker.john@fixmycampus.edu', 'Worker@1234')}
+                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', cursor: 'pointer', color: '#334155' }}
+                >
+                  Technician (John)
+                </button>
+              </div>
+            </div>
 
             {/* Footer Switch to Register */}
             <div className="auth-footer-prompt">

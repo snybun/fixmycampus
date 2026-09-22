@@ -41,7 +41,7 @@ class Database
      */
     private static function connect(): void
     {
-        $host     = Env::get('DB_HOST', '127.0.0.1');
+        $host     = Env::get('DB_HOST', 'database');
         if ($host === 'database' && gethostbyname('database') === 'database') {
             $host = '127.0.0.1';
         }

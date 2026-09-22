@@ -37,13 +37,13 @@ try {
 
     if ($action === 'login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $email = trim($input['email'] ?? '');
+        $loginInput = trim($input['email'] ?? $input['identifier'] ?? '');
         $password = $input['password'] ?? '';
 
-        if (empty($email) || empty($password)) {
+        if (empty($loginInput) || empty($password)) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
-                'message' => 'Email and password are required.',
+                'message' => 'Email or ID and password are required.',
             ], 400);
         }
 
@@ -51,9 +51,9 @@ try {
             SELECT u.*, r.name as role_name, r.display_name as role_display
             FROM `users` u
             JOIN `roles` r ON u.role_id = r.id
-            WHERE u.email = :email
+            WHERE u.email = :email OR u.user_identifier = :identifier
             LIMIT 1
-        ", [':email' => $email]);
+        ", [':email' => $loginInput, ':identifier' => $loginInput]);
 
         if (!$user || !password_verify($password, $user['password_hash'])) {
             \FixMyCampus\Core\Response::json([
@@ -85,6 +85,8 @@ try {
             'success' => true,
             'message' => 'Logged out successfully.',
         ]);
+    }
+
     if ($action === 'register' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $identifier = trim($input['identifier'] ?? '');
@@ -101,15 +103,18 @@ try {
         }
 
         // Check if user already exists
-        $existing = db_fetch_one("SELECT id FROM `users` WHERE email = :email OR user_identifier = :identifier LIMIT 1", [
+        $existing = db_fetch_one("SELECT id, email, user_identifier FROM `users` WHERE email = :email OR user_identifier = :identifier LIMIT 1", [
             ':email' => $email,
             ':identifier' => $identifier,
         ]);
 
         if ($existing) {
+            $msg = ($existing['email'] === $email)
+                ? 'An account with this email address already exists.'
+                : 'An account with this Student/Employee ID already exists.';
             \FixMyCampus\Core\Response::json([
                 'success' => false,
-                'message' => 'An account with this Email or ID already exists.',
+                'message' => $msg,
             ], 409);
         }
 
@@ -130,10 +135,22 @@ try {
             ]
         );
 
+        $createdUser = [
+            'id'              => $newId,
+            'role_id'         => $roleId,
+            'role_name'       => 'student',
+            'role_display'    => 'Student',
+            'user_identifier' => $identifier,
+            'full_name'       => $fullName,
+            'email'           => $email,
+            'department'      => $department,
+            'status'          => 'active',
+        ];
+
         \FixMyCampus\Core\Response::json([
             'success' => true,
             'message' => 'Account registered successfully.',
-            'user_id' => $newId,
+            'user'    => $createdUser,
         ], 201);
     }
 
