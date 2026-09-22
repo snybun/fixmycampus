@@ -1,58 +1,31 @@
 <?php
 
+declare(strict_types=1);
+
 require_once __DIR__ . '/../src/Core/Env.php';
 require_once __DIR__ . '/../src/Core/Database.php';
 
-<<<<<<< HEAD
-/**
- * FixMyCampus Entry Point & API Gateway
- *
- * Serves the React Single Page Application (SPA) production build,
- * or provides JSON API gateway information if accessed directly.
- */
-
-$spaFile = __DIR__ . '/dist/index.html';
-$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
-
-// 1. Serve compiled React SPA for root and client routes
-if (file_exists($spaFile) && !str_starts_with($requestUri, '/api') && !str_starts_with($requestUri, '/health.php')) {
-    header('Content-Type: text/html; charset=utf-8');
-    readfile($spaFile);
-    exit;
-}
-
-// 2. Load application configuration & environment
-$config = require_once dirname(__DIR__) . '/src/config/app.php';
-=======
 use FixMyCampus\Core\Env;
 use FixMyCampus\Core\Database;
 
 // Load environment variables
 Env::load(__DIR__ . '/../.env');
->>>>>>> 293d5af6b963e3257dac25ac39565b7c202a8cc4
 
 $appName = Env::get('APP_NAME', 'FixMyCampus');
 $appTagline = Env::get('APP_TAGLINE', 'Report. Track. Improve.');
 $appEnv = Env::get('APP_ENV', 'development');
 
-<<<<<<< HEAD
-// 3. Informational response when frontend bundle is missing
-header('Content-Type: application/json; charset=utf-8');
-echo json_encode([
-    'app'       => $config['name'] ?? 'FixMyCampus',
-    'status'    => 'ready',
-    'message'   => 'FixMyCampus API backend is running. React frontend has not been compiled yet.',
-    'endpoints' => [
-        'health'     => '/health.php',
-        'stats'      => '/api/stats.php',
-        'reports'    => '/api/reports.php',
-        'categories' => '/api/categories.php',
-        'buildings'  => '/api/buildings.php',
-        'auth'       => '/api/auth.php',
-    ],
-    'instructions' => "Run 'cd frontend && npm run build' to build the React application into /public/dist.",
-], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-=======
+$spaFile = __DIR__ . '/dist/index.html';
+$requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+
+// 1. Serve compiled React SPA for root and client routes if not an API or health check
+if (file_exists($spaFile) && !str_starts_with($requestUri, '/api') && !str_starts_with($requestUri, '/health.php') && !isset($_GET['dashboard'])) {
+    header('Content-Type: text/html; charset=utf-8');
+    readfile($spaFile);
+    exit;
+}
+
+// 2. Otherwise render Backend Environment & Database Status Dashboard
 $dbStatus = Database::testConnection();
 $isConnected = ($dbStatus['status'] === 'connected');
 
