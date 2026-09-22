@@ -12,12 +12,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
 
-  const handleFillDemo = (demoEmail, demoPass) => {
-    setLoginInput(demoEmail);
-    setPassword(demoPass);
-    setError('');
-  };
-
   const handleSubmit = async (e) => {
     e.preventDefault();
     setError('');
@@ -173,34 +167,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 {loading ? 'Logging in...' : 'Login'}
               </button>
             </form>
-
-            {/* Quick Demo Test Credential Helpers */}
-            <div style={{ marginTop: '1rem', paddingTop: '0.85rem', borderTop: '1px dashed var(--border-subtle, #e2e8f0)', fontSize: '0.78rem', color: '#64748b' }}>
-              <div style={{ marginBottom: '0.35rem', fontWeight: 600 }}>Quick Test Accounts:</div>
-              <div style={{ display: 'flex', gap: '0.5rem', flexWrap: 'wrap' }}>
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('student.alex@fixmycampus.edu', 'Student@1234')}
-                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', cursor: 'pointer', color: '#334155' }}
-                >
-                  Student (Alex)
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('admin@fixmycampus.edu', 'Admin@1234')}
-                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', cursor: 'pointer', color: '#334155' }}
-                >
-                  Admin
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleFillDemo('worker.john@fixmycampus.edu', 'Worker@1234')}
-                  style={{ background: '#f1f5f9', border: '1px solid #cbd5e1', borderRadius: '4px', padding: '2px 8px', fontSize: '0.75rem', cursor: 'pointer', color: '#334155' }}
-                >
-                  Technician (John)
-                </button>
-              </div>
-            </div>
 
             {/* Footer Switch to Register */}
             <div className="auth-footer-prompt">

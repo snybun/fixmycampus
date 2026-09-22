@@ -21,6 +21,9 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
 // 1. Serve compiled React SPA for root and client routes if not an API or health check
 if (file_exists($spaFile) && !str_starts_with($requestUri, '/api') && !str_starts_with($requestUri, '/health.php') && !isset($_GET['dashboard'])) {
     header('Content-Type: text/html; charset=utf-8');
+    header('Cache-Control: no-cache, no-store, must-revalidate');
+    header('Pragma: no-cache');
+    header('Expires: 0');
     readfile($spaFile);
     exit;
 }
