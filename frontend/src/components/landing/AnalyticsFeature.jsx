@@ -12,7 +12,7 @@ export default function AnalyticsFeature() {
   return (
     <section className="landing-section" id="impact">
       <div className="section-container">
-        <div className="section-header">
+        <div className="section-header reveal-on-scroll">
           <span className="section-eyebrow">CAMPUS-WIDE INSIGHTS</span>
           <h2 className="section-title">
             See the campus clearly. Act earlier.
@@ -22,7 +22,7 @@ export default function AnalyticsFeature() {
           </p>
         </div>
 
-        <div className="analytics-card">
+        <div className="analytics-card reveal-on-scroll">
           {/* Metrics Column */}
           <div className="analytics-metrics-col">
             <div className="analytics-stat">
@@ -59,7 +59,7 @@ export default function AnalyticsFeature() {
                     <span className="bar-pct">{cat.pct}%</span>
                   </div>
                   <div className="bar-track">
-                    <div className="bar-fill" style={{ width: cat.width }} />
+                    <div className="bar-fill" style={{ '--bar-width': cat.width }} />
                   </div>
                 </div>
               ))}

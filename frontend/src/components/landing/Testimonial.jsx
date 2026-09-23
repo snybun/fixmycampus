@@ -3,7 +3,7 @@ import React from 'react';
 export default function Testimonial() {
   return (
     <section className="landing-testimonial-section">
-      <div className="section-container">
+      <div className="section-container reveal-on-scroll">
         <blockquote className="testimonial-quote">
           &ldquo;FixMyCampus gives our community confidence that every concern reaches the right team&mdash;and every team the context to act.&rdquo;
         </blockquote>

@@ -1,6 +1,6 @@
-import React, { useState } from 'react';
-import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2 } from 'lucide-react';
-import { loginUser } from '../../services/api';
+import React, { useState, useEffect, useRef } from 'react';
+import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
+import { loginUser, loginWithGoogle, fetchGoogleConfig } from '../../services/api';
 import './auth.css';
 
 export default function LoginPage({ onNavigate, onLoginSuccess }) {
@@ -9,8 +9,117 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
+  const [clientId, setClientId] = useState('');
+  const [allowedDomain, setAllowedDomain] = useState('phinmaed.com');
+  const [tempClientId, setTempClientId] = useState('');
+  const [gisLoaded, setGisLoaded] = useState(false);
+
+  const googleBtnRef = useRef(null);
+
+  // Initialize GIS once client ID and window.google are ready
+  const initGis = (activeClientId) => {
+    if (!activeClientId) return;
+    if (!window.google?.accounts?.id) {
+      // Retry in 300ms if script is still downloading
+      setTimeout(() => initGis(activeClientId), 300);
+      return;
+    }
+
+    try {
+      window.google.accounts.id.initialize({
+        client_id: activeClientId,
+        callback: handleGoogleCredentialResponse,
+        hosted_domain: allowedDomain,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+
+      if (googleBtnRef.current) {
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          shape: 'rectangular',
+          text: 'signin_with',
+          logo_alignment: 'left',
+          width: 380,
+        });
+      }
+      setGisLoaded(true);
+    } catch (err) {
+      console.warn('Google Identity Services initialization failed:', err);
+    }
+  };
+
+  useEffect(() => {
+    // 1. Fetch configured Client ID from backend or localStorage
+    const savedLocalId = localStorage.getItem('fmc_google_client_id') || '';
+
+    fetchGoogleConfig().then((cfg) => {
+      const activeDomain = cfg?.allowed_domain || 'phinmaed.com';
+      setAllowedDomain(activeDomain);
+
+      const activeId = cfg?.client_id || savedLocalId || '';
+      if (activeId) {
+        setClientId(activeId);
+        setTempClientId(activeId);
+        initGis(activeId);
+      }
+    });
+  }, []);
+
+  const handleSaveClientId = (e) => {
+    e.preventDefault();
+    const trimmed = tempClientId.trim();
+    if (!trimmed) return;
+    localStorage.setItem('fmc_google_client_id', trimmed);
+    setClientId(trimmed);
+    initGis(trimmed);
+  };
+
+  const handleGoogleCredentialResponse = async (response) => {
+    if (!response?.credential) {
+      setError('No credential received from Google.');
+      return;
+    }
+
+    setGoogleLoading(true);
+    setError('');
+    setSuccessMsg('');
+
+    try {
+      const res = await loginWithGoogle({ credential: response.credential });
+      if (res.success) {
+        setSuccessMsg(`Welcome, ${res.user?.full_name}! Verified institutional account (@${allowedDomain}).`);
+        if (onLoginSuccess) {
+          onLoginSuccess(res.user);
+        }
+        setTimeout(() => {
+          onNavigate('dashboard');
+        }, 800);
+      } else {
+        setError(res.message || 'Google authentication failed.');
+      }
+    } catch (err) {
+      setError('Unable to verify Google login token with server.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleTriggerGooglePrompt = () => {
+    setError('');
+    setSuccessMsg('');
+
+    if (clientId && window.google?.accounts?.id) {
+      window.google.accounts.id.prompt();
+    } else {
+      setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -64,35 +173,175 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             <div className="auth-header">
               <h1 className="auth-title">Welcome Back</h1>
               <p className="auth-subtitle">
-                Log in to report and track facility issues on your campus.
+                Access your campus maintenance portal or submit facility tickets
               </p>
             </div>
 
-            {/* Responsive photo banner for tablet/mobile viewports */}
-            <div className="auth-mobile-photo">
-              <div className="auth-image-frame">
-                <img
-                  src="/images/campus_courtyard.jpg"
-                  alt="University campus academic building and courtyard"
-                />
-                <div className="auth-image-tint" />
-              </div>
-            </div>
-
             {error && (
-              <div className="auth-alert auth-alert-error" style={{ marginBottom: '1.25rem' }}>
-                <AlertCircle size={16} />
+              <div className="auth-alert auth-alert-error" role="alert">
+                <AlertCircle size={18} className="auth-alert-icon" />
                 <span>{error}</span>
               </div>
             )}
 
             {successMsg && (
-              <div className="auth-alert auth-alert-success" style={{ marginBottom: '1.25rem' }}>
-                <CheckCircle2 size={16} />
+              <div className="auth-alert auth-alert-success" role="status">
+                <CheckCircle2 size={18} className="auth-alert-icon" />
                 <span>{successMsg}</span>
               </div>
             )}
 
+            {/* Institutional Domain Banner */}
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: '0.65rem',
+                padding: '0.65rem 0.85rem',
+                background: 'rgba(59, 130, 246, 0.06)',
+                border: '1px solid rgba(59, 130, 246, 0.2)',
+                borderRadius: '8px',
+                marginBottom: '1.25rem',
+                fontSize: '0.8125rem',
+                color: '#1e40af',
+              }}
+            >
+              <ShieldCheck size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
+              <span>
+                FixMyCampus strictly accepts <strong>@{allowedDomain}</strong> accounts for Google Sign-In.
+              </span>
+            </div>
+
+            {/* Official Google GIS Button Container */}
+            <div style={{ marginBottom: '1.25rem' }}>
+              {clientId ? (
+                <div>
+                  <div
+                    ref={googleBtnRef}
+                    style={{
+                      display: 'flex',
+                      justifyContent: 'center',
+                      minHeight: '44px',
+                    }}
+                  />
+                  {!gisLoaded && (
+                    <button
+                      type="button"
+                      className="auth-google-btn"
+                      onClick={handleTriggerGooglePrompt}
+                      disabled={googleLoading}
+                    >
+                      <svg className="auth-google-icon" viewBox="0 0 24 24" width="20" height="20">
+                        <path
+                          fill="#4285F4"
+                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                        />
+                        <path
+                          fill="#34A853"
+                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                        />
+                        <path
+                          fill="#FBBC05"
+                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                        />
+                        <path
+                          fill="#EA4335"
+                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                        />
+                      </svg>
+                      <span>{googleLoading ? 'Connecting...' : `Sign in with @${allowedDomain}`}</span>
+                    </button>
+                  )}
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  className="auth-google-btn"
+                  onClick={handleTriggerGooglePrompt}
+                >
+                  <svg className="auth-google-icon" viewBox="0 0 24 24" width="20" height="20">
+                    <path
+                      fill="#4285F4"
+                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                    />
+                    <path
+                      fill="#34A853"
+                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                    />
+                    <path
+                      fill="#FBBC05"
+                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                    />
+                    <path
+                      fill="#EA4335"
+                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                    />
+                  </svg>
+                  <span>Sign in with Google (@{allowedDomain})</span>
+                </button>
+              )}
+            </div>
+
+            {/* Quick Client ID Config Drawer (Collapsible) */}
+            {!clientId && (
+              <form onSubmit={handleSaveClientId} style={{ marginBottom: '1.25rem' }}>
+                <div
+                  style={{
+                    padding: '0.75rem',
+                    background: '#f8fafc',
+                    border: '1px dashed #cbd5e1',
+                    borderRadius: '8px',
+                    fontSize: '0.8125rem',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      fontWeight: 600,
+                      color: '#475569',
+                      marginBottom: '0.35rem',
+                    }}
+                  >
+                    <KeyRound size={15} />
+                    <span>Enter Google OAuth Client ID for Testing</span>
+                  </div>
+                  <p style={{ color: '#64748b', fontSize: '0.75rem', marginBottom: '0.5rem' }}>
+                    Paste your Google Cloud Console Client ID to enable instant GIS One Tap &amp; Google Button.
+                  </p>
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      type="text"
+                      className="auth-input"
+                      placeholder="e.g. 123456789-abc.apps.googleusercontent.com"
+                      value={tempClientId}
+                      onChange={(e) => setTempClientId(e.target.value)}
+                      style={{ fontSize: '0.75rem', padding: '0.4rem 0.65rem', height: 'auto' }}
+                    />
+                    <button
+                      type="submit"
+                      className="auth-submit-btn"
+                      style={{
+                        padding: '0.4rem 0.85rem',
+                        fontSize: '0.75rem',
+                        width: 'auto',
+                        whiteSpace: 'nowrap',
+                      }}
+                    >
+                      Connect
+                    </button>
+                  </div>
+                </div>
+              </form>
+            )}
+
+            {/* Divider */}
+            <div className="auth-divider">
+              <span>or sign in with password</span>
+            </div>
+
+            {/* Password Login Form */}
             <form className="auth-form" onSubmit={handleSubmit}>
               {/* Email Address or Identifier */}
               <div className="auth-field">
@@ -104,7 +353,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     id="login-email"
                     type="text"
                     className="auth-input"
-                    placeholder="e.g. student.alex@fixmycampus.edu or STU-202401"
+                    placeholder="e.g. name@phinmaed.com or STU-202401"
                     value={loginInput}
                     onChange={(e) => setLoginInput(e.target.value)}
                     required
@@ -112,7 +361,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 </div>
               </div>
 
-              {/* Password */}
               <div className="auth-field">
                 <label className="auth-label" htmlFor="login-password">
                   Password <span className="auth-required">*</span>
@@ -138,7 +386,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 </div>
               </div>
 
-              {/* Options Row: Remember Me & Forgot Password */}
               <div className="auth-options-row">
                 <label className="auth-checkbox-label">
                   <input
@@ -158,7 +405,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 </button>
               </div>
 
-              {/* Submit Button */}
               <button
                 type="submit"
                 className="auth-submit-btn"
@@ -168,7 +414,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               </button>
             </form>
 
-            {/* Footer Switch to Register */}
             <div className="auth-footer-prompt">
               Don't have an account?
               <button

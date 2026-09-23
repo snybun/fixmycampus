@@ -3,7 +3,7 @@ import React from 'react';
 export default function CtaBanner({ onNavigate }) {
   return (
     <section className="landing-cta-banner">
-      <div className="cta-container">
+      <div className="cta-container reveal-on-scroll">
         <span className="cta-eyebrow">START REPORTING TODAY</span>
         <h2 className="cta-headline">
           A better campus starts with one<br />clear report.
