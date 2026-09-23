@@ -1185,23 +1185,14 @@ body {
   display: flex;
   gap: 1.25rem;
   position: relative;
-  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s ease;
-  border-radius: 8px;
-  padding: 0.35rem 0.5rem;
-  margin-left: -0.5rem;
-  margin-right: -0.5rem;
-}
-
-.timeline-item:hover {
-  transform: translateX(4px);
-  background: rgba(255, 255, 255, 0.035);
 }
 
 .timeline-marker {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
+  position: relative;
   width: 24px;
+  flex-shrink: 0;
+  display: flex;
+  justify-content: center;
 }
 
 .marker-dot {
@@ -1211,7 +1202,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
+  position: relative;
   z-index: 2;
+  flex-shrink: 0;
 }
 
 .marker-dot.done {
@@ -1258,17 +1251,29 @@ body {
 }
 
 .timeline-line {
+  position: absolute;
+  top: 24px;
+  bottom: -1px;
+  left: 50%;
+  transform: translateX(-50%);
   width: 2px;
-  flex: 1;
-  min-height: 32px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 149, 0, 0.95) 50%, rgba(255, 255, 255, 0.08) 100%);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 149, 0, 0.95) 50%, rgba(255, 255, 255, 0.12) 100%);
   background-size: 100% 200%;
   animation: timelineBeam 2.8s linear infinite;
-  margin: 4px 0;
+  z-index: 1;
 }
 
 .timeline-body {
-  padding-bottom: 1.5rem;
+  padding-bottom: 2rem;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.timeline-item:last-child .timeline-body {
+  padding-bottom: 0.25rem;
+}
+
+.timeline-item:hover .timeline-body {
+  transform: translateX(4px);
 }
 
 .timeline-title {
