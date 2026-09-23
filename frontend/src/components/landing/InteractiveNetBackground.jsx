@@ -179,10 +179,10 @@ export default function InteractiveNetBackground() {
               ctx.lineTo(pRight.x, pRight.y);
 
               if (isNearMouse) {
-                const alpha = Math.max(0.08, 0.42 * (1 - distToMouse / (mouse.radius * 1.2)));
-                ctx.strokeStyle = `rgba(14, 165, 233, ${alpha})`; // Subtle cyan/blue accent near mouse
+                const alpha = Math.max(0.1, 0.48 * (1 - distToMouse / (mouse.radius * 1.2)));
+                ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`; // Crisp black tension lines near cursor
               } else {
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.055)'; // Base subtle monochrome net
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)'; // Subtle monochrome net lines
               }
               ctx.stroke();
             }
@@ -197,10 +197,10 @@ export default function InteractiveNetBackground() {
               ctx.lineTo(pDown.x, pDown.y);
 
               if (isNearMouse) {
-                const alpha = Math.max(0.08, 0.42 * (1 - distToMouse / (mouse.radius * 1.2)));
-                ctx.strokeStyle = `rgba(14, 165, 233, ${alpha})`;
+                const alpha = Math.max(0.1, 0.48 * (1 - distToMouse / (mouse.radius * 1.2)));
+                ctx.strokeStyle = `rgba(0, 0, 0, ${alpha})`; // Crisp black tension lines near cursor
               } else {
-                ctx.strokeStyle = 'rgba(0, 0, 0, 0.055)';
+                ctx.strokeStyle = 'rgba(0, 0, 0, 0.06)'; // Subtle monochrome net lines
               }
               ctx.stroke();
             }
@@ -208,14 +208,20 @@ export default function InteractiveNetBackground() {
 
           // Draw small intersections (Nodes)
           if (isNearMouse) {
-            const dotAlpha = Math.max(0.2, 0.8 * (1 - distToMouse / (mouse.radius * 1.2)));
-            ctx.fillStyle = `rgba(2, 132, 199, ${dotAlpha})`;
+            const dotAlpha = Math.max(0.3, 0.9 * (1 - distToMouse / (mouse.radius * 1.2)));
+            // Outer node in black
+            ctx.fillStyle = `rgba(0, 0, 0, ${dotAlpha})`;
             ctx.beginPath();
-            ctx.arc(p.x, p.y, 2, 0, Math.PI * 2);
+            ctx.arc(p.x, p.y, 2.2, 0, Math.PI * 2);
+            ctx.fill();
+            // Tiny center core in white
+            ctx.fillStyle = '#ffffff';
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, 1, 0, Math.PI * 2);
             ctx.fill();
           } else if ((r + c) % 2 === 0) {
             // Draw subtle junction dots on alternating nodes
-            ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
+            ctx.fillStyle = 'rgba(0, 0, 0, 0.12)';
             ctx.beginPath();
             ctx.arc(p.x, p.y, 1.2, 0, Math.PI * 2);
             ctx.fill();
@@ -236,14 +242,14 @@ export default function InteractiveNetBackground() {
             }
           }
         }
-        ctx.strokeStyle = 'rgba(14, 165, 233, 0.12)';
+        ctx.strokeStyle = 'rgba(0, 0, 0, 0.14)';
         ctx.lineWidth = 1;
         ctx.stroke();
 
-        // Soft cursor spotlight ring
+        // Soft monochrome spotlight ring
         const gradient = ctx.createRadialGradient(mouse.x, mouse.y, 0, mouse.x, mouse.y, mouse.radius);
-        gradient.addColorStop(0, 'rgba(56, 189, 248, 0.15)');
-        gradient.addColorStop(0.5, 'rgba(14, 165, 233, 0.04)');
+        gradient.addColorStop(0, 'rgba(0, 0, 0, 0.04)');
+        gradient.addColorStop(0.5, 'rgba(0, 0, 0, 0.015)');
         gradient.addColorStop(1, 'rgba(255, 255, 255, 0)');
 
         ctx.fillStyle = gradient;
