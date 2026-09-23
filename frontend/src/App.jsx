@@ -15,25 +15,40 @@ import LoadingScreen from './components/common/LoadingScreen';
 import LoginPage from './components/auth/LoginPage';
 import RegisterPage from './components/auth/RegisterPage';
 import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
+import DashboardPage from './components/dashboard/DashboardPage';
+import { fetchAuthMe, logoutUser } from './services/api';
 
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard'].includes(hash)) {
       return hash;
     }
     return 'landing';
   };
 
   const [currentView, setCurrentView] = useState(getInitialView);
+  const [currentUser, setCurrentUser] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Accessing FixMyCampus Portal...');
+
+  // Check existing session on mount
+  useEffect(() => {
+    fetchAuthMe().then((res) => {
+      if (res && res.authenticated && res.user) {
+        setCurrentUser(res.user);
+        if (window.location.hash === '#dashboard') {
+          setCurrentView('dashboard');
+        }
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['login', 'register', 'forgot-password'].includes(hash)) {
+      if (['login', 'register', 'forgot-password', 'dashboard'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -72,11 +87,13 @@ export default function App() {
   const handleNavigate = (view) => {
     if (view === currentView) return;
 
-    // Show loading screen when navigating to auth views or returning home
-    if (['login', 'register', 'forgot-password'].includes(view)) {
+    // Show loading screen when navigating to auth views, dashboard or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard'].includes(view)) {
       setLoadingMessage(
         view === 'register'
           ? 'Opening Student Registration...'
+          : view === 'dashboard'
+          ? 'Opening FixMyCampus Dashboard...'
           : 'Accessing FixMyCampus Portal...'
       );
       setIsLoading(true);
@@ -106,6 +123,21 @@ export default function App() {
     }
   };
 
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    handleNavigate('dashboard');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (e) {
+      console.warn('Logout request completed with warning:', e);
+    }
+    setCurrentUser(null);
+    handleNavigate('landing');
+  };
+
   const handleScrollTo = (sectionId) => {
     if (currentView !== 'landing') {
       setCurrentView('landing');
@@ -124,9 +156,31 @@ export default function App() {
     <>
       <LoadingScreen isVisible={isLoading} message={loadingMessage} />
 
-      {currentView === 'login' && <LoginPage onNavigate={handleNavigate} />}
-      {currentView === 'register' && <RegisterPage onNavigate={handleNavigate} />}
-      {currentView === 'forgot-password' && <ForgotPasswordPage onNavigate={handleNavigate} />}
+      {currentView === 'dashboard' && (
+        <DashboardPage
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {currentView === 'login' && (
+        <LoginPage
+          onNavigate={handleNavigate}
+          onLoginSuccess={handleLoginSuccess}
+        />
+      )}
+
+      {currentView === 'register' && (
+        <RegisterPage
+          onNavigate={handleNavigate}
+          onRegisterSuccess={handleLoginSuccess}
+        />
+      )}
+
+      {currentView === 'forgot-password' && (
+        <ForgotPasswordPage onNavigate={handleNavigate} />
+      )}
 
       {currentView === 'landing' && (
         <div className="landing-app">

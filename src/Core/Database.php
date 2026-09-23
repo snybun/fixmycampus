@@ -42,6 +42,9 @@ class Database
     private static function connect(): void
     {
         $host     = Env::get('DB_HOST', 'database');
+        if ($host === 'database' && gethostbyname('database') === 'database') {
+            $host = '127.0.0.1';
+        }
         $port     = Env::get('DB_PORT', 3306);
         $dbname   = Env::get('DB_DATABASE', 'fixmycampus_db');
         $username = Env::get('DB_USERNAME', 'fmc_user');
