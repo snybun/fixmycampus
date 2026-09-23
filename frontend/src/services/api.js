@@ -129,3 +129,15 @@ export async function resetPassword({ email, otp, newPassword }) {
   return { success: true, message: 'Password updated successfully.' };
 }
 
+export async function logoutUser() {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.error('Logout error:', err);
+  }
+  return { success: true };
+}

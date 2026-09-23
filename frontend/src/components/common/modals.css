@@ -1,0 +1,367 @@
+/* ==========================================================================
+   FixMyCampus - Confirmation Modals & System States Styles
+   ========================================================================== */
+
+/* Modal Backdrop Overlay */
+.modal-overlay {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(17, 24, 39, 0.45);
+  backdrop-filter: blur(5px);
+  -webkit-backdrop-filter: blur(5px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.25rem;
+  z-index: 9999;
+  animation: modalFadeIn 0.18s ease-out forwards;
+}
+
+@keyframes modalFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+/* Modal Dialog Window */
+.modal-dialog {
+  background: #ffffff;
+  border-radius: 18px;
+  width: 100%;
+  max-width: 380px;
+  padding: 30px 24px 24px 24px;
+  box-shadow: 0 20px 35px -8px rgba(0, 0, 0, 0.16), 0 0 0 1px rgba(0, 0, 0, 0.05);
+  text-align: center;
+  position: relative;
+  transform-origin: center;
+  animation: modalScaleIn 0.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@keyframes modalScaleIn {
+  from {
+    opacity: 0;
+    transform: scale(0.94) translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+}
+
+/* Modal Circular Icon Badge */
+.modal-icon-badge {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 16px auto;
+  transition: transform 0.2s ease;
+}
+
+.modal-icon-badge.badge-gray {
+  background-color: #f3f4f6;
+  color: #4b5563;
+}
+
+.modal-icon-badge.badge-green {
+  background-color: #dcfce7;
+  color: #10b981;
+}
+
+.modal-icon-badge.badge-red {
+  background-color: #fee2e2;
+  color: #ef4444;
+}
+
+.modal-icon-badge.badge-amber {
+  background-color: #fef3c7;
+  color: #f59e0b;
+}
+
+/* Modal Typography */
+.modal-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 8px 0;
+  letter-spacing: -0.015em;
+}
+
+.modal-message {
+  font-size: 0.88rem;
+  color: #6b7280;
+  line-height: 1.45;
+  margin: 0 0 24px 0;
+  padding: 0 8px;
+}
+
+/* Modal Action Buttons */
+.modal-actions {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.modal-btn {
+  flex: 1;
+  height: 42px;
+  padding: 0 16px;
+  border-radius: 9px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease-in-out;
+  outline: none;
+}
+
+.modal-btn-cancel {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  color: #374151;
+}
+
+.modal-btn-cancel:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+.modal-btn-primary {
+  background-color: #111827;
+  border: 1px solid #111827;
+  color: #ffffff;
+}
+
+.modal-btn-primary:hover {
+  background-color: #1f2937;
+  border-color: #1f2937;
+}
+
+.modal-btn-danger {
+  background-color: #ef4444;
+  border: 1px solid #ef4444;
+  color: #ffffff;
+}
+
+.modal-btn-danger:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+}
+
+.modal-btn:focus-visible {
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.3);
+}
+
+.modal-btn-danger:focus-visible {
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.35);
+}
+
+/* ==========================================================================
+   Modals Collection Showcase Grid View (as in Image 3)
+   ========================================================================== */
+.modals-collection-page {
+  min-height: 100vh;
+  background-color: #ecebe6;
+  padding: 24px;
+  font-family: inherit;
+}
+
+.modals-header-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: #ffffff;
+  padding: 16px 28px;
+  border-radius: 12px;
+  margin-bottom: 28px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.modals-header-left {
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.modals-header-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-weight: 700;
+  font-size: 1.1rem;
+  color: #111827;
+}
+
+.modals-header-title-box h2 {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.modals-header-title-box p {
+  font-size: 0.8rem;
+  color: #6b7280;
+  margin: 2px 0 0 0;
+}
+
+.modals-header-right {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.modals-header-user {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  text-align: right;
+}
+
+.modals-header-user-info .user-name {
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #111827;
+  display: block;
+}
+
+.modals-header-user-info .user-sub {
+  font-size: 0.72rem;
+  color: #6b7280;
+  display: block;
+}
+
+.modals-collection-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.modal-preview-wrapper {
+  background: rgba(220, 218, 212, 0.6);
+  border-radius: 20px;
+  padding: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-preview-card {
+  background: #ffffff;
+  border-radius: 16px;
+  width: 100%;
+  padding: 28px 20px 22px 20px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+  text-align: center;
+}
+
+/* ==========================================================================
+   Empty States Registry View (as in Image 2)
+   ========================================================================== */
+.empty-states-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  max-width: 1280px;
+  margin: 0 auto;
+}
+
+.empty-state-card {
+  background: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #f1f3f5;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+  padding: 48px 32px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+}
+
+.empty-state-icon-circle {
+  width: 58px;
+  height: 58px;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  color: #4b5563;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+}
+
+.empty-state-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 6px 0;
+}
+
+.empty-state-desc {
+  font-size: 0.88rem;
+  color: #6b7280;
+  margin: 0 0 20px 0;
+  max-width: 320px;
+  line-height: 1.45;
+}
+
+.empty-state-btn-primary {
+  background-color: #15803d;
+  color: #ffffff;
+  border: none;
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 10px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease;
+}
+
+.empty-state-btn-primary:hover {
+  background-color: #166534;
+}
+
+.empty-state-btn-outline {
+  background-color: #ffffff;
+  color: #374151;
+  border: 1px solid #e5e7eb;
+  font-weight: 600;
+  font-size: 0.88rem;
+  padding: 10px 22px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.empty-state-btn-outline:hover {
+  background-color: #f9fafb;
+  border-color: #d1d5db;
+}
+
+@media (max-width: 1024px) {
+  .modals-collection-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+  .empty-states-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 640px) {
+  .modals-collection-grid {
+    grid-template-columns: 1fr;
+  }
+}

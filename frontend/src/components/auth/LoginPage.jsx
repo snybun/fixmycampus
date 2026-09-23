@@ -31,8 +31,8 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
           onLoginSuccess(res.user);
         }
         setTimeout(() => {
-          onNavigate('landing');
-        }, 1000);
+          onNavigate('dashboard');
+        }, 800);
       } else {
         setError(res.message || 'Invalid email or password.');
       }
