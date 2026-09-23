@@ -10,6 +10,7 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/src/config/app.php';
 require_once SRC_PATH . '/Core/Database.php';
 require_once SRC_PATH . '/Core/Response.php';
+require_once SRC_PATH . '/Core/Mailer.php';
 require_once SRC_PATH . '/helpers/session.php';
 require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
@@ -315,46 +316,160 @@ try {
     if ($action === 'send_otp' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $email = trim($input['email'] ?? '');
-        $otp = (string)random_int(100000, 999999);
+        $allowedDomain = strtolower(\FixMyCampus\Core\Env::get('GOOGLE_ALLOWED_DOMAIN', 'phinmaed.com'));
 
-        $_SESSION['password_reset_otp'] = $otp;
-        $_SESSION['password_reset_email'] = $email;
-        $_SESSION['password_reset_expires'] = time() + 900; // 15 mins
+        if (empty($email) || !filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Please provide a valid email address.',
+            ], 400);
+        }
 
-        \FixMyCampus\Core\Response::json([
-            'success' => true,
-            'message' => 'OTP sent successfully.',
-            'code'    => $otp,
-        ]);
-    }
+        // Institutional domain enforcement: Must be a @phinmaed.com address
+        $domainSuffix = '@' . $allowedDomain;
+        if (!str_ends_with(strtolower($email), $domainSuffix)) {
+            \FixMyCampus\Core\Response::json([
+                'success'    => false,
+                'error_code' => 'DOMAIN_RESTRICTED',
+                'message'    => "Access Restricted: FixMyCampus OTP verification only supports official @{$allowedDomain} institutional accounts.",
+            ], 403);
+        }
 
-    if ($action === 'reset_password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $email = trim($input['email'] ?? '');
-        $otp = trim($input['otp'] ?? '');
-        $newPassword = $input['password'] ?? '';
+        // Lookup user to attach name if available
+        $user = db_fetch_one("SELECT full_name FROM `users` WHERE email = :email LIMIT 1", [':email' => $email]);
+        $recipientName = $user['full_name'] ?? '';
 
-        $savedOtp = $_SESSION['password_reset_otp'] ?? null;
-        $savedEmail = $_SESSION['password_reset_email'] ?? null;
+        // Generate 6-digit numeric OTP
+        $otp = (string) random_int(100000, 999999);
+        $expiresAtTimestamp = time() + 900; // 15 minutes
+        $expiresAtDatetime = date('Y-m-d H:i:s', $expiresAtTimestamp);
 
-        if (($savedOtp && $savedOtp === $otp) || !empty($otp)) {
-            $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
-            db_query("UPDATE `users` SET `password_hash` = :hash WHERE `email` = :email", [
-                ':hash'  => $passwordHash,
-                ':email' => $email,
+        // 1. Store in session
+        $_SESSION['password_reset_otp']     = $otp;
+        $_SESSION['password_reset_email']   = strtolower($email);
+        $_SESSION['password_reset_expires'] = $expiresAtTimestamp;
+
+        // 2. Persist in password_resets table for cross-request durability
+        try {
+            db_query("CREATE TABLE IF NOT EXISTS `password_resets` (
+                `id` INT UNSIGNED AUTO_INCREMENT PRIMARY KEY,
+                `email` VARCHAR(100) NOT NULL,
+                `otp_code` VARCHAR(10) NOT NULL,
+                `expires_at` DATETIME NOT NULL,
+                `is_used` TINYINT(1) NOT NULL DEFAULT 0,
+                `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                INDEX `idx_pr_email` (`email`),
+                INDEX `idx_pr_code` (`otp_code`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+            db_insert('password_resets', [
+                'email'      => strtolower($email),
+                'otp_code'   => $otp,
+                'expires_at' => $expiresAtDatetime,
+                'is_used'    => 0,
             ]);
+        } catch (\Throwable $dbEx) {
+            error_log("[FixMyCampus] Failed to write to password_resets table: " . $dbEx->getMessage());
+        }
 
-            unset($_SESSION['password_reset_otp'], $_SESSION['password_reset_email']);
+        // 3. Dispatch real email via SMTP
+        $mailResult = \FixMyCampus\Core\Mailer::sendOtpEmail($email, $otp, $recipientName);
+        $isDebug = (bool) \FixMyCampus\Core\Env::get('APP_DEBUG', true);
 
+        if ($mailResult['success']) {
             \FixMyCampus\Core\Response::json([
                 'success' => true,
-                'message' => 'Password reset successfully.',
+                'message' => "OTP verification code has been dispatched to your PHINMA Education inbox ({$email}). Please check your inbox or spam folder.",
+                'sent_to' => $email,
+            ]);
+        }
+
+        // If SMTP failed or credentials not yet configured
+        error_log("[FixMyCampus] SMTP Delivery Notice: " . ($mailResult['error'] ?? 'Unknown SMTP error'));
+
+        if ($isDebug) {
+            \FixMyCampus\Core\Response::json([
+                'success' => true,
+                'message' => "OTP generated. (SMTP Notice: " . ($mailResult['error'] ?? 'Configure SMTP credentials in .env') . ")",
+                'code'    => $otp, // provided in development fallback so testing is unblocked
+                'sent_to' => $email,
             ]);
         }
 
         \FixMyCampus\Core\Response::json([
             'success' => false,
-            'message' => 'Invalid OTP code.',
+            'message' => "Unable to deliver OTP to {$email} via SMTP. Please verify SMTP settings in .env or contact campus IT.",
+        ], 500);
+    }
+
+    if ($action === 'reset_password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $email = strtolower(trim($input['email'] ?? ''));
+        $otp = trim($input['otp'] ?? '');
+        $newPassword = $input['password'] ?? '';
+
+        if (empty($email) || empty($otp) || empty($newPassword)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Email, OTP code, and new password are required.',
+            ], 400);
+        }
+
+        if (strlen($newPassword) < 8) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'New password must be at least 8 characters long.',
+            ], 400);
+        }
+
+        $isValid = false;
+
+        // Check session first
+        $savedOtp     = $_SESSION['password_reset_otp'] ?? null;
+        $savedEmail   = strtolower($_SESSION['password_reset_email'] ?? '');
+        $savedExpires = $_SESSION['password_reset_expires'] ?? 0;
+
+        if ($savedOtp && $savedOtp === $otp && $savedEmail === $email && time() <= $savedExpires) {
+            $isValid = true;
+        }
+
+        // If not in session, check persistent password_resets table
+        if (!$isValid) {
+            try {
+                $dbRecord = db_fetch_one("
+                    SELECT id, expires_at, is_used 
+                    FROM `password_resets` 
+                    WHERE email = :email AND otp_code = :otp AND is_used = 0
+                    ORDER BY id DESC LIMIT 1
+                ", [':email' => $email, ':otp' => $otp]);
+
+                if ($dbRecord && strtotime($dbRecord['expires_at']) >= time()) {
+                    $isValid = true;
+                    db_query("UPDATE `password_resets` SET is_used = 1 WHERE id = :id", [':id' => $dbRecord['id']]);
+                }
+            } catch (\Throwable $e) {
+                // Table might not exist yet; session check was evaluated
+            }
+        }
+
+        if ($isValid) {
+            $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
+            db_query("UPDATE `users` SET `password_hash` = :hash, `updated_at` = NOW() WHERE `email` = :email", [
+                ':hash'  => $passwordHash,
+                ':email' => $email,
+            ]);
+
+            unset($_SESSION['password_reset_otp'], $_SESSION['password_reset_email'], $_SESSION['password_reset_expires']);
+
+            \FixMyCampus\Core\Response::json([
+                'success' => true,
+                'message' => 'Password reset successfully. You may now log in with your new credentials.',
+            ]);
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success' => false,
+            'message' => 'Invalid or expired OTP verification code. Please request a new code.',
         ], 400);
     }
 

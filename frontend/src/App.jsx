@@ -16,13 +16,14 @@ import LoginPage from './components/auth/LoginPage';
 import RegisterPage from './components/auth/RegisterPage';
 import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
 import DashboardPage from './components/dashboard/DashboardPage';
+import AdminPage from './components/admin/AdminPage';
 import { fetchAuthMe, logoutUser } from './services/api';
 
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -48,7 +49,7 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['login', 'register', 'forgot-password', 'dashboard'].includes(hash)) {
+      if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -87,13 +88,15 @@ export default function App() {
   const handleNavigate = (view) => {
     if (view === currentView) return;
 
-    // Show loading screen when navigating to auth views, dashboard or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard'].includes(view)) {
+    // Show loading screen when navigating to auth views, dashboard, admin, or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(view)) {
       setLoadingMessage(
         view === 'register'
           ? 'Opening Student Registration...'
           : view === 'dashboard'
           ? 'Opening FixMyCampus Dashboard...'
+          : view === 'admin'
+          ? 'Accessing FixMyCampus Admin Console...'
           : 'Accessing FixMyCampus Portal...'
       );
       setIsLoading(true);
@@ -158,6 +161,14 @@ export default function App() {
 
       {currentView === 'dashboard' && (
         <DashboardPage
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {currentView === 'admin' && (
+        <AdminPage
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}

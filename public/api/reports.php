@@ -5,16 +5,19 @@ declare(strict_types=1);
 /**
  * FixMyCampus REST API - Reports Endpoint
  * Fetches defect tickets with relational metadata (category, location, reporter).
+ * Protected with role-based access control (RBAC).
  */
 
 require_once dirname(__DIR__, 2) . '/src/config/app.php';
 require_once SRC_PATH . '/Core/Database.php';
 require_once SRC_PATH . '/Core/Response.php';
+require_once SRC_PATH . '/helpers/session.php';
+require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -22,64 +25,265 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+session_start_safe();
+$action = $_GET['action'] ?? 'list';
+
 try {
-    $statusFilter   = $_GET['status'] ?? null;
-    $priorityFilter = $_GET['priority'] ?? null;
-    $limit          = min((int)($_GET['limit'] ?? 20), 100);
+    // --------------------------------------------------------------------------
+    // GET (or action === 'list'): Retrieve defect reports
+    // --------------------------------------------------------------------------
+    if ($_SERVER['REQUEST_METHOD'] === 'GET' || $action === 'list') {
+        $statusFilter   = $_GET['status'] ?? null;
+        $priorityFilter = $_GET['priority'] ?? null;
+        $limit          = min((int)($_GET['limit'] ?? 20), 100);
+        $myOnly         = isset($_GET['my_reports']) && $_GET['my_reports'] === '1';
 
-    $sql = "
-        SELECT 
-            r.id,
-            r.ticket_number,
-            r.title,
-            r.description,
-            r.priority,
-            r.status,
-            r.specific_area,
-            r.reported_at,
-            r.updated_at,
-            c.id AS category_id,
-            c.name AS category_name,
-            c.icon AS category_icon,
-            c.sla_hours,
-            b.id AS building_id,
-            b.code AS building_code,
-            b.name AS building_name,
-            l.id AS location_id,
-            l.name AS location_name,
-            l.room_number,
-            u.id AS reporter_id,
-            u.full_name AS reporter_name,
-            u.email AS reporter_email
-        FROM `reports` r
-        LEFT JOIN `categories` c ON r.category_id = c.id
-        LEFT JOIN `locations` l ON r.location_id = l.id
-        LEFT JOIN `buildings` b ON l.building_id = b.id
-        LEFT JOIN `users` u ON r.reporter_id = u.id
-        WHERE 1=1
-    ";
+        $sql = "
+            SELECT 
+                r.id,
+                r.ticket_number,
+                r.title,
+                r.description,
+                r.priority,
+                r.status,
+                r.specific_area,
+                r.reported_at,
+                r.updated_at,
+                c.id AS category_id,
+                c.name AS category_name,
+                c.icon AS category_icon,
+                c.sla_hours,
+                b.id AS building_id,
+                b.code AS building_code,
+                b.name AS building_name,
+                l.id AS location_id,
+                l.name AS location_name,
+                l.room_number,
+                u.id AS reporter_id,
+                u.full_name AS reporter_name,
+                u.email AS reporter_email
+            FROM `reports` r
+            LEFT JOIN `categories` c ON r.category_id = c.id
+            LEFT JOIN `locations` l ON r.location_id = l.id
+            LEFT JOIN `buildings` b ON l.building_id = b.id
+            LEFT JOIN `users` u ON r.reporter_id = u.id
+            WHERE 1=1
+        ";
 
-    $params = [];
+        $params = [];
 
-    if ($statusFilter) {
-        $sql .= " AND r.status = :status";
-        $params[':status'] = $statusFilter;
+        // If requesting user's own reports
+        if ($myOnly) {
+            $user = auth_require();
+            $sql .= " AND r.reporter_id = :reporter_id";
+            $params[':reporter_id'] = $user['id'];
+        }
+
+        if ($statusFilter) {
+            $sql .= " AND r.status = :status";
+            $params[':status'] = $statusFilter;
+        }
+
+        if ($priorityFilter) {
+            $sql .= " AND r.priority = :priority";
+            $params[':priority'] = $priorityFilter;
+        }
+
+        $sql .= " ORDER BY r.reported_at DESC LIMIT " . $limit;
+
+        $reports = db_fetch_all($sql, $params);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'count'   => count($reports),
+            'data'    => $reports,
+        ]);
     }
 
-    if ($priorityFilter) {
-        $sql .= " AND r.priority = :priority";
-        $params[':priority'] = $priorityFilter;
+    // --------------------------------------------------------------------------
+    // POST action: create - Submit a new defect report (Authenticated users)
+    // --------------------------------------------------------------------------
+    if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $user = auth_require();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+
+        $title        = trim($input['title'] ?? '');
+        $description  = trim($input['description'] ?? '');
+        $categoryId   = (int)($input['category_id'] ?? 0);
+        $locationId   = (int)($input['location_id'] ?? 0);
+        $specificArea = trim($input['specific_area'] ?? '');
+        $priority     = trim($input['priority'] ?? 'medium');
+
+        if (empty($title) || empty($description) || $categoryId <= 0 || $locationId <= 0) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Title, description, category, and location are required.',
+            ], 400);
+        }
+
+        // Generate Ticket Number: FMC-YYYYMM-XXXX
+        $ticketPrefix = 'FMC-' . date('Ym') . '-';
+        $ticketNumber = $ticketPrefix . strtoupper(bin2hex(random_bytes(2)));
+
+        $reportId = db_insert('reports', [
+            'ticket_number' => $ticketNumber,
+            'reporter_id'   => $user['id'],
+            'category_id'   => $categoryId,
+            'location_id'   => $locationId,
+            'specific_area' => $specificArea,
+            'title'         => $title,
+            'description'   => $description,
+            'priority'      => in_array($priority, ['low', 'medium', 'high', 'emergency'], true) ? $priority : 'medium',
+            'status'        => 'submitted',
+        ]);
+
+        // Log in status history
+        db_insert('report_status_history', [
+            'report_id'       => $reportId,
+            'changed_by'      => $user['id'],
+            'previous_status' => null,
+            'new_status'      => 'submitted',
+            'remarks'         => 'Report submitted by ' . $user['full_name'],
+        ]);
+
+        \FixMyCampus\Core\Response::json([
+            'success'       => true,
+            'message'       => 'Defect report submitted successfully.',
+            'report_id'     => $reportId,
+            'ticket_number' => $ticketNumber,
+        ], 201);
     }
 
-    $sql .= " ORDER BY r.reported_at DESC LIMIT " . $limit;
+    // --------------------------------------------------------------------------
+    // POST action: assign - Assign technician to report (Admin & Supervisor only)
+    // --------------------------------------------------------------------------
+    if ($action === 'assign' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Enforce role: Only admin and supervisor can dispatch/assign tickets
+        $supervisor = auth_require_role(['admin', 'supervisor']);
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
-    $reports = db_fetch_all($sql, $params);
+        $reportId   = (int)($input['report_id'] ?? 0);
+        $workerId   = (int)($input['assigned_to'] ?? 0);
+        $notes      = trim($input['notes'] ?? '');
+        $targetDate = $input['target_date'] ?? null;
 
-    \FixMyCampus\Core\Response::json([
-        'success' => true,
-        'count'   => count($reports),
-        'data'    => $reports,
-    ]);
+        if ($reportId <= 0 || $workerId <= 0) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Valid report_id and assigned_to worker ID are required.',
+            ], 400);
+        }
+
+        // Verify report exists
+        $report = db_fetch_one("SELECT id, status FROM `reports` WHERE id = :id LIMIT 1", [':id' => $reportId]);
+        if (!$report) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Report not found.'], 404);
+        }
+
+        // Verify assigned user is technician
+        $worker = db_fetch_one("SELECT u.id, u.full_name, r.name as role FROM `users` u JOIN `roles` r ON u.role_id = r.id WHERE u.id = :id LIMIT 1", [':id' => $workerId]);
+        if (!$worker || !in_array($worker['role'], ['technician', 'admin', 'supervisor'], true)) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Assigned user must be a maintenance technician.'], 400);
+        }
+
+        // Create assignment
+        db_insert('report_assignments', [
+            'report_id'              => $reportId,
+            'assigned_to'            => $workerId,
+            'assigned_by'            => $supervisor['id'],
+            'target_completion_date' => $targetDate,
+            'assignment_notes'       => $notes,
+            'status'                 => 'pending',
+        ]);
+
+        // Update report status to 'assigned'
+        db_query("UPDATE `reports` SET `status` = 'assigned', `updated_at` = NOW() WHERE `id` = :id", [':id' => $reportId]);
+
+        // Log transition in status history
+        db_insert('report_status_history', [
+            'report_id'       => $reportId,
+            'changed_by'      => $supervisor['id'],
+            'previous_status' => $report['status'],
+            'new_status'      => 'assigned',
+            'remarks'         => "Assigned to {$worker['full_name']} by {$supervisor['full_name']}. Notes: {$notes}",
+        ]);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => "Report assigned to {$worker['full_name']} successfully.",
+        ]);
+    }
+
+    // --------------------------------------------------------------------------
+    // POST action: update_status - Update report status (Admin, Supervisor, Technician)
+    // --------------------------------------------------------------------------
+    if ($action === 'update_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Enforce role: Students cannot arbitrarily change report statuses
+        $staffUser = auth_require_role(['admin', 'supervisor', 'technician']);
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+
+        $reportId  = (int)($input['report_id'] ?? 0);
+        $newStatus = trim($input['status'] ?? '');
+        $remarks   = trim($input['remarks'] ?? '');
+
+        $validStatuses = ['submitted', 'under_review', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'rejected'];
+        if ($reportId <= 0 || !in_array($newStatus, $validStatuses, true)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Valid report_id and recognized status are required.',
+            ], 400);
+        }
+
+        $report = db_fetch_one("SELECT id, status FROM `reports` WHERE id = :id LIMIT 1", [':id' => $reportId]);
+        if (!$report) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Report not found.'], 404);
+        }
+
+        db_query("UPDATE `reports` SET `status` = :status, `updated_at` = NOW() WHERE `id` = :id", [
+            ':status' => $newStatus,
+            ':id'     => $reportId,
+        ]);
+
+        db_insert('report_status_history', [
+            'report_id'       => $reportId,
+            'changed_by'      => $staffUser['id'],
+            'previous_status' => $report['status'],
+            'new_status'      => $newStatus,
+            'remarks'         => $remarks ?: "Status updated to {$newStatus} by {$staffUser['full_name']}",
+        ]);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => "Report status updated to {$newStatus}.",
+        ]);
+    }
+
+    // --------------------------------------------------------------------------
+    // POST / DELETE action: delete - Delete a defect report (Admin only)
+    // --------------------------------------------------------------------------
+    if ($action === 'delete') {
+        // Strict role requirement: Only admin can delete defect records
+        $admin = auth_require_role('admin');
+        $reportId = (int)($_GET['id'] ?? ($_POST['report_id'] ?? 0));
+
+        if ($reportId <= 0) {
+            $input = json_decode(file_get_contents('php://input'), true) ?? [];
+            $reportId = (int)($input['report_id'] ?? 0);
+        }
+
+        if ($reportId <= 0) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Valid report_id required.'], 400);
+        }
+
+        db_query("DELETE FROM `reports` WHERE `id` = :id", [':id' => $reportId]);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => "Defect report #{$reportId} deleted successfully.",
+        ]);
+    }
+
+    \FixMyCampus\Core\Response::json(['error' => 'Invalid action'], 400);
 } catch (\Throwable $e) {
     \FixMyCampus\Core\Response::json([
         'success' => false,

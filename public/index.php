@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 require_once __DIR__ . '/../src/Core/Env.php';
 require_once __DIR__ . '/../src/Core/Database.php';
+require_once __DIR__ . '/../src/helpers/session.php';
+require_once __DIR__ . '/../src/helpers/auth.php';
 
 use FixMyCampus\Core\Env;
 use FixMyCampus\Core\Database;
@@ -17,6 +19,27 @@ $appEnv = Env::get('APP_ENV', 'development');
 
 $spaFile = __DIR__ . '/dist/index.html';
 $requestUri = $_SERVER['REQUEST_URI'] ?? '/';
+$pathOnly = parse_url($requestUri, PHP_URL_PATH) ?? '/';
+
+// ==============================================================================
+// SERVER-SIDE RBAC: Route Guard for /admin and /admin/*
+// Rejects unauthorized roles (e.g. students) on the server level with HTTP 403
+// ==============================================================================
+if (str_starts_with($pathOnly, '/admin')) {
+    session_start_safe();
+
+    if (!auth_check()) {
+        header('Location: /#login');
+        exit;
+    }
+
+    if (!auth_is_admin()) {
+        http_response_code(403);
+        header('Content-Type: text/html; charset=utf-8');
+        render_access_denied_page(auth_role() ?? 'student', 'admin');
+        exit;
+    }
+}
 
 // 1. Serve compiled React SPA for root and client routes if not an API or health check
 if (file_exists($spaFile) && !str_starts_with($requestUri, '/api') && !str_starts_with($requestUri, '/health.php') && !isset($_GET['dashboard'])) {
