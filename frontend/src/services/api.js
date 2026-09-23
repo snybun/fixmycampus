@@ -137,3 +137,32 @@ export async function resetPassword({ email, otp, newPassword }) {
   return { success: true, message: 'Password updated successfully.' };
 }
 
+export async function fetchGoogleConfig() {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=google_config`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.warn('Could not fetch google config from API:', err);
+    return { success: true, client_id: '', allowed_domain: 'phinmaed.com' };
+  }
+}
+
+export async function loginWithGoogle({ credential, mockEmail }) {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=google_login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ credential, mock_email: mockEmail }),
+    });
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    console.error('Error logging in with Google:', err);
+    return {
+      success: false,
+      message: 'Failed to communicate with authentication server.',
+    };
+  }
+}
+

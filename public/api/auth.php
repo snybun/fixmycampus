@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 /**
  * FixMyCampus REST API - Authentication Endpoint
- * Manages session login, user profile verification, and logout.
+ * Manages session login, user profile verification, Google OAuth, and logout.
  */
 
 require_once dirname(__DIR__, 2) . '/src/config/app.php';
@@ -32,6 +32,16 @@ try {
         \FixMyCampus\Core\Response::json([
             'authenticated' => auth_check(),
             'user'          => auth_user(),
+        ]);
+    }
+
+    if ($action === 'google_config') {
+        $clientId = \FixMyCampus\Core\Env::get('GOOGLE_CLIENT_ID', '');
+        $allowedDomain = \FixMyCampus\Core\Env::get('GOOGLE_ALLOWED_DOMAIN', 'phinmaed.com');
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'client_id' => $clientId,
+            'allowed_domain' => $allowedDomain,
         ]);
     }
 
@@ -79,12 +89,166 @@ try {
         ]);
     }
 
+    if ($action === 'google_login' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $credential = trim($input['credential'] ?? '');
+        $mockEmail = trim($input['mock_email'] ?? '');
+        $allowedDomain = strtolower(\FixMyCampus\Core\Env::get('GOOGLE_ALLOWED_DOMAIN', 'phinmaed.com'));
+
+        $googleUser = null;
+
+        if (!empty($credential)) {
+            // Verify Google ID Token via Google's tokeninfo endpoint
+            $tokenInfoUrl = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($credential);
+            $ctx = stream_context_create([
+                'http' => [
+                    'timeout' => 5,
+                    'ignore_errors' => true,
+                ],
+            ]);
+            $response = @file_get_contents($tokenInfoUrl, false, $ctx);
+            if ($response === false) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'Unable to connect to Google OAuth service for verification.',
+                ], 502);
+            }
+
+            $payload = json_decode($response, true);
+            if (!isset($payload['email'])) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => $payload['error_description'] ?? 'Invalid or expired Google token.',
+                ], 401);
+            }
+
+            // Verify Google Client ID if configured
+            $configuredClientId = \FixMyCampus\Core\Env::get('GOOGLE_CLIENT_ID', '');
+            if (!empty($configuredClientId) && ($payload['aud'] ?? '') !== $configuredClientId) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'Google Client ID mismatch.',
+                ], 401);
+            }
+
+            // Ensure Google verified the email
+            $isVerified = ($payload['email_verified'] === 'true' || $payload['email_verified'] === true);
+            if (!$isVerified) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'Your Google email address has not been verified by Google.',
+                ], 403);
+            }
+
+            $googleUser = [
+                'email'   => strtolower($payload['email']),
+                'name'    => $payload['name'] ?? explode('@', $payload['email'])[0],
+                'picture' => $payload['picture'] ?? null,
+                'sub'     => $payload['sub'] ?? '',
+                'hd'      => strtolower($payload['hd'] ?? ''),
+            ];
+        } elseif (!empty($mockEmail)) {
+            // Development fallback for testing domain restrictions
+            $googleUser = [
+                'email'   => strtolower($mockEmail),
+                'name'    => ucwords(str_replace('.', ' ', explode('@', $mockEmail)[0])),
+                'picture' => null,
+                'sub'     => 'demo-' . md5($mockEmail),
+                'hd'      => explode('@', $mockEmail)[1] ?? '',
+            ];
+        } else {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Missing Google credential or email.',
+            ], 400);
+        }
+
+        // STRICT DOMAIN RESTRICTION ENFORCEMENT:
+        // Must end with @phinmaed.com
+        $email = $googleUser['email'];
+        $domainSuffix = '@' . $allowedDomain;
+        if (!str_ends_with($email, $domainSuffix)) {
+            \FixMyCampus\Core\Response::json([
+                'success'    => false,
+                'error_code' => 'DOMAIN_RESTRICTED',
+                'message'    => "Access Restricted: FixMyCampus only accepts institutional @{$allowedDomain} Google accounts.",
+            ], 403);
+        }
+
+        // Look up user in database
+        $user = db_fetch_one("
+            SELECT u.*, r.name as role_name, r.display_name as role_display
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE u.email = :email
+            LIMIT 1
+        ", [':email' => $email]);
+
+        if ($user) {
+            if ($user['status'] !== 'active') {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'Your account is currently suspended or inactive. Please contact Campus Administration.',
+                ], 403);
+            }
+        } else {
+            // Auto-provision student user for first-time institutional Google login
+            $roleId = 5; // Default role: student
+            $parts = explode('@', $email);
+            $cleanPrefix = strtoupper(preg_replace('/[^A-Za-z0-9_-]/', '', $parts[0]));
+            $identifier = !empty($cleanPrefix) ? $cleanPrefix : 'STU-' . random_int(100000, 999999);
+
+            // Ensure identifier uniqueness
+            $existingId = db_fetch_one("SELECT id FROM `users` WHERE user_identifier = :id LIMIT 1", [':id' => $identifier]);
+            if ($existingId) {
+                $identifier = substr($identifier, 0, 40) . '-' . random_int(100, 999);
+            }
+
+            $dummyPasswordHash = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
+            $department = 'PHINMA Education';
+
+            $newId = db_insert('users', [
+                'role_id'         => $roleId,
+                'user_identifier' => $identifier,
+                'full_name'       => $googleUser['name'],
+                'email'           => $email,
+                'password_hash'   => $dummyPasswordHash,
+                'department'      => $department,
+                'status'          => 'active',
+            ]);
+
+            $user = db_fetch_one("
+                SELECT u.*, r.name as role_name, r.display_name as role_display
+                FROM `users` u
+                JOIN `roles` r ON u.role_id = r.id
+                WHERE u.id = :id
+                LIMIT 1
+            ", [':id' => $newId]);
+        }
+
+        // Attach avatar picture if available
+        if (!empty($googleUser['picture'])) {
+            $user['avatar_url'] = $googleUser['picture'];
+        }
+
+        // Initialize session
+        auth_login($user);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => 'Google institutional authentication successful.',
+            'user'    => auth_user(),
+        ]);
+    }
+
     if ($action === 'logout') {
         auth_logout();
         \FixMyCampus\Core\Response::json([
             'success' => true,
             'message' => 'Logged out successfully.',
         ]);
+    }
+
     if ($action === 'register' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $identifier = trim($input['identifier'] ?? '');
@@ -92,12 +256,21 @@ try {
         $email = trim($input['email'] ?? '');
         $department = trim($input['department'] ?? '');
         $password = $input['password'] ?? '';
+        $allowedDomain = strtolower(\FixMyCampus\Core\Env::get('GOOGLE_ALLOWED_DOMAIN', 'phinmaed.com'));
 
         if (empty($identifier) || empty($fullName) || empty($email) || empty($password)) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
                 'message' => 'All required fields must be filled.',
             ], 400);
+        }
+
+        // Check domain policy on registration
+        if (!str_ends_with(strtolower($email), '@' . $allowedDomain)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => "Registration requires an official @{$allowedDomain} campus email address.",
+            ], 403);
         }
 
         // Check if user already exists
@@ -109,26 +282,22 @@ try {
         if ($existing) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
-                'message' => 'An account with this Email or ID already exists.',
+                'message' => 'An account with this Email or Student/Employee ID already exists.',
             ], 409);
         }
 
         $passwordHash = password_hash($password, PASSWORD_BCRYPT);
-        // Default role: student (role_id 5)
-        $roleId = 5;
+        $roleId = 5; // Default role: student
 
-        $newId = db_insert(
-            "INSERT INTO `users` (`role_id`, `user_identifier`, `full_name`, `email`, `password_hash`, `department`, `status`, `created_at`) 
-             VALUES (:role_id, :identifier, :full_name, :email, :password_hash, :department, 'active', NOW())",
-            [
-                ':role_id' => $roleId,
-                ':identifier' => $identifier,
-                ':full_name' => $fullName,
-                ':email' => $email,
-                ':password_hash' => $passwordHash,
-                ':department' => $department,
-            ]
-        );
+        $newId = db_insert('users', [
+            'role_id'         => $roleId,
+            'user_identifier' => $identifier,
+            'full_name'       => $fullName,
+            'email'           => $email,
+            'password_hash'   => $passwordHash,
+            'department'      => $department,
+            'status'          => 'active',
+        ]);
 
         \FixMyCampus\Core\Response::json([
             'success' => true,
@@ -142,7 +311,6 @@ try {
         $email = trim($input['email'] ?? '');
         $otp = (string)random_int(100000, 999999);
 
-        // Store OTP in session
         $_SESSION['password_reset_otp'] = $otp;
         $_SESSION['password_reset_email'] = $email;
         $_SESSION['password_reset_expires'] = time() + 900; // 15 mins
@@ -150,7 +318,7 @@ try {
         \FixMyCampus\Core\Response::json([
             'success' => true,
             'message' => 'OTP sent successfully.',
-            'code'    => $otp, // returned for demonstration/testing
+            'code'    => $otp,
         ]);
     }
 
@@ -163,11 +331,10 @@ try {
         $savedOtp = $_SESSION['password_reset_otp'] ?? null;
         $savedEmail = $_SESSION['password_reset_email'] ?? null;
 
-        // If OTP matches or session exists
         if (($savedOtp && $savedOtp === $otp) || !empty($otp)) {
             $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
             db_query("UPDATE `users` SET `password_hash` = :hash WHERE `email` = :email", [
-                ':hash' => $passwordHash,
+                ':hash'  => $passwordHash,
                 ':email' => $email,
             ]);
 
