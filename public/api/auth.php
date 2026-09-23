@@ -97,71 +97,62 @@ try {
 
         $googleUser = null;
 
-        if (!empty($credential)) {
-            // Verify Google ID Token via Google's tokeninfo endpoint
-            $tokenInfoUrl = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($credential);
-            $ctx = stream_context_create([
-                'http' => [
-                    'timeout' => 5,
-                    'ignore_errors' => true,
-                ],
-            ]);
-            $response = @file_get_contents($tokenInfoUrl, false, $ctx);
-            if ($response === false) {
-                \FixMyCampus\Core\Response::json([
-                    'success' => false,
-                    'message' => 'Unable to connect to Google OAuth service for verification.',
-                ], 502);
-            }
-
-            $payload = json_decode($response, true);
-            if (!isset($payload['email'])) {
-                \FixMyCampus\Core\Response::json([
-                    'success' => false,
-                    'message' => $payload['error_description'] ?? 'Invalid or expired Google token.',
-                ], 401);
-            }
-
-            // Verify Google Client ID if configured
-            $configuredClientId = \FixMyCampus\Core\Env::get('GOOGLE_CLIENT_ID', '');
-            if (!empty($configuredClientId) && ($payload['aud'] ?? '') !== $configuredClientId) {
-                \FixMyCampus\Core\Response::json([
-                    'success' => false,
-                    'message' => 'Google Client ID mismatch.',
-                ], 401);
-            }
-
-            // Ensure Google verified the email
-            $isVerified = ($payload['email_verified'] === 'true' || $payload['email_verified'] === true);
-            if (!$isVerified) {
-                \FixMyCampus\Core\Response::json([
-                    'success' => false,
-                    'message' => 'Your Google email address has not been verified by Google.',
-                ], 403);
-            }
-
-            $googleUser = [
-                'email'   => strtolower($payload['email']),
-                'name'    => $payload['name'] ?? explode('@', $payload['email'])[0],
-                'picture' => $payload['picture'] ?? null,
-                'sub'     => $payload['sub'] ?? '',
-                'hd'      => strtolower($payload['hd'] ?? ''),
-            ];
-        } elseif (!empty($mockEmail)) {
-            // Development fallback for testing domain restrictions
-            $googleUser = [
-                'email'   => strtolower($mockEmail),
-                'name'    => ucwords(str_replace('.', ' ', explode('@', $mockEmail)[0])),
-                'picture' => null,
-                'sub'     => 'demo-' . md5($mockEmail),
-                'hd'      => explode('@', $mockEmail)[1] ?? '',
-            ];
-        } else {
+        if (empty($credential)) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
-                'message' => 'Missing Google credential or email.',
+                'message' => 'Missing Google credential token. Please complete Google Sign-In.',
             ], 400);
         }
+
+        // Verify Google ID Token via Google's tokeninfo endpoint
+        $tokenInfoUrl = 'https://oauth2.googleapis.com/tokeninfo?id_token=' . urlencode($credential);
+        $ctx = stream_context_create([
+            'http' => [
+                'timeout' => 5,
+                'ignore_errors' => true,
+            ],
+        ]);
+        $response = @file_get_contents($tokenInfoUrl, false, $ctx);
+        if ($response === false) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Unable to connect to Google OAuth service for verification.',
+            ], 502);
+        }
+
+        $payload = json_decode($response, true);
+        if (!isset($payload['email'])) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => $payload['error_description'] ?? 'Invalid or expired Google token.',
+            ], 401);
+        }
+
+        // Verify Google Client ID if configured
+        $configuredClientId = \FixMyCampus\Core\Env::get('GOOGLE_CLIENT_ID', '');
+        if (!empty($configuredClientId) && ($payload['aud'] ?? '') !== $configuredClientId) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Google Client ID mismatch.',
+            ], 401);
+        }
+
+        // Ensure Google verified the email
+        $isVerified = ($payload['email_verified'] === 'true' || $payload['email_verified'] === true);
+        if (!$isVerified) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Your Google email address has not been verified by Google.',
+            ], 403);
+        }
+
+        $googleUser = [
+            'email'   => strtolower($payload['email']),
+            'name'    => $payload['name'] ?? explode('@', $payload['email'])[0],
+            'picture' => $payload['picture'] ?? null,
+            'sub'     => $payload['sub'] ?? '',
+            'hd'      => strtolower($payload['hd'] ?? ''),
+        ];
 
         // STRICT DOMAIN RESTRICTION ENFORCEMENT:
         // Must end with @phinmaed.com

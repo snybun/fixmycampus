@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
 import { loginUser, loginWithGoogle, fetchGoogleConfig } from '../../services/api';
 import './auth.css';
 
@@ -12,35 +12,79 @@ export default function LoginPage({ onNavigate }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [googleConfig, setGoogleConfig] = useState({ client_id: '', allowed_domain: 'phinmaed.com' });
-  const [showDemoOAuth, setShowDemoOAuth] = useState(false);
+  const [clientId, setClientId] = useState('');
+  const [allowedDomain, setAllowedDomain] = useState('phinmaed.com');
+  const [tempClientId, setTempClientId] = useState('');
+  const [gisLoaded, setGisLoaded] = useState(false);
+
+  const googleBtnRef = useRef(null);
+
+  // Initialize GIS once client ID and window.google are ready
+  const initGis = (activeClientId) => {
+    if (!activeClientId) return;
+    if (!window.google?.accounts?.id) {
+      // Retry in 300ms if script is still downloading
+      setTimeout(() => initGis(activeClientId), 300);
+      return;
+    }
+
+    try {
+      window.google.accounts.id.initialize({
+        client_id: activeClientId,
+        callback: handleGoogleCredentialResponse,
+        hosted_domain: allowedDomain,
+      });
+
+      if (googleBtnRef.current) {
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          type: 'standard',
+          shape: 'rectangular',
+          text: 'signin_with',
+          logo_alignment: 'left',
+          width: 380,
+        });
+      }
+      setGisLoaded(true);
+    } catch (err) {
+      console.warn('Google Identity Services initialization failed:', err);
+    }
+  };
 
   useEffect(() => {
-    // Fetch active Google OAuth config from backend
+    // 1. Fetch configured Client ID from backend or localStorage
+    const savedLocalId = localStorage.getItem('fmc_google_client_id') || '';
+
     fetchGoogleConfig().then((cfg) => {
-      if (cfg && cfg.success) {
-        setGoogleConfig(cfg);
-        // If client_id is configured and GIS is available in window
-        if (cfg.client_id && window.google?.accounts?.id) {
-          try {
-            window.google.accounts.id.initialize({
-              client_id: cfg.client_id,
-              callback: handleGoogleCredentialResponse,
-              hosted_domain: cfg.allowed_domain || 'phinmaed.com',
-            });
-            window.google.accounts.id.renderButton(
-              document.getElementById('google-btn-rendered'),
-              { theme: 'outline', size: 'large', width: '100%', text: 'signin_with' }
-            );
-          } catch (e) {
-            console.warn('GIS initialization error:', e);
-          }
-        }
+      const activeDomain = cfg?.allowed_domain || 'phinmaed.com';
+      setAllowedDomain(activeDomain);
+
+      const activeId = cfg?.client_id || savedLocalId || '';
+      if (activeId) {
+        setClientId(activeId);
+        setTempClientId(activeId);
+        initGis(activeId);
       }
     });
   }, []);
 
+  const handleSaveClientId = (e) => {
+    e.preventDefault();
+    const trimmed = tempClientId.trim();
+    if (!trimmed) return;
+    localStorage.setItem('fmc_google_client_id', trimmed);
+    setClientId(trimmed);
+    initGis(trimmed);
+  };
+
   const handleGoogleCredentialResponse = async (response) => {
+    if (!response?.credential) {
+      setError('No credential received from Google.');
+      return;
+    }
+
     setGoogleLoading(true);
     setError('');
     setSuccessMsg('');
@@ -48,53 +92,28 @@ export default function LoginPage({ onNavigate }) {
     try {
       const res = await loginWithGoogle({ credential: response.credential });
       if (res.success) {
-        setSuccessMsg(`Welcome, ${res.user?.full_name || 'Student'}! Verified via @${googleConfig.allowed_domain}`);
+        setSuccessMsg(`Welcome, ${res.user?.full_name}! Verified institutional account (@${allowedDomain}).`);
         setTimeout(() => {
-          alert(`Successfully signed in via Google: ${res.user?.full_name} (${res.user?.email})`);
           onNavigate('landing');
-        }, 900);
+        }, 1000);
       } else {
         setError(res.message || 'Google authentication failed.');
       }
     } catch (err) {
-      setError('Unable to verify Google login. Please try again.');
+      setError('Unable to verify Google login token with server.');
     } finally {
       setGoogleLoading(false);
     }
   };
 
-  const handleGoogleClick = () => {
+  const handleTriggerGooglePrompt = () => {
     setError('');
     setSuccessMsg('');
 
-    if (googleConfig.client_id && window.google?.accounts?.id) {
+    if (clientId && window.google?.accounts?.id) {
       window.google.accounts.id.prompt();
     } else {
-      // In local dev without Google Client ID in .env, expand the quick-test tool
-      setShowDemoOAuth(true);
-    }
-  };
-
-  const handleMockGoogleLogin = async (mockEmail) => {
-    setGoogleLoading(true);
-    setError('');
-    setSuccessMsg('');
-
-    try {
-      const res = await loginWithGoogle({ mockEmail });
-      if (res.success) {
-        setSuccessMsg(`Welcome back, ${res.user?.full_name || 'Student'}! Authenticated with @${googleConfig.allowed_domain}`);
-        setTimeout(() => {
-          alert(`Successfully signed in with ${res.user?.email} (${res.user?.department || 'PHINMA Education'})`);
-          onNavigate('landing');
-        }, 900);
-      } else {
-        setError(res.message || 'Google authentication failed.');
-      }
-    } catch (err) {
-      setError('Connection error during Google authentication.');
-    } finally {
-      setGoogleLoading(false);
+      setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
     }
   };
 
@@ -114,7 +133,6 @@ export default function LoginPage({ onNavigate }) {
       if (res.success) {
         setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Redirecting...`);
         setTimeout(() => {
-          alert(`Logged in successfully as ${res.user?.full_name || email}`);
           onNavigate('landing');
         }, 800);
       } else {
@@ -152,12 +170,12 @@ export default function LoginPage({ onNavigate }) {
               </p>
             </div>
 
-            {/* Institutional Restriction Notice Banner */}
+            {/* Institutional Notice */}
             <div className="auth-domain-banner">
               <ShieldCheck size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
               <div>
                 <strong>PHINMA Institutional Access:</strong> Google OAuth strictly permits active{' '}
-                <span className="auth-domain-tag">@{googleConfig.allowed_domain}</span> accounts.
+                <span className="auth-domain-tag">@{allowedDomain}</span> accounts.
               </div>
             </div>
 
@@ -175,80 +193,107 @@ export default function LoginPage({ onNavigate }) {
               </div>
             )}
 
-            {/* Google OAuth Button */}
-            <div id="google-btn-rendered" style={{ marginBottom: googleConfig.client_id ? '0.75rem' : '0' }}></div>
-            
-            <button
-              type="button"
-              className="auth-google-btn"
-              onClick={handleGoogleClick}
-              disabled={googleLoading}
-            >
-              <svg className="google-icon-svg" viewBox="0 0 24 24">
-                <path
-                  fill="#4285F4"
-                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-                />
-                <path
-                  fill="#34A853"
-                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
-                />
-                <path
-                  fill="#FBBC05"
-                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-                />
-                <path
-                  fill="#EA4335"
-                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-                />
-              </svg>
-              <span>{googleLoading ? 'Verifying account...' : 'Sign in with Google (@phinmaed.com)'}</span>
-            </button>
+            {/* Google Identity Services Official Render Container */}
+            <div
+              ref={googleBtnRef}
+              style={{
+                display: gisLoaded ? 'flex' : 'none',
+                justifyContent: 'center',
+                marginBottom: '1rem',
+                width: '100%',
+              }}
+            />
 
-            {/* Quick Test Bar for Development & Testing */}
-            <div className="auth-demo-oauth-box">
-              <div
-                className="auth-demo-oauth-header"
-                style={{ cursor: 'pointer' }}
-                onClick={() => setShowDemoOAuth(!showDemoOAuth)}
+            {/* Custom Google OAuth button if GIS button not yet rendered */}
+            {!gisLoaded && (
+              <button
+                type="button"
+                className="auth-google-btn"
+                onClick={handleTriggerGooglePrompt}
+                disabled={googleLoading}
               >
-                <span>🧪 Quick Test Accounts</span>
-                {showDemoOAuth ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-              </div>
-              {showDemoOAuth && (
-                <div>
-                  <p style={{ margin: '0.25rem 0 0.5rem', color: '#64748b' }}>
-                    Click an address to test Google verification &amp; domain restriction:
+                <svg className="google-icon-svg" viewBox="0 0 24 24">
+                  <path
+                    fill="#4285F4"
+                    d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                  />
+                  <path
+                    fill="#34A853"
+                    d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
+                  />
+                  <path
+                    fill="#FBBC05"
+                    d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                  />
+                  <path
+                    fill="#EA4335"
+                    d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                  />
+                </svg>
+                <span>
+                  {googleLoading ? 'Verifying account...' : `Sign in with Google (@${allowedDomain})`}
+                </span>
+              </button>
+            )}
+
+            {/* If Client ID is missing, provide a friendly setup box */}
+            {!clientId && (
+              <form onSubmit={handleSaveClientId} style={{ marginTop: '0.85rem' }}>
+                <div
+                  style={{
+                    padding: '0.85rem',
+                    background: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '8px',
+                    fontSize: '0.8125rem',
+                  }}
+                >
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'center',
+                      gap: '0.4rem',
+                      fontWeight: 600,
+                      color: '#475569',
+                      marginBottom: '0.35rem',
+                    }}
+                  >
+                    <KeyRound size={15} />
+                    <span>Connect Google OAuth Client ID</span>
+                  </div>
+                  <p style={{ margin: '0 0 0.5rem', color: '#64748b', fontSize: '0.75rem', lineHeight: '1.4' }}>
+                    Enter your Web Client ID from Google Cloud Console (or add <code>GOOGLE_CLIENT_ID</code> in <code>.env</code>):
                   </p>
-                  <div className="auth-demo-chips">
+                  <div style={{ display: 'flex', gap: '0.5rem' }}>
+                    <input
+                      type="text"
+                      className="auth-input"
+                      placeholder="e.g. 123456789-xxxx.apps.googleusercontent.com"
+                      value={tempClientId}
+                      onChange={(e) => setTempClientId(e.target.value)}
+                      style={{ height: '36px', fontSize: '0.75rem' }}
+                    />
                     <button
-                      type="button"
-                      className="auth-chip"
-                      title="Test valid PHINMA student account"
-                      onClick={() => handleMockGoogleLogin('rendil.robosa.up@phinmaed.com')}
+                      type="submit"
+                      style={{
+                        padding: '0 0.85rem',
+                        height: '36px',
+                        background: '#0f172a',
+                        color: '#fff',
+                        border: 'none',
+                        borderRadius: '6px',
+                        fontWeight: 600,
+                        fontSize: '0.75rem',
+                        cursor: 'pointer',
+                        whiteSpace: 'nowrap',
+                      }}
                     >
-                      ✓ rendil.robosa.up@phinmaed.com
-                    </button>
-                    <button
-                      type="button"
-                      className="auth-chip"
-                      title="Test valid PHINMA faculty account"
-                      onClick={() => handleMockGoogleLogin('prof.delacruz.up@phinmaed.com')}
-                    >
-                      ✓ prof.delacruz.up@phinmaed.com
-                    </button>
-                    <button
-                      type="button"
-                      className="auth-chip auth-chip-invalid"
-                      title="Test rejection of personal Gmail"
-                      onClick={() => handleMockGoogleLogin('student.test@gmail.com')}
-                    >
-                      ✕ student.test@gmail.com (Blocked)
+                      Connect
                     </button>
                   </div>
                 </div>
-              )}
-            </div>
+              </form>
+            )}
 
             {/* Divider */}
             <div className="auth-divider">

@@ -1,5 +1,5 @@
-import React, { useState, useEffect } from 'react';
-import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, ChevronDown, ChevronUp } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
 import { registerUser, loginWithGoogle, fetchGoogleConfig } from '../../services/api';
 import './auth.css';
 
@@ -19,33 +19,76 @@ export default function RegisterPage({ onNavigate }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
-  const [googleConfig, setGoogleConfig] = useState({ client_id: '', allowed_domain: 'phinmaed.com' });
-  const [showDemoOAuth, setShowDemoOAuth] = useState(false);
+  const [clientId, setClientId] = useState('');
+  const [allowedDomain, setAllowedDomain] = useState('phinmaed.com');
+  const [tempClientId, setTempClientId] = useState('');
+  const [gisLoaded, setGisLoaded] = useState(false);
+
+  const googleBtnRef = useRef(null);
+
+  const initGis = (activeClientId) => {
+    if (!activeClientId) return;
+    if (!window.google?.accounts?.id) {
+      setTimeout(() => initGis(activeClientId), 300);
+      return;
+    }
+
+    try {
+      window.google.accounts.id.initialize({
+        client_id: activeClientId,
+        callback: handleGoogleCredentialResponse,
+        hosted_domain: allowedDomain,
+      });
+
+      if (googleBtnRef.current) {
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          type: 'standard',
+          shape: 'rectangular',
+          text: 'signup_with',
+          logo_alignment: 'left',
+          width: 380,
+        });
+      }
+      setGisLoaded(true);
+    } catch (err) {
+      console.warn('GIS error on register:', err);
+    }
+  };
 
   useEffect(() => {
+    const savedLocalId = localStorage.getItem('fmc_google_client_id') || '';
+
     fetchGoogleConfig().then((cfg) => {
-      if (cfg && cfg.success) {
-        setGoogleConfig(cfg);
-        if (cfg.client_id && window.google?.accounts?.id) {
-          try {
-            window.google.accounts.id.initialize({
-              client_id: cfg.client_id,
-              callback: handleGoogleResponse,
-              hosted_domain: cfg.allowed_domain || 'phinmaed.com',
-            });
-            window.google.accounts.id.renderButton(
-              document.getElementById('google-register-btn-rendered'),
-              { theme: 'outline', size: 'large', width: '100%', text: 'signup_with' }
-            );
-          } catch (e) {
-            console.warn('GIS error on register:', e);
-          }
-        }
+      const activeDomain = cfg?.allowed_domain || 'phinmaed.com';
+      setAllowedDomain(activeDomain);
+
+      const activeId = cfg?.client_id || savedLocalId || '';
+      if (activeId) {
+        setClientId(activeId);
+        setTempClientId(activeId);
+        initGis(activeId);
       }
     });
   }, []);
 
-  const handleGoogleResponse = async (response) => {
+  const handleSaveClientId = (e) => {
+    e.preventDefault();
+    const trimmed = tempClientId.trim();
+    if (!trimmed) return;
+    localStorage.setItem('fmc_google_client_id', trimmed);
+    setClientId(trimmed);
+    initGis(trimmed);
+  };
+
+  const handleGoogleCredentialResponse = async (response) => {
+    if (!response?.credential) {
+      setError('No credential received from Google.');
+      return;
+    }
+
     setGoogleLoading(true);
     setError('');
     setSuccessMsg('');
@@ -53,41 +96,28 @@ export default function RegisterPage({ onNavigate }) {
     try {
       const res = await loginWithGoogle({ credential: response.credential });
       if (res.success) {
-        setSuccessMsg(`Welcome, ${res.user?.full_name}! Account created & verified via @${googleConfig.allowed_domain}`);
+        setSuccessMsg(`Welcome, ${res.user?.full_name}! Institutional account verified (@${allowedDomain}).`);
         setTimeout(() => {
-          alert(`Successfully signed up via Google: ${res.user?.full_name}`);
           onNavigate('landing');
-        }, 900);
+        }, 1000);
       } else {
         setError(res.message || 'Google registration failed.');
       }
     } catch (err) {
-      setError('Unable to complete Google registration.');
+      setError('Unable to verify Google credential token with server.');
     } finally {
       setGoogleLoading(false);
     }
   };
 
-  const handleMockGoogleLogin = async (mockEmail) => {
-    setGoogleLoading(true);
+  const handleTriggerGooglePrompt = () => {
     setError('');
     setSuccessMsg('');
 
-    try {
-      const res = await loginWithGoogle({ mockEmail });
-      if (res.success) {
-        setSuccessMsg(`Account created for ${res.user?.full_name}! Verified via @${googleConfig.allowed_domain}`);
-        setTimeout(() => {
-          alert(`Registered with @${googleConfig.allowed_domain}: ${res.user?.email}`);
-          onNavigate('landing');
-        }, 900);
-      } else {
-        setError(res.message || 'Google registration failed.');
-      }
-    } catch (err) {
-      setError('Connection error during Google authentication.');
-    } finally {
-      setGoogleLoading(false);
+    if (clientId && window.google?.accounts?.id) {
+      window.google.accounts.id.prompt();
+    } else {
+      setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
     }
   };
 
@@ -124,9 +154,8 @@ export default function RegisterPage({ onNavigate }) {
     }
 
     // STRICT DOMAIN RESTRICTION CHECK
-    const allowed = googleConfig.allowed_domain || 'phinmaed.com';
-    if (!formData.email.toLowerCase().endsWith(`@${allowed}`)) {
-      setError(`Access Restricted: Registration requires an official @${allowed} institutional email.`);
+    if (!formData.email.toLowerCase().endsWith(`@${allowedDomain}`)) {
+      setError(`Access Restricted: Registration requires an official @${allowedDomain} institutional email.`);
       return;
     }
 
@@ -189,7 +218,7 @@ export default function RegisterPage({ onNavigate }) {
             <ShieldCheck size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
             <div>
               <strong>Institutional Registration:</strong> Open exclusively to verified{' '}
-              <span className="auth-domain-tag">@{googleConfig.allowed_domain}</span> accounts.
+              <span className="auth-domain-tag">@{allowedDomain}</span> accounts.
             </div>
           </div>
 
@@ -207,83 +236,111 @@ export default function RegisterPage({ onNavigate }) {
             </div>
           )}
 
-          {/* Google 1-Click Fast Registration */}
-          <div id="google-register-btn-rendered" style={{ marginBottom: googleConfig.client_id ? '0.75rem' : '0' }}></div>
-
-          <button
-            type="button"
-            className="auth-google-btn"
-            onClick={() => {
-              if (googleConfig.client_id && window.google?.accounts?.id) {
-                window.google.accounts.id.prompt();
-              } else {
-                setShowDemoOAuth(true);
-              }
+          {/* Google Identity Services Official Render Container */}
+          <div
+            ref={googleBtnRef}
+            style={{
+              display: gisLoaded ? 'flex' : 'none',
+              justifyContent: 'center',
+              marginBottom: '1rem',
+              width: '100%',
             }}
-            disabled={googleLoading}
-          >
-            <svg className="google-icon-svg" viewBox="0 0 24 24">
-              <path
-                fill="#4285F4"
-                d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
-              />
-              <path
-                fill="#34A853"
-                d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
-              />
-              <path
-                fill="#FBBC05"
-                d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
-              />
-              <path
-                fill="#EA4335"
-                d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
-              />
-            </svg>
-            <span>{googleLoading ? 'Setting up account...' : 'Instant Sign up with Google (@phinmaed.com)'}</span>
-          </button>
+          />
 
-          {/* Quick Test Bar for Development */}
-          <div className="auth-demo-oauth-box">
-            <div
-              className="auth-demo-oauth-header"
-              style={{ cursor: 'pointer' }}
-              onClick={() => setShowDemoOAuth(!showDemoOAuth)}
+          {!gisLoaded && (
+            <button
+              type="button"
+              className="auth-google-btn"
+              onClick={handleTriggerGooglePrompt}
+              disabled={googleLoading}
             >
-              <span>🧪 Quick Test Accounts</span>
-              {showDemoOAuth ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
-            </div>
-            {showDemoOAuth && (
-              <div>
-                <p style={{ margin: '0.25rem 0 0.5rem', color: '#64748b' }}>
-                  Click to test instant registration and domain restriction:
+              <svg className="google-icon-svg" viewBox="0 0 24 24">
+                <path
+                  fill="#4285F4"
+                  d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
+                />
+                <path
+                  fill="#34A853"
+                  d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
+                />
+                <path
+                  fill="#FBBC05"
+                  d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
+                />
+                <path
+                  fill="#EA4335"
+                  d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
+                />
+              </svg>
+              <span>
+                {googleLoading ? 'Setting up account...' : `Instant Sign up with Google (@${allowedDomain})`}
+              </span>
+            </button>
+          )}
+
+          {!clientId && (
+            <form onSubmit={handleSaveClientId} style={{ marginTop: '0.85rem' }}>
+              <div
+                style={{
+                  padding: '0.85rem',
+                  background: '#f8fafc',
+                  border: '1px solid #e2e8f0',
+                  borderRadius: '8px',
+                  fontSize: '0.8125rem',
+                }}
+              >
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '0.4rem',
+                    fontWeight: 600,
+                    color: '#475569',
+                    marginBottom: '0.35rem',
+                  }}
+                >
+                  <KeyRound size={15} />
+                  <span>Connect Google OAuth Client ID</span>
+                </div>
+                <p style={{ margin: '0 0 0.5rem', color: '#64748b', fontSize: '0.75rem', lineHeight: '1.4' }}>
+                  Enter your Web Client ID from Google Cloud Console (or add <code>GOOGLE_CLIENT_ID</code> in <code>.env</code>):
                 </p>
-                <div className="auth-demo-chips">
+                <div style={{ display: 'flex', gap: '0.5rem' }}>
+                  <input
+                    type="text"
+                    className="auth-input"
+                    placeholder="e.g. 123456789-xxxx.apps.googleusercontent.com"
+                    value={tempClientId}
+                    onChange={(e) => setTempClientId(e.target.value)}
+                    style={{ height: '36px', fontSize: '0.75rem' }}
+                  />
                   <button
-                    type="button"
-                    className="auth-chip"
-                    onClick={() => handleMockGoogleLogin('new.student.up@phinmaed.com')}
+                    type="submit"
+                    style={{
+                      padding: '0 0.85rem',
+                      height: '36px',
+                      background: '#0f172a',
+                      color: '#fff',
+                      border: 'none',
+                      borderRadius: '6px',
+                      fontWeight: 600,
+                      fontSize: '0.75rem',
+                      cursor: 'pointer',
+                      whiteSpace: 'nowrap',
+                    }}
                   >
-                    ✓ new.student.up@phinmaed.com
-                  </button>
-                  <button
-                    type="button"
-                    className="auth-chip auth-chip-invalid"
-                    onClick={() => handleMockGoogleLogin('someone.unauthorized@yahoo.com')}
-                  >
-                    ✕ someone.unauthorized@yahoo.com (Blocked)
+                    Connect
                   </button>
                 </div>
               </div>
-            )}
-          </div>
+            </form>
+          )}
 
           <div className="auth-divider">
             <span>or register with manual details</span>
           </div>
 
           <form className="auth-form" onSubmit={handleSubmit}>
-            {/* Student/Faculty ID & Full Name in two columns */}
             <div className="auth-form-row">
               <div className="auth-field">
                 <label className="auth-label" htmlFor="reg-identifier">
@@ -320,7 +377,6 @@ export default function RegisterPage({ onNavigate }) {
               </div>
             </div>
 
-            {/* Email Address */}
             <div className="auth-field">
               <label className="auth-label" htmlFor="reg-email">
                 Institutional Email Address <span className="auth-required">*</span>
@@ -337,11 +393,10 @@ export default function RegisterPage({ onNavigate }) {
                 />
               </div>
               <span style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.25rem', display: 'block' }}>
-                Must be an official @{googleConfig.allowed_domain} address.
+                Must be an official @{allowedDomain} address.
               </span>
             </div>
 
-            {/* Academic Department */}
             <div className="auth-field">
               <label className="auth-label" htmlFor="reg-dept">
                 Academic Unit / Department <span className="auth-required">*</span>
@@ -364,7 +419,6 @@ export default function RegisterPage({ onNavigate }) {
               </div>
             </div>
 
-            {/* Password & Confirm Password */}
             <div className="auth-form-row">
               <div className="auth-field">
                 <label className="auth-label" htmlFor="reg-password">
