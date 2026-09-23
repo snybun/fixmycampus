@@ -22,42 +22,11 @@ export default function RegisterPage({ onNavigate }) {
   const [clientId, setClientId] = useState('');
   const [allowedDomain, setAllowedDomain] = useState('phinmaed.com');
   const [tempClientId, setTempClientId] = useState('');
-  const [gisLoaded, setGisLoaded] = useState(false);
+  const [googleIframeRendered, setGoogleIframeRendered] = useState(false);
 
   const googleBtnRef = useRef(null);
 
-  const initGis = (activeClientId) => {
-    if (!activeClientId) return;
-    if (!window.google?.accounts?.id) {
-      setTimeout(() => initGis(activeClientId), 300);
-      return;
-    }
-
-    try {
-      window.google.accounts.id.initialize({
-        client_id: activeClientId,
-        callback: handleGoogleCredentialResponse,
-        hosted_domain: allowedDomain,
-      });
-
-      if (googleBtnRef.current) {
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: 'outline',
-          size: 'large',
-          type: 'standard',
-          shape: 'rectangular',
-          text: 'signup_with',
-          logo_alignment: 'left',
-          width: 380,
-        });
-      }
-      setGisLoaded(true);
-    } catch (err) {
-      console.warn('GIS error on register:', err);
-    }
-  };
-
+  // 1. Fetch configured Client ID on mount
   useEffect(() => {
     const savedLocalId = localStorage.getItem('fmc_google_client_id') || '';
 
@@ -69,10 +38,60 @@ export default function RegisterPage({ onNavigate }) {
       if (activeId) {
         setClientId(activeId);
         setTempClientId(activeId);
-        initGis(activeId);
       }
     });
   }, []);
+
+  // 2. Initialize and render Google Identity Services whenever clientId or allowedDomain changes
+  useEffect(() => {
+    if (!clientId) return;
+
+    let timer = null;
+    let attempts = 0;
+
+    const renderGoogleGsi = () => {
+      attempts++;
+      if (window.google?.accounts?.id && googleBtnRef.current) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+            hosted_domain: allowedDomain,
+          });
+
+          googleBtnRef.current.innerHTML = '';
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: 'outline',
+            size: 'large',
+            type: 'standard',
+            shape: 'rectangular',
+            text: 'signup_with',
+            logo_alignment: 'left',
+            width: 380,
+          });
+
+          setTimeout(() => {
+            if (googleBtnRef.current && googleBtnRef.current.children.length > 0) {
+              setGoogleIframeRendered(true);
+            }
+          }, 350);
+          return;
+        } catch (err) {
+          console.warn('GIS error on register:', err);
+        }
+      }
+
+      if (attempts < 25) {
+        timer = setTimeout(renderGoogleGsi, 200);
+      }
+    };
+
+    renderGoogleGsi();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [clientId, allowedDomain]);
 
   const handleSaveClientId = (e) => {
     e.preventDefault();
@@ -80,7 +99,6 @@ export default function RegisterPage({ onNavigate }) {
     if (!trimmed) return;
     localStorage.setItem('fmc_google_client_id', trimmed);
     setClientId(trimmed);
-    initGis(trimmed);
   };
 
   const handleGoogleCredentialResponse = async (response) => {
@@ -240,14 +258,15 @@ export default function RegisterPage({ onNavigate }) {
           <div
             ref={googleBtnRef}
             style={{
-              display: gisLoaded ? 'flex' : 'none',
+              display: googleIframeRendered ? 'flex' : 'none',
               justifyContent: 'center',
               marginBottom: '1rem',
               width: '100%',
+              minHeight: '44px',
             }}
           />
 
-          {!gisLoaded && (
+          {!googleIframeRendered && (
             <button
               type="button"
               className="auth-google-btn"

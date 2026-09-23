@@ -15,47 +15,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [clientId, setClientId] = useState('');
   const [allowedDomain, setAllowedDomain] = useState('phinmaed.com');
   const [tempClientId, setTempClientId] = useState('');
-  const [gisLoaded, setGisLoaded] = useState(false);
+  const [googleIframeRendered, setGoogleIframeRendered] = useState(false);
 
   const googleBtnRef = useRef(null);
 
-  // Initialize GIS once client ID and window.google are ready
-  const initGis = (activeClientId) => {
-    if (!activeClientId) return;
-    if (!window.google?.accounts?.id) {
-      // Retry in 300ms if script is still downloading
-      setTimeout(() => initGis(activeClientId), 300);
-      return;
-    }
-
-    try {
-      window.google.accounts.id.initialize({
-        client_id: activeClientId,
-        callback: handleGoogleCredentialResponse,
-        hosted_domain: allowedDomain,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-
-      if (googleBtnRef.current) {
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: 'outline',
-          size: 'large',
-          shape: 'rectangular',
-          text: 'signin_with',
-          logo_alignment: 'left',
-          width: 380,
-        });
-      }
-      setGisLoaded(true);
-    } catch (err) {
-      console.warn('Google Identity Services initialization failed:', err);
-    }
-  };
-
+  // 1. Fetch configured Client ID from backend or localStorage on mount
   useEffect(() => {
-    // 1. Fetch configured Client ID from backend or localStorage
     const savedLocalId = localStorage.getItem('fmc_google_client_id') || '';
 
     fetchGoogleConfig().then((cfg) => {
@@ -66,10 +31,62 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       if (activeId) {
         setClientId(activeId);
         setTempClientId(activeId);
-        initGis(activeId);
       }
     });
   }, []);
+
+  // 2. Initialize and render Google Identity Services whenever clientId or allowedDomain changes
+  useEffect(() => {
+    if (!clientId) return;
+
+    let timer = null;
+    let attempts = 0;
+
+    const renderGoogleGsi = () => {
+      attempts++;
+      if (window.google?.accounts?.id && googleBtnRef.current) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+            hosted_domain: allowedDomain,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
+
+          googleBtnRef.current.innerHTML = '';
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: 'outline',
+            size: 'large',
+            shape: 'rectangular',
+            text: 'signin_with',
+            logo_alignment: 'left',
+            width: 380,
+          });
+
+          // Check if Google successfully injected an iframe / content
+          setTimeout(() => {
+            if (googleBtnRef.current && googleBtnRef.current.children.length > 0) {
+              setGoogleIframeRendered(true);
+            }
+          }, 350);
+          return;
+        } catch (err) {
+          console.warn('GIS render error:', err);
+        }
+      }
+
+      if (attempts < 25) {
+        timer = setTimeout(renderGoogleGsi, 200);
+      }
+    };
+
+    renderGoogleGsi();
+
+    return () => {
+      if (timer) clearTimeout(timer);
+    };
+  }, [clientId, allowedDomain]);
 
   const handleSaveClientId = (e) => {
     e.preventDefault();
@@ -77,7 +94,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     if (!trimmed) return;
     localStorage.setItem('fmc_google_client_id', trimmed);
     setClientId(trimmed);
-    initGis(trimmed);
   };
 
   const handleGoogleCredentialResponse = async (response) => {
@@ -115,9 +131,28 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     setSuccessMsg('');
 
     if (clientId && window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
-    } else {
+      try {
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed()) {
+            const reason = notification.getNotDisplayedReason() || 'not_displayed';
+            console.warn('Google One Tap not displayed:', reason);
+            if (reason === 'opt_out_or_no_session') {
+              setError(`Please ensure you are signed into your @${allowedDomain} account in this browser, or click below.`);
+            } else if (reason === 'suppressed_by_user') {
+              setError('Google prompt was dismissed recently. Please wait a moment or clear site data.');
+            } else {
+              setError(`Google Sign-In prompt status: ${reason}. Ensure http://localhost:8080 and http://localhost:5175 are added to Authorized JavaScript Origins in Google Cloud Console.`);
+            }
+          }
+        });
+      } catch (e) {
+        console.error('Google prompt trigger error:', e);
+        setError('Error initiating Google sign-in.');
+      }
+    } else if (!clientId) {
       setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
+    } else {
+      setError('Google Identity Services is still loading. Please wait a moment and try again.');
     }
   };
 
@@ -213,51 +248,26 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             </div>
 
             {/* Official Google GIS Button Container */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              {clientId ? (
-                <div>
-                  <div
-                    ref={googleBtnRef}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      minHeight: '44px',
-                    }}
-                  />
-                  {!gisLoaded && (
-                    <button
-                      type="button"
-                      className="auth-google-btn"
-                      onClick={handleTriggerGooglePrompt}
-                      disabled={googleLoading}
-                    >
-                      <svg className="auth-google-icon" viewBox="0 0 24 24" width="20" height="20">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                        />
-                      </svg>
-                      <span>{googleLoading ? 'Connecting...' : `Sign in with @${allowedDomain}`}</span>
-                    </button>
-                  )}
-                </div>
-              ) : (
+            <div style={{ marginBottom: '1.25rem', width: '100%' }}>
+              {/* Google's official rendered button iframe container */}
+              <div
+                ref={googleBtnRef}
+                style={{
+                  display: googleIframeRendered ? 'flex' : 'none',
+                  justifyContent: 'center',
+                  minHeight: '44px',
+                  width: '100%',
+                }}
+              />
+
+              {/* Styled Fallback Button: ALWAYS visible if Google iframe isn't injected yet */}
+              {!googleIframeRendered && (
                 <button
                   type="button"
                   className="auth-google-btn"
                   onClick={handleTriggerGooglePrompt}
+                  disabled={googleLoading}
+                  style={{ width: '100%' }}
                 >
                   <svg className="auth-google-icon" viewBox="0 0 24 24" width="20" height="20">
                     <path
@@ -277,7 +287,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                       d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
                     />
                   </svg>
-                  <span>Sign in with Google (@{allowedDomain})</span>
+                  <span>
+                    {googleLoading ? 'Connecting to Google...' : `Sign in with Google (@${allowedDomain})`}
+                  </span>
                 </button>
               )}
             </div>
