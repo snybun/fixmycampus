@@ -23,14 +23,14 @@ export default function RolesSection() {
   return (
     <section className="landing-section" id="roles" style={{ backgroundColor: 'var(--color-canvas)' }}>
       <div className="section-container">
-        <div className="section-header">
+        <div className="section-header reveal-on-scroll">
           <span className="section-eyebrow">DESIGNED FOR CAMPUS LIFE</span>
           <h2 className="section-title">
             One shared system. Better<br />outcomes for everyone.
           </h2>
         </div>
 
-        <div className="roles-grid">
+        <div className="roles-grid reveal-on-scroll reveal-stagger">
           {roles.map((role, idx) => {
             const Icon = role.icon;
             return (

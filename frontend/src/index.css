@@ -101,6 +101,30 @@
   }
 }
 
+/* ==========================================================================
+   SCROLL-DRIVEN REVEAL ANIMATIONS (OPTION 7)
+   ========================================================================== */
+
+.reveal-on-scroll {
+  opacity: 0;
+  transform: translateY(28px);
+  transition: opacity 0.8s cubic-bezier(0.16, 1, 0.3, 1),
+              transform 0.8s cubic-bezier(0.16, 1, 0.3, 1);
+  will-change: opacity, transform;
+}
+
+.reveal-on-scroll.is-revealed {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* Cascade staggered delays for grid cards */
+.reveal-stagger > *:nth-child(1) { transition-delay: 0.05s; }
+.reveal-stagger > *:nth-child(2) { transition-delay: 0.14s; }
+.reveal-stagger > *:nth-child(3) { transition-delay: 0.23s; }
+.reveal-stagger > *:nth-child(4) { transition-delay: 0.32s; }
+.reveal-stagger > *:nth-child(5) { transition-delay: 0.41s; }
+
 *, *::before, *::after {
   box-sizing: border-box;
   margin: 0;
@@ -806,6 +830,7 @@ body {
 }
 
 .process-card {
+  position: relative;
   background: var(--color-white);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-md);
@@ -815,6 +840,25 @@ body {
   transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
               box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
               border-color 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@media (min-width: 992px) {
+  .process-card:not(:last-child)::after {
+    content: '';
+    position: absolute;
+    top: 32px;
+    right: -13px;
+    width: 13px;
+    height: 2px;
+    background: linear-gradient(90deg, var(--color-border-subtle), var(--color-border));
+    z-index: 2;
+    transition: background 0.3s ease, transform 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  }
+
+  .process-card:hover:not(:last-child)::after {
+    background: var(--color-black);
+    transform: scaleX(1.35);
+  }
 }
 
 .process-card:hover {
@@ -832,9 +876,21 @@ body {
 
 .process-num {
   font-family: var(--font-mono);
-  font-size: 0.875rem;
+  font-size: 0.8125rem;
   font-weight: 600;
   color: var(--color-text-muted);
+  padding: 0.2rem 0.55rem;
+  border-radius: 6px;
+  background: var(--color-canvas);
+  border: 1px solid var(--color-border-subtle);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.process-card:hover .process-num {
+  background: var(--color-black);
+  color: var(--color-white);
+  border-color: var(--color-black);
+  transform: translateY(-1px);
 }
 
 .process-icon-box {
@@ -1129,6 +1185,16 @@ body {
   display: flex;
   gap: 1.25rem;
   position: relative;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s ease;
+  border-radius: 8px;
+  padding: 0.35rem 0.5rem;
+  margin-left: -0.5rem;
+  margin-right: -0.5rem;
+}
+
+.timeline-item:hover {
+  transform: translateX(4px);
+  background: rgba(255, 255, 255, 0.035);
 }
 
 .timeline-marker {
@@ -1158,11 +1224,23 @@ body {
   color: #FF9500;
 }
 
+@keyframes pulseDotBreath {
+  0%, 100% {
+    transform: scale(1);
+    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.65);
+  }
+  50% {
+    transform: scale(1.22);
+    box-shadow: 0 0 0 7px rgba(255, 149, 0, 0);
+  }
+}
+
 .pulse-dot {
   width: 10px;
   height: 10px;
   border-radius: 50%;
   background: #FF9500;
+  animation: pulseDotBreath 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
 .marker-dot.pending {
@@ -1170,11 +1248,22 @@ body {
   color: #6E6E73;
 }
 
+@keyframes timelineBeam {
+  0% {
+    background-position: 0% -100%;
+  }
+  100% {
+    background-position: 0% 200%;
+  }
+}
+
 .timeline-line {
   width: 2px;
   flex: 1;
   min-height: 32px;
-  background: var(--dark-border);
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.08) 0%, rgba(255, 149, 0, 0.95) 50%, rgba(255, 255, 255, 0.08) 100%);
+  background-size: 100% 200%;
+  animation: timelineBeam 2.8s linear infinite;
   margin: 4px 0;
 }
 
@@ -1226,6 +1315,19 @@ body {
   padding-right: 2rem;
 }
 
+.analytics-stat {
+  padding: 0.65rem 0.85rem;
+  border-radius: var(--radius-sm);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), background 0.25s ease;
+  margin-left: -0.85rem;
+  margin-right: -0.85rem;
+}
+
+.analytics-stat:hover {
+  transform: translateX(4px);
+  background: var(--color-canvas);
+}
+
 .analytics-stat-label {
   font-size: 0.6875rem;
   font-weight: 700;
@@ -1241,6 +1343,12 @@ body {
   color: var(--color-text-primary);
   line-height: 1.1;
   margin: 0.25rem 0;
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1), color 0.25s ease;
+}
+
+.analytics-stat:hover .analytics-stat-val {
+  transform: scale(1.025);
+  color: #000000;
 }
 
 .analytics-stat-meta {
@@ -1314,7 +1422,25 @@ body {
   height: 100%;
   background: var(--color-black);
   border-radius: 4px;
+  width: 0%;
+  transition: width 1.1s cubic-bezier(0.16, 1, 0.3, 1);
 }
+
+.is-revealed .bar-fill,
+.analytics-card.is-revealed .bar-fill {
+  width: var(--bar-width, 100%);
+}
+
+.is-revealed .bar-row:nth-child(1) .bar-fill,
+.analytics-card.is-revealed .bar-row:nth-child(1) .bar-fill { transition-delay: 0.15s; }
+.is-revealed .bar-row:nth-child(2) .bar-fill,
+.analytics-card.is-revealed .bar-row:nth-child(2) .bar-fill { transition-delay: 0.25s; }
+.is-revealed .bar-row:nth-child(3) .bar-fill,
+.analytics-card.is-revealed .bar-row:nth-child(3) .bar-fill { transition-delay: 0.35s; }
+.is-revealed .bar-row:nth-child(4) .bar-fill,
+.analytics-card.is-revealed .bar-row:nth-child(4) .bar-fill { transition-delay: 0.45s; }
+.is-revealed .bar-row:nth-child(5) .bar-fill,
+.analytics-card.is-revealed .bar-row:nth-child(5) .bar-fill { transition-delay: 0.55s; }
 
 /* ==========================================================================
    TESTIMONIAL SECTION
@@ -1930,6 +2056,22 @@ body {
     animation: none !important;
     opacity: 1 !important;
     transform: none !important;
+  }
+
+  .reveal-on-scroll {
+    opacity: 1 !important;
+    transform: none !important;
+    transition: none !important;
+  }
+
+  .timeline-line,
+  .pulse-dot {
+    animation: none !important;
+  }
+
+  .bar-fill {
+    width: var(--bar-width, 100%) !important;
+    transition: none !important;
   }
 }
 

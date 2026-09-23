@@ -13,7 +13,7 @@ export default function LocationFeature() {
       <div className="section-container">
         <div className="split-layout">
           {/* Text Column */}
-          <div className="split-text-col">
+          <div className="split-text-col reveal-on-scroll">
             <span className="section-eyebrow">PRECISE LOCATION TRACKING</span>
             <h2 className="section-title">
               Every report has a clear home.
@@ -36,7 +36,7 @@ export default function LocationFeature() {
 
           {/* Card Mockup Column */}
           <div className="split-visual-col">
-            <div className="preview-card">
+            <div className="preview-card reveal-on-scroll">
               <div className="preview-card-header">
                 <span className="badge-pill badge-amber">IN PROGRESS</span>
                 <span className="preview-card-id">#FMC-202609-0002</span>

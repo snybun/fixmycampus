@@ -31,7 +31,7 @@ export default function TimelineFeature() {
         <div className="split-layout">
           {/* Dark Timeline Card on Left */}
           <div className="split-visual-col">
-            <div className="dark-timeline-card">
+            <div className="dark-timeline-card reveal-on-scroll">
               <div className="dark-card-header">
                 <span className="dark-card-title">Audit &amp; Lifecycle Status</span>
                 <span className="badge-pill badge-amber-dark">IN PROGRESS</span>
@@ -71,7 +71,7 @@ export default function TimelineFeature() {
           </div>
 
           {/* Text on Right */}
-          <div className="split-text-col dark-text-col">
+          <div className="split-text-col dark-text-col reveal-on-scroll">
             <span className="section-eyebrow-dark">TRANSPARENT LIFECYCLE</span>
             <h2 className="section-title-dark">
               Stay informed from first<br />report to final fix.

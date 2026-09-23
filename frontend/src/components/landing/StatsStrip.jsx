@@ -10,7 +10,7 @@ export default function StatsStrip() {
 
   return (
     <section className="landing-stats-strip">
-      <div className="stats-strip-container">
+      <div className="stats-strip-container reveal-on-scroll reveal-stagger">
         {stats.map((item, idx) => (
           <div className="stats-strip-col" key={idx}>
             <div className="stats-strip-val">{item.value}</div>

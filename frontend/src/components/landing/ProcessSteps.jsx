@@ -33,7 +33,7 @@ export default function ProcessSteps() {
     <section className="landing-section" id="process">
       <div id="demo" style={{ position: 'relative', top: '-80px' }} />
       <div className="section-container">
-        <div className="section-header">
+        <div className="section-header reveal-on-scroll">
           <span className="section-eyebrow">THE FIXMYCAMPUS PROCESS</span>
           <h2 className="section-title">
             From report to resolution,<br />without the runaround.
@@ -43,7 +43,7 @@ export default function ProcessSteps() {
           </p>
         </div>
 
-        <div className="process-grid">
+        <div className="process-grid reveal-on-scroll reveal-stagger">
           {steps.map((step, idx) => {
             const Icon = step.icon;
             return (
