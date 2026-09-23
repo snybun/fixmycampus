@@ -215,12 +215,16 @@ body {
    ========================================================================== */
 
 .landing-hero {
+  position: relative;
+  overflow: hidden;
   padding: 5rem 1.5rem 4rem;
   text-align: center;
-  background: radial-gradient(circle at 50% 0%, rgba(245, 245, 247, 0.8) 0%, #FFFFFF 70%);
+  background: radial-gradient(circle at 50% 0%, rgba(245, 245, 247, 0.4) 0%, #FFFFFF 85%);
 }
 
 .hero-content {
+  position: relative;
+  z-index: 2;
   max-width: 780px;
   margin: 0 auto 3.5rem;
 }
@@ -296,9 +300,46 @@ body {
    ========================================================================== */
 
 .hero-mockup-wrapper {
+  position: relative;
+  z-index: 2;
   max-width: 1040px;
   margin: 0 auto;
   padding: 0 1rem;
+  transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.4s ease;
+}
+
+.hero-mockup-wrapper:hover {
+  transform: translateY(-4px);
+}
+
+.hero-floating-pill {
+  position: absolute;
+  top: -16px;
+  right: 24px;
+  z-index: 10;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(14, 165, 233, 0.3);
+  padding: 0.45rem 1rem;
+  border-radius: 9999px;
+  box-shadow: 0 10px 25px -3px rgba(14, 165, 233, 0.18), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #0284c7;
+  animation: float-badge 3.6s ease-in-out infinite;
+}
+
+@keyframes float-badge {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-8px);
+  }
 }
 
 .hero-mockup-frame {
@@ -535,9 +576,39 @@ body {
   flex-shrink: 0;
 }
 
-.dot-amber { background: #FF9500; }
+.dot-amber {
+  background: #FF9500;
+  animation: radar-amber 2.2s infinite ease-in-out;
+}
 .dot-blue { background: #0071E3; }
-.dot-green { background: #34C759; }
+.dot-green {
+  background: #34C759;
+  animation: radar-green 2.5s infinite ease-in-out;
+}
+
+@keyframes radar-amber {
+  0% {
+    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(255, 149, 0, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(255, 149, 0, 0);
+  }
+}
+
+@keyframes radar-green {
+  0% {
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0.7);
+  }
+  70% {
+    box-shadow: 0 0 0 7px rgba(52, 199, 89, 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(52, 199, 89, 0);
+  }
+}
 
 .activity-text {
   font-weight: 600;

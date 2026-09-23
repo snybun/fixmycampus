@@ -9,12 +9,17 @@ import {
   AlertTriangle,
   Clock,
   CheckCircle,
-  Search
+  Search,
+  Activity
 } from 'lucide-react';
+import InteractiveNetBackground from './InteractiveNetBackground';
 
 export default function Hero({ onNavigate, onScrollTo }) {
   return (
     <section className="landing-hero">
+      {/* Interactive Elastic Net Background reacting to mouse drag */}
+      <InteractiveNetBackground />
+
       <div className="hero-content">
         <h1 className="hero-headline">
           Report campus problems in<br />seconds.
@@ -43,6 +48,10 @@ export default function Hero({ onNavigate, onScrollTo }) {
 
       {/* Hero Dashboard Preview Mockup */}
       <div className="hero-mockup-wrapper">
+        <div className="hero-floating-pill">
+          <Activity size={14} style={{ color: '#0ea5e9' }} />
+          <span>⚡ Live Dispatch &bull; 98.4% SLA Met Today</span>
+        </div>
         <div className="hero-mockup-frame">
           {/* Mockup Sidebar */}
           <div className="mockup-sidebar">
