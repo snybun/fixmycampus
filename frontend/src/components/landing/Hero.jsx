@@ -11,14 +11,10 @@ import {
   CheckCircle,
   Search
 } from 'lucide-react';
-import InteractiveNetBackground from './InteractiveNetBackground';
 
 export default function Hero({ onNavigate, onScrollTo }) {
   return (
     <section className="landing-hero">
-      {/* Interactive Elastic Net Background reacting to mouse drag */}
-      <InteractiveNetBackground />
-
       <div className="hero-content">
         <h1 className="hero-headline">
           Report campus problems in<br />seconds.
