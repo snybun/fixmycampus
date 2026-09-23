@@ -1241,12 +1241,12 @@ body {
   color: #6E6E73;
 }
 
-@keyframes timelineBeam {
+@keyframes beamTravel {
   0% {
-    background-position: 0% -100%;
+    top: -50%;
   }
   100% {
-    background-position: 0% 200%;
+    top: 130%;
   }
 }
 
@@ -1267,12 +1267,22 @@ body {
   box-shadow: 0 0 6px rgba(52, 199, 89, 0.25);
 }
 
-/* Stream into active in-progress stage (Green to Yellow/Amber) */
+/* Stream into active in-progress stage (Strictly Green at top -> Yellow/Amber at bottom) */
 .timeline-line.line-done-to-current {
-  background: linear-gradient(180deg, rgba(52, 199, 89, 0.8) 0%, rgba(255, 149, 0, 0.95) 100%);
-  background-size: 100% 200%;
-  animation: timelineBeam 2.5s linear infinite;
-  box-shadow: 0 0 8px rgba(255, 149, 0, 0.3);
+  background: linear-gradient(180deg, #34C759 0%, #34C759 20%, #FF9500 100%);
+  box-shadow: 0 0 8px rgba(255, 149, 0, 0.25);
+  overflow: hidden;
+}
+
+.timeline-line.line-done-to-current::after {
+  content: '';
+  position: absolute;
+  top: -50%;
+  left: 0;
+  width: 100%;
+  height: 45%;
+  background: linear-gradient(180deg, transparent, rgba(255, 255, 255, 0.85), transparent);
+  animation: beamTravel 2.4s cubic-bezier(0.4, 0, 0.2, 1) infinite;
 }
 
 /* Unresolved pending stage (Yellow to Grey) - Remains dim grey track */
