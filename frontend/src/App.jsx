@@ -14,23 +14,39 @@ import Footer from './components/landing/Footer';
 import LoginPage from './components/auth/LoginPage';
 import RegisterPage from './components/auth/RegisterPage';
 import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
+import DashboardPage from './components/dashboard/DashboardPage';
+import { fetchAuthMe, logoutUser } from './services/api';
 
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard'].includes(hash)) {
       return hash;
     }
     return 'landing';
   };
 
   const [currentView, setCurrentView] = useState(getInitialView);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  // Check existing session on mount
+  useEffect(() => {
+    fetchAuthMe().then((res) => {
+      if (res && res.authenticated && res.user) {
+        setCurrentUser(res.user);
+        // If on login or landing with an active session, can default to dashboard if hash is dashboard
+        if (window.location.hash === '#dashboard') {
+          setCurrentView('dashboard');
+        }
+      }
+    });
+  }, []);
 
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['login', 'register', 'forgot-password'].includes(hash)) {
+      if (['login', 'register', 'forgot-password', 'dashboard'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -52,6 +68,21 @@ export default function App() {
     }
   };
 
+  const handleLoginSuccess = (user) => {
+    setCurrentUser(user);
+    handleNavigate('dashboard');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await logoutUser();
+    } catch (e) {
+      console.warn('Logout request completed with warning:', e);
+    }
+    setCurrentUser(null);
+    handleNavigate('landing');
+  };
+
   const handleScrollTo = (sectionId) => {
     if (currentView !== 'landing') {
       setCurrentView('landing');
@@ -66,13 +97,34 @@ export default function App() {
     }
   };
 
+  // Render Dashboard View
+  if (currentView === 'dashboard') {
+    return (
+      <DashboardPage
+        currentUser={currentUser}
+        onNavigate={handleNavigate}
+        onLogout={handleLogout}
+      />
+    );
+  }
+
   // Render Auth Views
   if (currentView === 'login') {
-    return <LoginPage onNavigate={handleNavigate} />;
+    return (
+      <LoginPage
+        onNavigate={handleNavigate}
+        onLoginSuccess={handleLoginSuccess}
+      />
+    );
   }
 
   if (currentView === 'register') {
-    return <RegisterPage onNavigate={handleNavigate} />;
+    return (
+      <RegisterPage
+        onNavigate={handleNavigate}
+        onRegisterSuccess={handleLoginSuccess}
+      />
+    );
   }
 
   if (currentView === 'forgot-password') {

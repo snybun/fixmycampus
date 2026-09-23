@@ -3,9 +3,9 @@ import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { loginUser } from '../../services/api';
 import './auth.css';
 
-export default function LoginPage({ onNavigate }) {
-  const [email, setEmail] = useState('mafe.cerna.up@phinmaed.com');
-  const [password, setPassword] = useState('renebaterbonians99');
+export default function LoginPage({ onNavigate, onLoginSuccess }) {
+  const [loginInput, setLoginInput] = useState('');
+  const [password, setPassword] = useState('');
   const [rememberMe, setRememberMe] = useState(true);
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -17,26 +17,27 @@ export default function LoginPage({ onNavigate }) {
     setError('');
     setSuccessMsg('');
 
-    if (!email || !password) {
-      setError('Please fill in all required fields.');
+    if (!loginInput || !password) {
+      setError('Please fill in both Email / ID and Password.');
       return;
     }
 
     setLoading(true);
     try {
-      const res = await loginUser({ email, password, remember: rememberMe });
+      const res = await loginUser({ email: loginInput, password, remember: rememberMe });
       if (res.success) {
-        setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Redirecting...`);
+        setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Authentication successful.`);
+        if (onLoginSuccess) {
+          onLoginSuccess(res.user);
+        }
         setTimeout(() => {
-          // If we had a dashboard or report defect page, navigate there
-          alert(`Logged in successfully as ${res.user?.full_name || email}`);
+          onNavigate('dashboard');
         }, 800);
       } else {
-        // Provide friendly fallback for demo environment
         setError(res.message || 'Invalid email or password.');
       }
     } catch (err) {
-      setError('Connection error. Please try again.');
+      setError('Connection error. Please ensure Docker backend is running.');
     } finally {
       setLoading(false);
     }
@@ -93,19 +94,19 @@ export default function LoginPage({ onNavigate }) {
             )}
 
             <form className="auth-form" onSubmit={handleSubmit}>
-              {/* Email Address */}
+              {/* Email Address or Identifier */}
               <div className="auth-field">
                 <label className="auth-label" htmlFor="login-email">
-                  Email Address <span className="auth-required">*</span>
+                  Email Address or Student / Employee ID <span className="auth-required">*</span>
                 </label>
                 <div className="auth-input-wrapper">
                   <input
                     id="login-email"
-                    type="email"
+                    type="text"
                     className="auth-input"
-                    placeholder="mafe.cerna.up@phinmaed.com"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="e.g. student.alex@fixmycampus.edu or STU-202401"
+                    value={loginInput}
+                    onChange={(e) => setLoginInput(e.target.value)}
                     required
                   />
                 </div>

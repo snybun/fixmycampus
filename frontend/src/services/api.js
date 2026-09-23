@@ -66,26 +66,17 @@ export async function loginUser({ email, password, remember = false }) {
     const res = await fetch(`${API_BASE}/auth.php?action=login`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email, password, remember }),
     });
     const data = await res.json();
     return data;
   } catch (err) {
-    console.warn('API login request failed or backend offline; falling back to demo mode:', err);
-    // Demo fallback: simulate login for demonstration
-    if (email && password) {
-      return {
-        success: true,
-        message: 'Logged in successfully (demo mode).',
-        user: {
-          id: 99,
-          full_name: email.split('@')[0].replace(/\./g, ' '),
-          email,
-          role: 'student',
-        },
-      };
-    }
-    return { success: false, message: 'Invalid credentials.' };
+    console.error('API login request error:', err);
+    return {
+      success: false,
+      message: 'Unable to connect to the backend server. Please verify Docker is running.',
+    };
   }
 }
 
@@ -94,15 +85,16 @@ export async function registerUser({ identifier, fullName, email, department, pa
     const res = await fetch(`${API_BASE}/auth.php?action=register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ identifier, full_name: fullName, email, department, password }),
     });
-    return await res.json();
+    const data = await res.json();
+    return data;
   } catch (err) {
-    console.warn('API register request failed or backend offline; falling back to demo mode:', err);
+    console.error('API register request error:', err);
     return {
-      success: true,
-      message: 'Account created successfully (demo mode).',
-      user: { identifier, full_name: fullName, email, department },
+      success: false,
+      message: 'Unable to connect to the backend server. Please verify Docker is running.',
     };
   }
 }
@@ -137,3 +129,15 @@ export async function resetPassword({ email, otp, newPassword }) {
   return { success: true, message: 'Password updated successfully.' };
 }
 
+export async function logoutUser() {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    if (res.ok) return await res.json();
+  } catch (err) {
+    console.error('Logout error:', err);
+  }
+  return { success: true };
+}
