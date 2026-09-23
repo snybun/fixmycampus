@@ -314,36 +314,6 @@ body {
   transform: translateY(-4px);
 }
 
-.hero-floating-pill {
-  position: absolute;
-  top: -16px;
-  right: 24px;
-  z-index: 10;
-  display: inline-flex;
-  align-items: center;
-  gap: 0.5rem;
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(0, 0, 0, 0.12);
-  padding: 0.45rem 1rem;
-  border-radius: 9999px;
-  box-shadow: 0 10px 25px -3px rgba(0, 0, 0, 0.08), 0 4px 6px -2px rgba(0, 0, 0, 0.03);
-  font-size: 0.8125rem;
-  font-weight: 600;
-  color: #111827;
-  animation: float-badge 3.6s ease-in-out infinite;
-}
-
-@keyframes float-badge {
-  0%, 100% {
-    transform: translateY(0px);
-  }
-  50% {
-    transform: translateY(-8px);
-  }
-}
-
 .hero-mockup-frame {
   display: flex;
   background: var(--color-white);

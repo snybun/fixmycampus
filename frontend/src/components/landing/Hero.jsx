@@ -9,8 +9,7 @@ import {
   AlertTriangle,
   Clock,
   CheckCircle,
-  Search,
-  Activity
+  Search
 } from 'lucide-react';
 import InteractiveNetBackground from './InteractiveNetBackground';
 
@@ -48,10 +47,6 @@ export default function Hero({ onNavigate, onScrollTo }) {
 
       {/* Hero Dashboard Preview Mockup */}
       <div className="hero-mockup-wrapper">
-        <div className="hero-floating-pill">
-          <Activity size={14} style={{ color: '#111827' }} />
-          <span>⚡ Live Dispatch &bull; 98.4% SLA Met Today</span>
-        </div>
         <div className="hero-mockup-frame">
           {/* Mockup Sidebar */}
           <div className="mockup-sidebar">
