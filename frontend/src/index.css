@@ -1257,10 +1257,30 @@ body {
   left: 50%;
   transform: translateX(-50%);
   width: 2px;
-  background: linear-gradient(180deg, rgba(255, 255, 255, 0.12) 0%, rgba(255, 149, 0, 0.95) 50%, rgba(255, 255, 255, 0.12) 100%);
-  background-size: 100% 200%;
-  animation: timelineBeam 2.8s linear infinite;
+  background: rgba(255, 255, 255, 0.12);
   z-index: 1;
+}
+
+/* Completed stage line (Green to Green) */
+.timeline-line.line-done-to-done {
+  background: rgba(52, 199, 89, 0.75);
+  box-shadow: 0 0 6px rgba(52, 199, 89, 0.25);
+}
+
+/* Stream into active in-progress stage (Green to Yellow/Amber) */
+.timeline-line.line-done-to-current {
+  background: linear-gradient(180deg, rgba(52, 199, 89, 0.8) 0%, rgba(255, 149, 0, 0.95) 100%);
+  background-size: 100% 200%;
+  animation: timelineBeam 2.5s linear infinite;
+  box-shadow: 0 0 8px rgba(255, 149, 0, 0.3);
+}
+
+/* Unresolved pending stage (Yellow to Grey) - Remains dim grey track */
+.timeline-line.line-current-to-pending,
+.timeline-line.line-pending-to-pending {
+  background: rgba(255, 255, 255, 0.1);
+  animation: none;
+  box-shadow: none;
 }
 
 .timeline-body {
