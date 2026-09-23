@@ -12,6 +12,7 @@ import {
   Trash2,
   SlidersHorizontal,
   ChevronRight,
+  User,
 } from 'lucide-react';
 import { fetchStats, fetchReports } from '../../services/api';
 import ConfirmationModal, { MODAL_PRESETS } from '../common/ConfirmationModal';
@@ -226,7 +227,7 @@ export default function DashboardPage({
                 {currentUser?.avatar_url ? (
                   <img src={currentUser.avatar_url} alt={displayName} />
                 ) : (
-                  <span>{displayName.charAt(0).toUpperCase()}</span>
+                  <User size={18} strokeWidth={2.2} />
                 )}
               </div>
               <span className="dash-user-name">{displayName}</span>
