@@ -3,12 +3,19 @@
    Matching exact UI layout from user mockup
    ========================================================================== */
 
+.dash-page-container,
+.dash-page-container button,
+.dash-page-container input,
+.dash-page-container select,
+.dash-page-container textarea {
+  font-family: "SF Pro Display", "SF Pro Text", "SF Pro", "San Francisco", -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
 .dash-page-container {
   min-height: 100vh;
   background-color: #f8f9fa;
   color: #111827;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
-  -webkit-font-smoothing: antialiased;
 }
 
 /* --------------------------------------------------------------------------

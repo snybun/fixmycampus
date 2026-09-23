@@ -3,13 +3,21 @@
  * Recreating pixel-accurate designs from user screenshots
  */
 
+.auth-page-wrapper,
+.auth-page-wrapper button,
+.auth-page-wrapper input,
+.auth-page-wrapper select,
+.auth-page-wrapper textarea {
+  font-family: "SF Pro Display", "SF Pro Text", "SF Pro", "San Francisco", -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
 .auth-page-wrapper {
   min-height: 100vh;
   background-color: var(--color-white, #ffffff);
   display: flex;
   flex-direction: column;
   color: #0f172a;
-  font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif);
 }
 
 /* --------------------------------------------------------------------------

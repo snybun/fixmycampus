@@ -27,6 +27,14 @@
 }
 
 /* Modal Dialog Window */
+.modal-dialog,
+.modal-btn,
+.modals-collection-page,
+.empty-state-card {
+  font-family: "SF Pro Display", "SF Pro Text", "SF Pro", "San Francisco", -apple-system, BlinkMacSystemFont, sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
 .modal-dialog {
   background: #ffffff;
   border-radius: 18px;
