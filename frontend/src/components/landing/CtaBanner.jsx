@@ -16,7 +16,7 @@ export default function CtaBanner({ onNavigate }) {
           <button
             type="button"
             className="btn-cta-white"
-            onClick={() => onNavigate && onNavigate('login')}
+            onClick={() => onNavigate && onNavigate('report-issue')}
           >
             Report a defect
           </button>

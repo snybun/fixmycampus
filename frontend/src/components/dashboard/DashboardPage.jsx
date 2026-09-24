@@ -25,10 +25,10 @@ export default function DashboardPage({
   onLogout,
 }) {
   const [stats, setStats] = useState({
-    total: 12,
-    pending: 3,
-    in_progress: 4,
-    resolved: 5,
+    total: 0,
+    pending: 0,
+    in_progress: 0,
+    resolved: 0,
   });
 
   const [activeModalPreset, setActiveModalPreset] = useState(null);
@@ -36,56 +36,60 @@ export default function DashboardPage({
   const [unreadCount, setUnreadCount] = useState(3);
   const [toastMessage, setToastMessage] = useState('');
 
-  // Initial reports matching Mockup 1
-  const [reports, setReports] = useState([
-    {
-      id: 1,
-      title: 'Broken Air Conditioner',
-      location: 'PTC Bldg • Room 307',
-      date: 'Aug 25, 2026',
-      image: '/images/hero_ac_defect.jpg',
-      status: 'assigned',
-      statusLabel: 'Worker Assigned',
-      badgeClass: 'badge-worker',
-      modalTrigger: 'assign_worker',
-    },
-    {
-      id: 2,
-      title: 'Faulty Light Switch',
-      location: 'CMA Building • Room 201',
-      date: 'Aug 22, 2026',
-      image: '/images/faulty_light_switch.jpg',
-      status: 'pending',
-      statusLabel: 'Pending',
-      badgeClass: 'badge-pending',
-      modalTrigger: 'update_status',
-    },
-    {
-      id: 3,
-      title: 'Damaged Whiteboard',
-      location: 'NH Bldg • Room 105',
-      date: 'Aug 18, 2026',
-      image: '/images/damaged_whiteboard.jpg',
-      status: 'resolved',
-      statusLabel: 'Fixed',
-      badgeClass: 'badge-fixed',
-      modalTrigger: 'mark_fixed',
-    },
-  ]);
+  // Initial reports - start empty until reported as requested
+  const [reports, setReports] = useState([]);
 
-  // Load stats from backend if available
+  // Load stats and real reports from backend
   useEffect(() => {
     let isMounted = true;
     fetchStats().then((res) => {
-      if (isMounted && res.success && res.data) {
+      if (isMounted && res && res.success) {
+        const statsData = res.data || res;
         setStats({
-          total: res.data.total_reports || 12,
-          pending: res.data.pending_review || 3,
-          in_progress: res.data.in_progress || 4,
-          resolved: res.data.fixed_resolved || 5,
+          total: statsData.total_reports ?? 0,
+          pending: statsData.pending_review ?? 0,
+          in_progress: statsData.in_progress ?? 0,
+          resolved: statsData.resolved ?? 0,
         });
       }
     });
+
+    fetchReports().then((res) => {
+      if (isMounted && res.success && Array.isArray(res.data)) {
+        setReports(
+          res.data.map((r) => ({
+            id: r.id,
+            title: r.title,
+            location: `${r.building_name || 'Campus'} • ${r.specific_area || r.location_name || 'Facility Area'}`,
+            date: r.reported_at
+              ? new Date(r.reported_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : 'Recently',
+            image: r.primary_photo || '/images/hero_ac_defect.jpg',
+            status: r.status,
+            statusLabel:
+              r.status === 'resolved'
+                ? 'Fixed'
+                : r.status === 'assigned'
+                ? 'Worker Assigned'
+                : r.status === 'in_progress'
+                ? 'Repair Ongoing'
+                : 'Pending',
+            badgeClass:
+              r.status === 'resolved'
+                ? 'badge-fixed'
+                : r.status === 'assigned'
+                ? 'badge-worker'
+                : 'badge-pending',
+            modalTrigger: 'update_status',
+          }))
+        );
+      }
+    });
+
     return () => {
       isMounted = false;
     };
@@ -181,7 +185,8 @@ export default function DashboardPage({
               <button
                 type="button"
                 className="dash-nav-link"
-                onClick={() => setActiveModalPreset('submit_report')}
+                onClick={() => onNavigate('report-issue')}
+                id="dash-nav-report-issue-btn"
               >
                 Report Issue
               </button>
@@ -290,7 +295,7 @@ export default function DashboardPage({
           <button
             type="button"
             className="dash-btn-primary"
-            onClick={() => setActiveModalPreset('submit_report')}
+            onClick={() => onNavigate('report-issue')}
             id="dash-report-btn"
           >
             <Plus size={16} strokeWidth={2.6} />
@@ -355,43 +360,89 @@ export default function DashboardPage({
             <h2 id="recent-reports-heading">Recent Reports</h2>
           </div>
 
-          <div className="dash-reports-grid">
-            {reports.map((report) => (
-              <article key={report.id} className="dash-report-card">
-                <div className="dash-report-image">
-                  <img src={report.image} alt={report.title} loading="lazy" />
-                </div>
+          {reports.length === 0 ? (
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1.5px dashed #e2e8f0',
+                borderRadius: 16,
+                padding: '3.5rem 1.5rem',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}
+            >
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  backgroundColor: '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748b',
+                }}
+              >
+                <Camera size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                No Defect Reports Submitted Yet
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0, maxWidth: 460 }}>
+                All campus statistics start at zero until an issue is filed. Help keep the campus safe, clean, and functional by reporting your first defect!
+              </p>
+              <button
+                type="button"
+                className="dash-btn-primary"
+                onClick={() => onNavigate('report-issue')}
+                style={{ marginTop: '0.5rem' }}
+              >
+                <Plus size={16} strokeWidth={2.6} />
+                <span>Report a Facility Issue</span>
+              </button>
+            </div>
+          ) : (
+            <div className="dash-reports-grid">
+              {reports.map((report) => (
+                <article key={report.id} className="dash-report-card">
+                  <div className="dash-report-image">
+                    <img src={report.image} alt={report.title} loading="lazy" />
+                  </div>
 
-                <div className="dash-report-info">
-                  <h3 className="dash-report-title">{report.title}</h3>
-                  <p className="dash-report-location">{report.location}</p>
-                  <p className="dash-report-date">{report.date}</p>
+                  <div className="dash-report-info">
+                    <h3 className="dash-report-title">{report.title}</h3>
+                    <p className="dash-report-location">{report.location}</p>
+                    <p className="dash-report-date">{report.date}</p>
 
-                  <div className="dash-report-badge-container">
-                    <button
-                      type="button"
-                      className={`dash-badge ${report.badgeClass}`}
-                      onClick={() => setActiveModalPreset(report.modalTrigger)}
-                      title={`Click to test "${MODAL_PRESETS[report.modalTrigger]?.title}" dialog`}
-                    >
-                      {report.statusLabel}
-                    </button>
-
-                    <div className="dash-card-actions">
+                    <div className="dash-report-badge-container">
                       <button
                         type="button"
-                        className="dash-card-action-btn"
-                        onClick={() => setActiveModalPreset('delete_report')}
-                        title="Delete report"
+                        className={`dash-badge ${report.badgeClass}`}
+                        onClick={() => setActiveModalPreset(report.modalTrigger)}
+                        title={`Click to test "${MODAL_PRESETS[report.modalTrigger]?.title}" dialog`}
                       >
-                        <Trash2 size={14} />
+                        {report.statusLabel}
                       </button>
+
+                      <div className="dash-card-actions">
+                        <button
+                          type="button"
+                          className="dash-card-action-btn"
+                          onClick={() => setActiveModalPreset('delete_report')}
+                          title="Delete report"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
                     </div>
                   </div>
-                </div>
-              </article>
-            ))}
-          </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
 
         {/* ------------------------------------------------------------------

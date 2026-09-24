@@ -27,7 +27,7 @@ export default function Navbar({ onNavigate, onScrollTo }) {
   const handleReportClick = () => {
     setMobileMenuOpen(false);
     if (onNavigate) {
-      onNavigate('login');
+      onNavigate('report-issue');
     }
   };
 

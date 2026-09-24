@@ -17,13 +17,14 @@ import RegisterPage from './components/auth/RegisterPage';
 import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
 import DashboardPage from './components/dashboard/DashboardPage';
 import AdminPage from './components/admin/AdminPage';
+import ReportIssueWizard from './components/reports/ReportIssueWizard';
 import { fetchAuthMe, logoutUser } from './services/api';
 
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin, #report-issue)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -49,7 +50,7 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(hash)) {
+      if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -88,8 +89,8 @@ export default function App() {
   const handleNavigate = (view) => {
     if (view === currentView) return;
 
-    // Show loading screen when navigating to auth views, dashboard, admin, or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(view)) {
+    // Show loading screen when navigating to auth views, dashboard, admin, report-issue, or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(view)) {
       setLoadingMessage(
         view === 'register'
           ? 'Opening Student Registration...'
@@ -97,6 +98,8 @@ export default function App() {
           ? 'Opening FixMyCampus Dashboard...'
           : view === 'admin'
           ? 'Accessing FixMyCampus Admin Console...'
+          : view === 'report-issue'
+          ? 'Opening Report Issue Wizard...'
           : 'Accessing FixMyCampus Portal...'
       );
       setIsLoading(true);
@@ -109,7 +112,7 @@ export default function App() {
         setTimeout(() => {
           setIsLoading(false);
         }, 300);
-      }, 650);
+      }, 550);
     } else {
       setIsLoading(true);
       setLoadingMessage('Returning to Home...');
@@ -161,6 +164,14 @@ export default function App() {
 
       {currentView === 'dashboard' && (
         <DashboardPage
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {currentView === 'report-issue' && (
+        <ReportIssueWizard
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}

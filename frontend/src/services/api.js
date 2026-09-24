@@ -232,3 +232,19 @@ export async function updateAdminUserStatus(userId, status) {
     return { success: false, message: 'Failed to update user status.' };
   }
 }
+
+export async function createReport(reportData) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(reportData),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('createReport error:', err);
+    return { success: false, message: 'Failed to submit report. Please check server connection.' };
+  }
+}
+

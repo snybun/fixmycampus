@@ -16,6 +16,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -27,6 +29,7 @@ $payload = [
     'db_connected'     => false,
     'db_version'       => 'N/A',
     'total_reports'    => 0,
+    'pending_review'   => 0,
     'in_progress'      => 0,
     'resolved'         => 0,
     'emergency'        => 0,
@@ -43,11 +46,13 @@ try {
         $payload['db_version']       = $dbStatus['server_version'] ?? 'MySQL 8';
         $payload['tables']           = $dbStatus['tables'] ?? [];
         $payload['total_reports']    = (int) db_fetch_column("SELECT COUNT(*) FROM `reports`");
+        $payload['pending_review']   = (int) db_fetch_column("SELECT COUNT(*) FROM `reports` WHERE `status` IN ('submitted', 'under_review')");
         $payload['in_progress']      = (int) db_fetch_column("SELECT COUNT(*) FROM `reports` WHERE `status` IN ('assigned', 'in_progress')");
         $payload['resolved']         = (int) db_fetch_column("SELECT COUNT(*) FROM `reports` WHERE `status` IN ('resolved', 'closed')");
         $payload['emergency']        = (int) db_fetch_column("SELECT COUNT(*) FROM `reports` WHERE `priority` = 'emergency'");
         $payload['categories_count'] = (int) db_fetch_column("SELECT COUNT(*) FROM `categories` WHERE `is_active` = 1");
         $payload['buildings_count']  = (int) db_fetch_column("SELECT COUNT(*) FROM `buildings` WHERE `is_active` = 1");
+        $payload['data']             = $payload;
     }
 } catch (\Throwable $e) {
     $payload['db_connected'] = false;

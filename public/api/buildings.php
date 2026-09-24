@@ -24,14 +24,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 try {
     $buildings = db_fetch_all("
-        SELECT id, code, name, description 
+        SELECT id, code, name 
         FROM `buildings` 
         WHERE `is_active` = 1 
-        ORDER BY name ASC
+        ORDER BY id ASC
+    ");
+
+    $floors = db_fetch_all("
+        SELECT id, building_id, floor_number, floor_name
+        FROM `floors`
+        ORDER BY building_id ASC, floor_number ASC
     ");
 
     $locations = db_fetch_all("
-        SELECT l.id, l.building_id, l.room_number, l.name, l.type, b.name as building_name 
+        SELECT l.id, l.building_id, l.floor_id, l.room_number, l.name, l.type, b.name as building_name 
         FROM `locations` l
         JOIN `buildings` b ON l.building_id = b.id
         WHERE l.is_active = 1
@@ -41,6 +47,7 @@ try {
     \FixMyCampus\Core\Response::json([
         'success'   => true,
         'buildings' => $buildings,
+        'floors'    => $floors,
         'locations' => $locations,
     ]);
 } catch (\Throwable $e) {

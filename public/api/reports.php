@@ -19,6 +19,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -61,7 +63,8 @@ try {
                 l.room_number,
                 u.id AS reporter_id,
                 u.full_name AS reporter_name,
-                u.email AS reporter_email
+                u.email AS reporter_email,
+                (SELECT file_path FROM `report_attachments` WHERE report_id = r.id ORDER BY id ASC LIMIT 1) AS primary_photo
             FROM `reports` r
             LEFT JOIN `categories` c ON r.category_id = c.id
             LEFT JOIN `locations` l ON r.location_id = l.id
@@ -104,21 +107,87 @@ try {
     // POST action: create - Submit a new defect report (Authenticated users)
     // --------------------------------------------------------------------------
     if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $user = auth_require();
+        if (auth_check()) {
+            $user = auth_user();
+        } else {
+            // Guest or demo reporter fallback
+            $user = db_fetch_one("SELECT * FROM `users` WHERE `role_id` = 5 ORDER BY id ASC LIMIT 1");
+            if (!$user) {
+                $user = db_fetch_one("SELECT * FROM `users` ORDER BY id ASC LIMIT 1");
+            }
+            if (!$user) {
+                $user = ['id' => 1, 'full_name' => 'Campus Reporter', 'email' => 'student@phinmaed.com'];
+            }
+        }
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
-        $title        = trim($input['title'] ?? '');
-        $description  = trim($input['description'] ?? '');
-        $categoryId   = (int)($input['category_id'] ?? 0);
-        $locationId   = (int)($input['location_id'] ?? 0);
-        $specificArea = trim($input['specific_area'] ?? '');
-        $priority     = trim($input['priority'] ?? 'medium');
+        $title            = trim($input['title'] ?? '');
+        $description      = trim($input['description'] ?? '');
+        $categoryId       = (int)($input['category_id'] ?? 0);
+        $locationId       = (int)($input['location_id'] ?? 0);
+        $buildingId       = (int)($input['building_id'] ?? 0);
+        $buildingName     = trim($input['building_name'] ?? '');
+        $floorName        = trim($input['floor_name'] ?? '');
+        $roomCoord        = trim($input['room_number'] ?? $input['specific_area'] ?? '');
+        $specificArea     = trim($input['specific_area'] ?? ($floorName ? "{$floorName} • {$roomCoord}" : $roomCoord));
+        $priority         = trim($input['priority'] ?? 'medium');
+        $primaryPhoto     = $input['primary_photo'] ?? null;
+        $additionalPhotos = $input['additional_photos'] ?? [];
 
-        if (empty($title) || empty($description) || $categoryId <= 0 || $locationId <= 0) {
-            \FixMyCampus\Core\Response::json([
-                'success' => false,
-                'message' => 'Title, description, category, and location are required.',
-            ], 400);
+        // Auto-resolve or create location if location_id is not specified directly
+        if ($locationId <= 0) {
+            // Find building by id or name
+            if ($buildingId <= 0 && !empty($buildingName)) {
+                $bldg = db_fetch_one("SELECT id FROM `buildings` WHERE `name` LIKE :bname LIMIT 1", [':bname' => "%{$buildingName}%"]);
+                if ($bldg) $buildingId = (int)$bldg['id'];
+            }
+            if ($buildingId <= 0) {
+                // Fallback to first building (e.g. PTC Building)
+                $firstBldg = db_fetch_one("SELECT id FROM `buildings` ORDER BY id ASC LIMIT 1");
+                $buildingId = $firstBldg ? (int)$firstBldg['id'] : 1;
+            }
+
+            // Find floor_id if floorName given
+            $floorId = null;
+            if (!empty($floorName)) {
+                $fl = db_fetch_one("SELECT id FROM `floors` WHERE `building_id` = :bid AND `floor_name` = :fname LIMIT 1", [
+                    ':bid'   => $buildingId,
+                    ':fname' => $floorName,
+                ]);
+                if ($fl) $floorId = (int)$fl['id'];
+            }
+
+            $locName = !empty($roomCoord) ? $roomCoord : ($floorName ? "{$floorName} Common Area" : "General Facility");
+            $loc = db_fetch_one("SELECT id FROM `locations` WHERE `building_id` = :bid AND `name` = :name LIMIT 1", [
+                ':bid'  => $buildingId,
+                ':name' => $locName,
+            ]);
+
+            if ($loc) {
+                $locationId = (int)$loc['id'];
+            } else {
+                $locationId = db_insert('locations', [
+                    'building_id' => $buildingId,
+                    'floor_id'    => $floorId,
+                    'room_number' => $roomCoord,
+                    'name'        => $locName,
+                    'type'        => 'other',
+                    'is_active'   => 1,
+                ]);
+            }
+        }
+
+        // Auto-resolve category if not valid
+        if ($categoryId <= 0) {
+            $cat = db_fetch_one("SELECT id FROM `categories` ORDER BY id ASC LIMIT 1");
+            $categoryId = $cat ? (int)$cat['id'] : 1;
+        }
+
+        if (empty($title)) {
+            $title = 'Campus Facility Defect';
+        }
+        if (empty($description)) {
+            $description = 'No additional description provided.';
         }
 
         // Generate Ticket Number: FMC-YYYYMM-XXXX
@@ -136,6 +205,36 @@ try {
             'priority'      => in_array($priority, ['low', 'medium', 'high', 'emergency'], true) ? $priority : 'medium',
             'status'        => 'submitted',
         ]);
+
+        // Save Primary Photo attachment
+        if (!empty($primaryPhoto)) {
+            db_insert('report_attachments', [
+                'report_id'        => $reportId,
+                'uploaded_by'      => $user['id'],
+                'file_path'        => $primaryPhoto,
+                'file_name'        => 'primary_photo.jpg',
+                'file_type'        => 'image/jpeg',
+                'file_size'        => strlen($primaryPhoto),
+                'attachment_stage' => 'initial_defect',
+            ]);
+        }
+
+        // Save Additional Photos attachments
+        if (!empty($additionalPhotos) && is_array($additionalPhotos)) {
+            foreach ($additionalPhotos as $idx => $photoUrl) {
+                if (!empty($photoUrl)) {
+                    db_insert('report_attachments', [
+                        'report_id'        => $reportId,
+                        'uploaded_by'      => $user['id'],
+                        'file_path'        => $photoUrl,
+                        'file_name'        => "additional_photo_" . ($idx + 1) . ".jpg",
+                        'file_type'        => 'image/jpeg',
+                        'file_size'        => strlen($photoUrl),
+                        'attachment_stage' => 'initial_defect',
+                    ]);
+                }
+            }
+        }
 
         // Log in status history
         db_insert('report_status_history', [

@@ -27,7 +27,7 @@ export default function Hero({ onNavigate, onScrollTo }) {
           <button
             type="button"
             className="btn-hero-primary"
-            onClick={() => onNavigate && onNavigate('login')}
+            onClick={() => onNavigate && onNavigate('report-issue')}
           >
             Report a defect
           </button>
@@ -85,7 +85,7 @@ export default function Hero({ onNavigate, onScrollTo }) {
               <button
                 type="button"
                 className="mockup-action-btn"
-                onClick={() => onNavigate && onNavigate('login')}
+                onClick={() => onNavigate && onNavigate('report-issue')}
               >
                 <Plus size={14} />
                 <span>New Report</span>

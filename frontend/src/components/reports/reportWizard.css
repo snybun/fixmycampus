@@ -1,0 +1,911 @@
+/* ==============================================================================
+   FixMyCampus - Report Issue Multi-Step Wizard Styles
+   Faithfully matching Figma 4-step workflow: Issue -> Location -> Details -> Review
+   ============================================================================== */
+
+.rw-page-wrapper {
+  min-height: 100vh;
+  background-color: #f8fafc;
+  display: flex;
+  flex-direction: column;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+}
+
+/* --------------------------------------------------------------------------
+   Top Navigation Bar (Consistent with Dashboard & Figma mockups)
+   -------------------------------------------------------------------------- */
+.rw-navbar {
+  background-color: #ffffff;
+  border-bottom: 1px solid #eef2f6;
+  position: sticky;
+  top: 0;
+  z-index: 40;
+}
+
+.rw-nav-inner {
+  max-width: 1240px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  height: 68px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rw-nav-left {
+  display: flex;
+  align-items: center;
+  gap: 2.5rem;
+}
+
+.rw-logo-btn {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: none;
+}
+
+.rw-logo-icon {
+  width: 34px;
+  height: 34px;
+  background-color: #111827;
+  color: #ffffff;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+}
+
+.rw-logo-text {
+  font-size: 1.125rem;
+  font-weight: 750;
+  color: #111827;
+  letter-spacing: -0.02em;
+}
+
+.rw-nav-links {
+  display: flex;
+  align-items: center;
+  gap: 1.75rem;
+}
+
+.rw-nav-link {
+  background: none;
+  border: none;
+  padding: 6px 2px;
+  font-size: 0.9375rem;
+  font-weight: 500;
+  color: #64748b;
+  cursor: pointer;
+  transition: color 0.15s ease;
+  position: relative;
+}
+
+.rw-nav-link:hover {
+  color: #0f172a;
+}
+
+.rw-nav-link.active {
+  color: #0f172a;
+  font-weight: 700;
+}
+
+.rw-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 1.25rem;
+}
+
+.rw-notif-btn {
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  border: 1px solid #e2e8f0;
+  background-color: #ffffff;
+  color: #64748b;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.15s ease;
+}
+
+.rw-notif-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.rw-notif-badge {
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  background-color: #16a34a;
+  color: #ffffff;
+  font-size: 0.6875rem;
+  font-weight: 700;
+  min-width: 17px;
+  height: 17px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border: 2px solid #ffffff;
+}
+
+.rw-user-pill {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  padding: 4px 6px;
+  border-radius: 20px;
+}
+
+.rw-avatar-circle {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background-color: #e2e8f0;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.rw-user-name {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.rw-logout-btn {
+  background: none;
+  border: none;
+  color: #94a3b8;
+  cursor: pointer;
+  padding: 6px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+}
+
+.rw-logout-btn:hover {
+  color: #ef4444;
+  background-color: #fee2e2;
+}
+
+/* --------------------------------------------------------------------------
+   Wizard Stepper Progress Bar (Centered above the Card)
+   -------------------------------------------------------------------------- */
+.rw-main-content {
+  max-width: 1040px;
+  width: 100%;
+  margin: 2.25rem auto 3.5rem;
+  padding: 0 1.5rem;
+  box-sizing: border-box;
+}
+
+.rw-stepper-container {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 2.25rem;
+  padding: 0 1rem;
+}
+
+.rw-step-node {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  user-select: none;
+}
+
+.rw-step-circle {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  transition: all 0.2s ease;
+}
+
+/* Node States */
+.rw-step-node.active .rw-step-circle {
+  background-color: #111827;
+  color: #ffffff;
+  border: 2px solid #111827;
+}
+
+.rw-step-node.completed .rw-step-circle {
+  background-color: #22c55e;
+  color: #ffffff;
+  border: 2px solid #22c55e;
+}
+
+.rw-step-node.upcoming .rw-step-circle {
+  background-color: #ffffff;
+  color: #9ca3af;
+  border: 1.5px solid #d1d5db;
+}
+
+.rw-step-label {
+  font-size: 0.875rem;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.rw-step-node.active .rw-step-label {
+  color: #111827;
+  font-weight: 700;
+}
+
+.rw-step-node.completed .rw-step-label {
+  color: #15803d;
+}
+
+.rw-step-node.upcoming .rw-step-label {
+  color: #94a3b8;
+  font-weight: 500;
+}
+
+.rw-step-connector {
+  width: 52px;
+  height: 2px;
+  background-color: #e2e8f0;
+  margin: 0 1rem;
+  transition: background-color 0.2s ease;
+}
+
+.rw-step-connector.completed {
+  background-color: #22c55e;
+}
+
+/* --------------------------------------------------------------------------
+   Main Wizard Card Frame
+   -------------------------------------------------------------------------- */
+.rw-card {
+  background-color: #ffffff;
+  border-radius: 20px;
+  border: 1px solid #eef2f6;
+  box-shadow: 0 4px 24px rgba(15, 23, 42, 0.04);
+  padding: 2.5rem;
+  transition: all 0.2s ease;
+}
+
+.rw-card-header {
+  margin-bottom: 2rem;
+}
+
+.rw-card-title {
+  font-size: 1.5rem;
+  font-weight: 750;
+  color: #0f172a;
+  letter-spacing: -0.02em;
+  margin: 0 0 0.4rem 0;
+}
+
+.rw-card-subtitle {
+  font-size: 0.8875rem;
+  color: #64748b;
+  margin: 0;
+}
+
+/* 2-Column Grid Layout */
+.rw-grid-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 2.25rem;
+  margin-bottom: 2.5rem;
+  align-items: start;
+}
+
+/* --------------------------------------------------------------------------
+   STEP 1: Category & Photo Upload
+   -------------------------------------------------------------------------- */
+.rw-upload-dropzone {
+  border: 2px dashed #cbd5e1;
+  background-color: #f8fafc;
+  border-radius: 16px;
+  min-height: 310px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.2s ease;
+  padding: 1.5rem;
+  text-align: center;
+}
+
+.rw-upload-dropzone:hover,
+.rw-upload-dropzone.drag-active {
+  border-color: #0f172a;
+  background-color: #f1f5f9;
+}
+
+.rw-upload-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.rw-upload-icon-circle {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #475569;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.rw-upload-prompt-title {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0;
+}
+
+.rw-upload-prompt-sub {
+  font-size: 0.8125rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.rw-preview-img-container {
+  width: 100%;
+  height: 100%;
+  position: absolute;
+  inset: 0;
+}
+
+.rw-preview-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rw-preview-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.45);
+  opacity: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.75rem;
+  transition: opacity 0.2s ease;
+}
+
+.rw-upload-dropzone:hover .rw-preview-overlay {
+  opacity: 1;
+}
+
+.rw-overlay-btn {
+  padding: 8px 14px;
+  background-color: #ffffff;
+  color: #0f172a;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.rw-overlay-btn.danger {
+  background-color: #ef4444;
+  color: #ffffff;
+}
+
+/* Category Grid (3x3 matching Figma) */
+.rw-section-label {
+  font-size: 0.9375rem;
+  font-weight: 650;
+  color: #1e293b;
+  margin: 0 0 0.85rem 0;
+  display: block;
+}
+
+.rw-categories-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 0.75rem;
+}
+
+.rw-category-card {
+  background-color: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 0.85rem 0.75rem;
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  cursor: pointer;
+  transition: all 0.18s ease;
+  color: #1e293b;
+  text-align: left;
+}
+
+.rw-category-card:hover:not(.selected) {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+  transform: translateY(-1px);
+}
+
+.rw-category-card.selected {
+  background-color: #111827;
+  border-color: #111827;
+  color: #ffffff;
+  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.15);
+}
+
+.rw-cat-icon {
+  width: 20px;
+  height: 20px;
+  flex-shrink: 0;
+  color: currentColor;
+}
+
+.rw-cat-name {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.25;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   STEP 2: Set Defect Location
+   -------------------------------------------------------------------------- */
+.rw-form-group {
+  margin-bottom: 1.35rem;
+}
+
+.rw-form-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 650;
+  color: #1e293b;
+  margin-bottom: 0.45rem;
+}
+
+.rw-select,
+.rw-input,
+.rw-textarea {
+  width: 100%;
+  padding: 0.75rem 0.95rem;
+  background-color: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  color: #0f172a;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  font-family: inherit;
+}
+
+.rw-select:focus,
+.rw-input:focus,
+.rw-textarea:focus {
+  border-color: #0f172a;
+  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+}
+
+/* Campus Map Placement Preview Visualizer */
+.rw-map-card {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  padding: 1.5rem;
+  min-height: 220px;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.rw-map-blueprint {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-top: 0.5rem;
+}
+
+.rw-map-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+}
+
+.rw-map-road {
+  height: 2px;
+  background-color: #cbd5e1;
+  width: 100%;
+  border-radius: 2px;
+}
+
+.rw-map-block {
+  border-radius: 8px;
+  padding: 0.85rem 1.25rem;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-align: center;
+  transition: all 0.2s ease;
+  cursor: pointer;
+  user-select: none;
+}
+
+.rw-map-block.passive {
+  background-color: #e2e8f0;
+  color: #64748b;
+  min-width: 110px;
+  min-height: 48px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rw-map-block.passive:hover {
+  background-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.rw-map-block.highlighted {
+  background-color: #ffffff;
+  border: 2px solid #111827;
+  color: #111827;
+  font-weight: 750;
+  min-width: 150px;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+/* --------------------------------------------------------------------------
+   STEP 3: Describe the Defect
+   -------------------------------------------------------------------------- */
+.rw-priority-row {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 0.65rem;
+  margin-top: 0.25rem;
+}
+
+.rw-priority-btn {
+  padding: 0.65rem 0.5rem;
+  border-radius: 10px;
+  border: 1.5px solid #e2e8f0;
+  background-color: #ffffff;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #475569;
+  cursor: pointer;
+  text-align: center;
+  transition: all 0.15s ease;
+}
+
+.rw-priority-btn:hover:not(.active) {
+  border-color: #cbd5e1;
+  background-color: #f8fafc;
+}
+
+.rw-priority-btn.active.low {
+  border-color: #10b981;
+  background-color: #ecfdf5;
+  color: #047857;
+}
+
+.rw-priority-btn.active.medium {
+  border-color: #3b82f6;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+}
+
+.rw-priority-btn.active.high {
+  border-color: #f59e0b;
+  background-color: #fffbeb;
+  color: #d97706;
+}
+
+.rw-priority-btn.active.urgent {
+  border-color: #ef4444;
+  background-color: #fef2f2;
+  color: #dc2626;
+}
+
+/* Multi-photos thumbnail row */
+.rw-photos-container {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.85rem;
+  margin-top: 0.35rem;
+}
+
+.rw-photo-thumb-box {
+  width: 90px;
+  height: 90px;
+  border-radius: 10px;
+  position: relative;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+}
+
+.rw-photo-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rw-photo-remove-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.7);
+  color: #ffffff;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rw-add-photo-slot {
+  width: 90px;
+  height: 90px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 10px;
+  background-color: #f8fafc;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #64748b;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rw-add-photo-slot:hover {
+  border-color: #0f172a;
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+/* --------------------------------------------------------------------------
+   STEP 4: Review Your Report Details
+   -------------------------------------------------------------------------- */
+.rw-review-left {
+  display: flex;
+  flex-direction: column;
+}
+
+.rw-review-primary-img-wrapper {
+  width: 100%;
+  height: 260px;
+  border-radius: 14px;
+  overflow: hidden;
+  border: 1px solid #e2e8f0;
+  background-color: #f1f5f9;
+}
+
+.rw-review-primary-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.rw-review-meta-box {
+  background-color: #f8fafc;
+  border-radius: 12px;
+  padding: 1rem 1.25rem;
+  margin-top: 1rem;
+  border: 1px solid #eef2f6;
+}
+
+.rw-meta-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0.5rem 0;
+}
+
+.rw-meta-row.border-bottom {
+  border-bottom: 1px solid #e2e8f0;
+}
+
+.rw-meta-label {
+  font-size: 0.8125rem;
+  font-weight: 500;
+  color: #64748b;
+}
+
+.rw-meta-val-badge {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
+}
+
+.rw-priority-pill {
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+}
+
+.rw-priority-pill.high {
+  background-color: #fffbeb;
+  border: 1px solid #f59e0b;
+  color: #d97706;
+}
+
+.rw-priority-pill.low {
+  background-color: #ecfdf5;
+  border: 1px solid #10b981;
+  color: #047857;
+}
+
+.rw-priority-pill.medium {
+  background-color: #eff6ff;
+  border: 1px solid #3b82f6;
+  color: #1d4ed8;
+}
+
+.rw-priority-pill.urgent {
+  background-color: #fef2f2;
+  border: 1px solid #ef4444;
+  color: #dc2626;
+}
+
+.rw-review-right {
+  display: flex;
+  flex-direction: column;
+}
+
+.rw-review-field-group {
+  margin-bottom: 1.35rem;
+}
+
+.rw-review-field-label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: #64748b;
+  margin-bottom: 0.35rem;
+  text-transform: capitalize;
+}
+
+.rw-review-title {
+  font-size: 1.45rem;
+  font-weight: 750;
+  color: #0f172a;
+  margin: 0;
+  line-height: 1.25;
+}
+
+.rw-review-loc-bold {
+  font-size: 1rem;
+  font-weight: 700;
+  color: #1e293b;
+  margin: 0 0 2px 0;
+}
+
+.rw-review-loc-coord {
+  font-size: 0.875rem;
+  color: #64748b;
+  margin: 0;
+}
+
+.rw-review-desc-box {
+  background-color: #f8fafc;
+  border: 1px solid #eef2f6;
+  border-radius: 10px;
+  padding: 1.1rem;
+  font-size: 0.8875rem;
+  color: #334155;
+  line-height: 1.55;
+  white-space: pre-wrap;
+}
+
+/* --------------------------------------------------------------------------
+   Wizard Card Footer Navigation
+   -------------------------------------------------------------------------- */
+.rw-card-footer {
+  border-top: 1px solid #f1f5f9;
+  padding-top: 1.75rem;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.rw-btn-back {
+  padding: 10px 22px;
+  background-color: #ffffff;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rw-btn-back:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+}
+
+.rw-btn-continue,
+.rw-btn-submit {
+  padding: 11px 32px;
+  background-color: #111827;
+  color: #ffffff;
+  border: none;
+  border-radius: 10px;
+  font-size: 0.9375rem;
+  font-weight: 650;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.1);
+}
+
+.rw-btn-continue:hover,
+.rw-btn-submit:hover:not(:disabled) {
+  background-color: #1f2937;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.18);
+}
+
+.rw-btn-submit:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* --------------------------------------------------------------------------
+   Responsive Design
+   -------------------------------------------------------------------------- */
+@media (max-width: 860px) {
+  .rw-grid-2col {
+    grid-template-columns: 1fr;
+    gap: 1.75rem;
+  }
+
+  .rw-categories-grid {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  .rw-stepper-container {
+    overflow-x: auto;
+    justify-content: flex-start;
+  }
+}
