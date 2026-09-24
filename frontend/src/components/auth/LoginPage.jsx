@@ -363,6 +363,65 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               <span>or sign in with password</span>
             </div>
 
+            {/* Quick Demo Credentials */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginInput('admin@fixmycampus.edu');
+                  setPassword('Admin@1234');
+                }}
+                style={{
+                  background: '#0f172a',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                ⚡ Auto-fill Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginInput('supervisor@fixmycampus.edu');
+                  setPassword('Supervisor@1234');
+                }}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Supervisor
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginInput('student.alex@fixmycampus.edu');
+                  setPassword('Student@1234');
+                }}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Student
+              </button>
+            </div>
+
             {/* Password Login Form */}
             <form className="auth-form" onSubmit={handleSubmit}>
               {/* Email Address or Identifier */}

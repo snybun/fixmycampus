@@ -16,13 +16,14 @@ import LoginPage from './components/auth/LoginPage';
 import RegisterPage from './components/auth/RegisterPage';
 import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
 import DashboardPage from './components/dashboard/DashboardPage';
+import AdminDashboard from './components/admin/AdminDashboard';
 import { fetchAuthMe, logoutUser } from './services/api';
 
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -38,8 +39,13 @@ export default function App() {
     fetchAuthMe().then((res) => {
       if (res && res.authenticated && res.user) {
         setCurrentUser(res.user);
-        if (window.location.hash === '#dashboard') {
-          setCurrentView('dashboard');
+        const hash = window.location.hash.replace('#', '');
+        if (hash === 'dashboard' || hash === 'admin') {
+          if (res.user.role_name === 'admin' || res.user.role_id === 1 || hash === 'admin') {
+            setCurrentView('admin');
+          } else {
+            setCurrentView('dashboard');
+          }
         }
       }
     });
@@ -48,7 +54,7 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['login', 'register', 'forgot-password', 'dashboard'].includes(hash)) {
+      if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -87,10 +93,12 @@ export default function App() {
   const handleNavigate = (view) => {
     if (view === currentView) return;
 
-    // Show loading screen when navigating to auth views, dashboard or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard'].includes(view)) {
+    // Show loading screen when navigating to auth views, dashboard, admin or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(view)) {
       setLoadingMessage(
-        view === 'register'
+        view === 'admin'
+          ? 'Accessing Super Administrator Portal...'
+          : view === 'register'
           ? 'Opening Student Registration...'
           : view === 'dashboard'
           ? 'Opening FixMyCampus Dashboard...'
@@ -106,7 +114,7 @@ export default function App() {
         setTimeout(() => {
           setIsLoading(false);
         }, 300);
-      }, 650);
+      }, 550);
     } else {
       setIsLoading(true);
       setLoadingMessage('Returning to Home...');
@@ -119,13 +127,17 @@ export default function App() {
         setTimeout(() => {
           setIsLoading(false);
         }, 250);
-      }, 500);
+      }, 400);
     }
   };
 
   const handleLoginSuccess = (user) => {
     setCurrentUser(user);
-    handleNavigate('dashboard');
+    if (user?.role_name === 'admin' || user?.role_id === 1) {
+      handleNavigate('admin');
+    } else {
+      handleNavigate('dashboard');
+    }
   };
 
   const handleLogout = async () => {
@@ -152,11 +164,32 @@ export default function App() {
     }
   };
 
+  const isAdminView =
+    currentView === 'admin' ||
+    (currentView === 'dashboard' && (currentUser?.role_name === 'admin' || currentUser?.role_id === 1));
+
   return (
     <>
       <LoadingScreen isVisible={isLoading} message={loadingMessage} />
 
-      {currentView === 'dashboard' && (
+      {/* Super Administrator Facilities Dashboard */}
+      {isAdminView && (
+        <AdminDashboard
+          currentUser={
+            currentUser || {
+              full_name: 'Admin User',
+              role_display: 'Super Administrator',
+              role_name: 'admin',
+              id: 1,
+            }
+          }
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Student / Faculty / Reporter Dashboard */}
+      {currentView === 'dashboard' && !isAdminView && (
         <DashboardPage
           currentUser={currentUser}
           onNavigate={handleNavigate}
