@@ -16,7 +16,7 @@ import LoginPage from './components/auth/LoginPage';
 import RegisterPage from './components/auth/RegisterPage';
 import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
 import DashboardPage from './components/dashboard/DashboardPage';
-import AdminPage from './components/admin/AdminPage';
+import AdminDashboard from './components/admin/AdminDashboard';
 import ReportIssueWizard from './components/reports/ReportIssueWizard';
 import { fetchAuthMe, logoutUser } from './services/api';
 
@@ -47,7 +47,11 @@ export default function App() {
         setCurrentUser(res.user);
         const hash = window.location.hash.replace('#', '');
         if (hash === 'dashboard' || hash === 'report-issue' || hash === 'admin') {
-          setCurrentView(hash);
+          if ((res.user.role_name === 'admin' || res.user.role_id === 1) && hash === 'dashboard') {
+            setCurrentView('admin');
+          } else {
+            setCurrentView(hash);
+          }
         }
       } else {
         setCurrentUser(null);
@@ -117,12 +121,12 @@ export default function App() {
     // Show loading screen when navigating to auth views, dashboard, admin, report-issue, or returning home
     if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(targetView)) {
       setLoadingMessage(
-        targetView === 'register'
+        targetView === 'admin'
+          ? 'Accessing Super Administrator Portal...'
+          : targetView === 'register'
           ? 'Opening Student Registration...'
           : targetView === 'dashboard'
           ? 'Opening FixMyCampus Dashboard...'
-          : targetView === 'admin'
-          ? 'Accessing FixMyCampus Admin Console...'
           : targetView === 'report-issue'
           ? 'Opening Report Issue Wizard...'
           : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin'].includes(view)
@@ -159,7 +163,11 @@ export default function App() {
   const handleLoginSuccess = (user) => {
     currentUserRef.current = user;
     setCurrentUser(user);
-    handleNavigate('dashboard', user);
+    if (user?.role_name === 'admin' || user?.role_id === 1) {
+      handleNavigate('admin', user);
+    } else {
+      handleNavigate('dashboard', user);
+    }
   };
 
   const handleLogout = async () => {
@@ -188,11 +196,32 @@ export default function App() {
     }
   };
 
+  const isAdminView =
+    currentView === 'admin' ||
+    (currentView === 'dashboard' && (currentUser?.role_name === 'admin' || currentUser?.role_id === 1));
+
   return (
     <>
       <LoadingScreen isVisible={isLoading} message={loadingMessage} />
 
-      {currentView === 'dashboard' && (
+      {/* Super Administrator Facilities Dashboard */}
+      {isAdminView && (
+        <AdminDashboard
+          currentUser={
+            currentUser || {
+              full_name: 'Campus Administrator',
+              role_display: 'Super Administrator',
+              role_name: 'admin',
+              id: 1,
+            }
+          }
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Student / Faculty / Reporter Dashboard */}
+      {currentView === 'dashboard' && !isAdminView && (
         <DashboardPage
           currentUser={currentUser}
           onNavigate={handleNavigate}
@@ -200,16 +229,9 @@ export default function App() {
         />
       )}
 
+      {/* Report Issue Wizard */}
       {currentView === 'report-issue' && (
         <ReportIssueWizard
-          currentUser={currentUser}
-          onNavigate={handleNavigate}
-          onLogout={handleLogout}
-        />
-      )}
-
-      {currentView === 'admin' && (
-        <AdminPage
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}

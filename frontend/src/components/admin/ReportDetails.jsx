@@ -1,0 +1,228 @@
+import React, { useState } from 'react';
+import { ArrowLeft, UploadCloud, CheckCircle2 } from 'lucide-react';
+
+export default function ReportDetails({
+  report,
+  staff = [],
+  onBack,
+  onAssignSubmit,
+  onStatusSubmit,
+}) {
+  const [selectedStaffId, setSelectedStaffId] = useState(
+    report?.worker_id ? String(report.worker_id) : (staff[0] ? String(staff[0].id) : '')
+  );
+  const [selectedStatus, setSelectedStatus] = useState(report?.status || 'in_progress');
+  const [remarks, setRemarks] = useState('');
+  const [isAssigning, setIsAssigning] = useState(false);
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [uploadProofDone, setUploadProofDone] = useState(false);
+
+  if (!report) {
+    return (
+      <div>
+        <button type="button" className="admin-back-btn" onClick={onBack}>
+          <ArrowLeft size={16} /> Back to Reports
+        </button>
+        <p style={{ marginTop: 24, color: '#64748b' }}>No report selected.</p>
+      </div>
+    );
+  }
+
+  const handleAssign = async (e) => {
+    e.preventDefault();
+    if (!selectedStaffId) return;
+    setIsAssigning(true);
+    await onAssignSubmit({
+      report_id: report.id,
+      assigned_to: Number(selectedStaffId),
+    });
+    setIsAssigning(false);
+  };
+
+  const handleUpdate = async (e) => {
+    e.preventDefault();
+    setIsUpdating(true);
+    await onStatusSubmit({
+      report_id: report.id,
+      status: selectedStatus,
+      remarks,
+    });
+    setIsUpdating(false);
+  };
+
+  const dateFormatted = report.reported_at
+    ? new Date(report.reported_at).toLocaleDateString('en-US', {
+        month: 'long',
+        day: 'numeric',
+        year: 'numeric',
+      })
+    : 'August 25, 2026';
+
+  const locationFormatted = `${report.building_name || 'Campus Building'}${
+    report.room_number ? ` • Room ${report.room_number}` : ''
+  }`;
+
+  const reporterInfo = `${report.reporter_name || 'Campus Reporter'}${
+    report.reporter_identifier ? ` (${report.reporter_identifier})` : ''
+  }`;
+
+  return (
+    <div>
+      {/* Back button */}
+      <button type="button" className="admin-back-btn" onClick={onBack}>
+        <ArrowLeft size={16} /> Back to Reports
+      </button>
+
+      {/* Title & Ticket Badge */}
+      <div className="admin-details-header">
+        <h1 className="admin-header-title" style={{ marginBottom: 0 }}>
+          Report Details
+        </h1>
+        <span className="admin-ticket-badge-lg">
+          {report.ticket_number || `FM-${report.id}`}
+        </span>
+      </div>
+
+      {/* 2-Column Grid */}
+      <div className="admin-details-grid">
+        {/* Left Column: Photo & Specifications */}
+        <div>
+          {/* Photo Card */}
+          <div className="admin-photo-card">
+            <h3 className="admin-action-card-title">Reported Photo</h3>
+            <div className="admin-photo-container">
+              <img
+                src={report.image_url || '/images/hero_ac_defect.jpg'}
+                alt={report.title}
+                onError={(e) => {
+                  e.target.src = '/images/hero_ac_defect.jpg';
+                }}
+              />
+            </div>
+          </div>
+
+          {/* Incident Specifications */}
+          <div className="admin-specs-card">
+            <h3 className="admin-action-card-title">Incident Specifications</h3>
+
+            <div className="admin-specs-grid">
+              <span className="admin-spec-label">Issue Type</span>
+              <span className="admin-spec-value">{report.title}</span>
+
+              <span className="admin-spec-label">Category</span>
+              <span className="admin-spec-value">
+                {report.category_name || 'Facility Defect'}
+              </span>
+
+              <span className="admin-spec-label">Location</span>
+              <span className="admin-spec-value">{locationFormatted}</span>
+
+              <span className="admin-spec-label">Reporter</span>
+              <span className="admin-spec-value">{reporterInfo}</span>
+
+              <span className="admin-spec-label">Submitted Date</span>
+              <span className="admin-spec-value">{dateFormatted}</span>
+
+              <span className="admin-spec-label">Priority Level</span>
+              <div>
+                <span className={`admin-badge ${report.priority}`}>
+                  {report.priority ? `${report.priority.toUpperCase()} PRIORITY` : 'MEDIUM PRIORITY'}
+                </span>
+              </div>
+            </div>
+
+            <div className="admin-specs-divider" />
+
+            <h4 className="admin-desc-title">Detailed Description</h4>
+            <p className="admin-desc-text">
+              {report.description ||
+                "The classroom's split-type AC system is completely unresponsive when the remote control is used. Additionally, there are signs of water dripping along the wall below the unit, which might indicate a clogged drain pipe or secondary electrical short. The room is hot and unusable for large lectures."}
+            </p>
+          </div>
+        </div>
+
+        {/* Right Column: Actions */}
+        <div>
+          {/* Card 1: Assign Maintenance Worker */}
+          <div className="admin-action-card">
+            <h3 className="admin-action-card-title">Assign Maintenance Worker</h3>
+
+            <form onSubmit={handleAssign}>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Select Staff Member</label>
+                <select
+                  className="admin-select-input"
+                  value={selectedStaffId}
+                  onChange={(e) => setSelectedStaffId(e.target.value)}
+                >
+                  <option value="">-- Choose maintenance technician --</option>
+                  {staff.map((member) => (
+                    <option key={member.id} value={member.id}>
+                      {member.full_name} ({member.department})
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <button
+                type="submit"
+                className="admin-btn-black"
+                style={{ width: '100%', justifyContent: 'center' }}
+                disabled={isAssigning || !selectedStaffId}
+              >
+                {isAssigning ? 'Assigning...' : 'Assign Worker'}
+              </button>
+            </form>
+          </div>
+
+          {/* Card 2: Update Incident Status */}
+          <div className="admin-action-card">
+            <h3 className="admin-action-card-title">Update Incident Status</h3>
+
+            <form onSubmit={handleUpdate}>
+              <div className="admin-form-group">
+                <label className="admin-form-label">Select New Status</label>
+                <select
+                  className="admin-select-input"
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                >
+                  <option value="submitted">Submitted</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="resolved">Fixed / Resolved</option>
+                  <option value="closed">Closed</option>
+                </select>
+              </div>
+
+              {/* Completion Evidence Dropzone */}
+              <div
+                className="admin-upload-dropzone"
+                onClick={() => setUploadProofDone(!uploadProofDone)}
+                title="Click to simulate completion proof photo upload"
+              >
+                <UploadCloud size={28} />
+                <span className="admin-upload-label">
+                  {uploadProofDone ? 'Photo Attached: proof_repair.jpg' : 'Upload Completion Photo'}
+                </span>
+                <span className="admin-upload-subtext">
+                  Completion Evidence Required
+                </span>
+              </div>
+
+              <button
+                type="submit"
+                className="admin-btn-black"
+                style={{ width: '100%', justifyContent: 'center' }}
+                disabled={isUpdating}
+              >
+                {isUpdating ? 'Updating...' : 'Update Report'}
+              </button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}

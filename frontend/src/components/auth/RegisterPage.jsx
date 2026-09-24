@@ -132,8 +132,29 @@ export default function RegisterPage({ onNavigate }) {
     setError('');
     setSuccessMsg('');
 
-    if (clientId && window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
+    if (!window.google?.accounts?.id) {
+      setError('Google Sign-In is unavailable or blocked by browser extensions (e.g. ad blocker, Brave Shields). Please allow accounts.google.com to continue.');
+      return;
+    }
+
+    if (clientId) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse,
+          hosted_domain: allowedDomain,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed()) {
+            const reason = notification.getNotDisplayedReason();
+            setError(`Google prompt not displayed (${reason || 'restricted by browser'}). Please check third-party cookies or browser popup permissions.`);
+          }
+        });
+      } catch (err) {
+        setError('Error initiating Google Sign-In.');
+      }
     } else {
       setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
     }

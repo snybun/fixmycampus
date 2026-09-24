@@ -28,6 +28,45 @@ export async function fetchReports(filters = {}) {
   }
 }
 
+export async function fetchReportDetail(id) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=detail&id=${id}`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching report detail:', err);
+    return { success: false, error: err.message };
+  }
+}
+
+export async function assignReport({ report_id, assigned_to, assigned_by = 1, notes = '' }) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=assign`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id, assigned_to, assigned_by, notes }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error assigning report:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function updateReportStatus({ report_id, status, remarks = '', changed_by = 1 }) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=update_status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id, status, remarks, changed_by }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating report status:', err);
+    return { success: false, message: err.message };
+  }
+}
+
 export async function fetchCategories() {
   try {
     const res = await fetch(`${API_BASE}/categories.php`);
@@ -47,6 +86,57 @@ export async function fetchBuildings() {
   } catch (err) {
     console.error('Error fetching buildings:', err);
     return { success: false, buildings: [], locations: [] };
+  }
+}
+
+export async function addBuilding(data) {
+  try {
+    const res = await fetch(`${API_BASE}/buildings.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error adding building:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function fetchStaff() {
+  try {
+    const res = await fetch(`${API_BASE}/staff.php`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching staff:', err);
+    return { success: false, data: [] };
+  }
+}
+
+export async function addStaffMember(data) {
+  try {
+    const res = await fetch(`${API_BASE}/staff.php`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error adding staff member:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function fetchUsers(filters = {}) {
+  try {
+    const query = new URLSearchParams(filters).toString();
+    const res = await fetch(`${API_BASE}/users.php?${query}`);
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching users:', err);
+    return { success: false, data: [] };
   }
 }
 

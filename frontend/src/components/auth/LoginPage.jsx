@@ -129,29 +129,40 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     setError('');
     setSuccessMsg('');
 
-    if (clientId && window.google?.accounts?.id) {
-      try {
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed()) {
-            const reason = notification.getNotDisplayedReason() || 'not_displayed';
-            console.warn('Google One Tap not displayed:', reason);
-            if (reason === 'opt_out_or_no_session') {
-              setError(`Please ensure you are signed into your @${allowedDomain} account in this browser, or click below.`);
-            } else if (reason === 'suppressed_by_user') {
-              setError('Google prompt was dismissed recently. Please wait a moment or clear site data.');
-            } else {
-              setError(`Google Sign-In prompt status: ${reason}. Ensure http://localhost:8080 and http://localhost:5175 are added to Authorized JavaScript Origins in Google Cloud Console.`);
-            }
-          }
-        });
-      } catch (e) {
-        console.error('Google prompt trigger error:', e);
-        setError('Error initiating Google sign-in.');
-      }
-    } else if (!clientId) {
+    if (!window.google?.accounts?.id) {
+      setError('Google Sign-In is unavailable or blocked by browser extensions (e.g. ad blocker, Brave Shields). Please allow accounts.google.com to continue.');
+      return;
+    }
+
+    if (!clientId) {
       setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
-    } else {
-      setError('Google Identity Services is still loading. Please wait a moment and try again.');
+      return;
+    }
+
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredentialResponse,
+        hosted_domain: allowedDomain,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed()) {
+          const reason = notification.getNotDisplayedReason() || 'not_displayed';
+          console.warn('Google One Tap not displayed:', reason);
+          if (reason === 'opt_out_or_no_session') {
+            setError(`Please ensure you are signed into your @${allowedDomain} account in this browser, or click below.`);
+          } else if (reason === 'suppressed_by_user') {
+            setError('Google prompt was dismissed recently. Please wait a moment or clear site data.');
+          } else {
+            setError(`Google Sign-In prompt status: ${reason}. Ensure http://localhost:8080 is added to Authorized JavaScript Origins in Google Cloud Console.`);
+          }
+        }
+      });
+    } catch (e) {
+      console.error('Google prompt trigger error:', e);
+      setError('Error initiating Google sign-in.');
     }
   };
 
@@ -267,22 +278,22 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                   disabled={googleLoading}
                   style={{ width: '100%' }}
                 >
-                  <svg className="auth-google-icon" viewBox="0 0 24 24" width="20" height="20">
+                  <svg className="google-icon-svg" viewBox="0 0 24 24">
                     <path
                       fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
                     />
                     <path
                       fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
                     />
                     <path
                       fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
                     />
                     <path
                       fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                     />
                   </svg>
                   <span>
@@ -349,6 +360,65 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             {/* Divider */}
             <div className="auth-divider">
               <span>or sign in with password</span>
+            </div>
+
+            {/* Quick Demo Credentials */}
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginInput('admin@fixmycampus.edu');
+                  setPassword('Admin@1234');
+                }}
+                style={{
+                  background: '#0f172a',
+                  color: '#ffffff',
+                  border: 'none',
+                  borderRadius: '6px',
+                  padding: '6px 12px',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                  fontWeight: 600,
+                }}
+              >
+                ⚡ Auto-fill Super Admin
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginInput('supervisor@fixmycampus.edu');
+                  setPassword('Supervisor@1234');
+                }}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Supervisor
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  setLoginInput('student.alex@fixmycampus.edu');
+                  setPassword('Student@1234');
+                }}
+                style={{
+                  background: '#f1f5f9',
+                  color: '#334155',
+                  border: '1px solid #cbd5e1',
+                  borderRadius: '6px',
+                  padding: '6px 10px',
+                  fontSize: '0.78rem',
+                  cursor: 'pointer',
+                }}
+              >
+                Student
+              </button>
             </div>
 
             {/* Password Login Form */}

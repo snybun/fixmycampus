@@ -61,6 +61,14 @@ export default function Navbar({ onNavigate, onScrollTo, currentUser }) {
           <a href="#impact" className="landing-nav-link" onClick={(e) => handleNavClick(e, 'impact')}>
             Impact
           </a>
+          <button
+            type="button"
+            className="landing-nav-link"
+            onClick={() => onNavigate('admin')}
+            style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
+          >
+            Super Admin
+          </button>
         </nav>
 
         {/* Desktop Actions & Mobile Menu Toggle */}
