@@ -22,6 +22,7 @@ import {
   CheckCircle2,
 } from 'lucide-react';
 import { fetchBuildings, fetchCategories, createReport } from '../../services/api';
+import ConfirmationModal from '../common/ConfirmationModal';
 import './reportWizard.css';
 
 // 9 Categories matching Screenshot 1
@@ -62,6 +63,48 @@ export default function ReportIssueWizard({
   const [unreadCount, setUnreadCount] = useState(3);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+
+  // Start Over / Exit Confirmation Modal State
+  const [showExitModal, setShowExitModal] = useState(false);
+  const [pendingExitAction, setPendingExitAction] = useState(null);
+  const isExitingRef = useRef(false);
+
+  const handleRequestExit = (action) => {
+    setPendingExitAction(() => action);
+    setShowExitModal(true);
+  };
+
+  const handleConfirmExit = () => {
+    isExitingRef.current = true;
+    setShowExitModal(false);
+    const actionToRun = pendingExitAction;
+    setPendingExitAction(null);
+    if (typeof actionToRun === 'function') {
+      actionToRun();
+    } else {
+      onNavigate('dashboard');
+    }
+  };
+
+  const handleCancelExit = () => {
+    setShowExitModal(false);
+    setPendingExitAction(null);
+  };
+
+  // Intercept browser back/forward buttons while in report-issue wizard
+  useEffect(() => {
+    const handlePopState = () => {
+      if (isExitingRef.current) return;
+      window.history.pushState(null, '', '#report-issue');
+      handleRequestExit(() => onNavigate('dashboard'));
+    };
+
+    window.history.pushState(null, '', '#report-issue');
+    window.addEventListener('popstate', handlePopState);
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [onNavigate]);
 
   // Form State
   const [selectedCategory, setSelectedCategory] = useState(CATEGORY_DEFINITIONS[0]); // Default to Air Conditioning
@@ -219,6 +262,7 @@ export default function ReportIssueWizard({
             reported_at: new Date().toISOString(),
           });
         }
+        isExitingRef.current = true;
         onNavigate('dashboard');
       } else {
         setErrorMsg(res?.message || 'Failed to submit report to server.');
@@ -245,8 +289,9 @@ export default function ReportIssueWizard({
             <button
               type="button"
               className="rw-logo-btn"
-              onClick={() => onNavigate('dashboard')}
+              onClick={() => handleRequestExit(() => onNavigate('dashboard'))}
               title="FixMyCampus Home"
+              id="rw-logo-exit-btn"
             >
               <div className="rw-logo-icon">
                 <Wrench size={18} strokeWidth={2.4} />
@@ -258,21 +303,30 @@ export default function ReportIssueWizard({
               <button
                 type="button"
                 className="rw-nav-link"
-                onClick={() => onNavigate('dashboard')}
+                onClick={() => handleRequestExit(() => onNavigate('dashboard'))}
+                id="rw-nav-home-btn"
               >
                 Home
               </button>
               <button
                 type="button"
                 className="rw-nav-link"
-                onClick={() => onNavigate('dashboard')}
+                onClick={() => handleRequestExit(() => onNavigate('dashboard'))}
+                id="rw-nav-my-reports-btn"
               >
                 My Reports
               </button>
               <button
                 type="button"
                 className="rw-nav-link active"
-                onClick={() => setCurrentStep(1)}
+                onClick={() => {
+                  if (currentStep > 1) {
+                    handleRequestExit(() => setCurrentStep(1));
+                  } else {
+                    setCurrentStep(1);
+                  }
+                }}
+                id="rw-nav-report-issue-btn"
               >
                 Report Issue
               </button>
@@ -300,8 +354,9 @@ export default function ReportIssueWizard({
             <button
               type="button"
               className="rw-logout-btn"
-              onClick={onLogout}
+              onClick={() => handleRequestExit(() => onLogout && onLogout())}
               title="Log Out"
+              id="rw-logout-btn"
             >
               <LogOut size={18} />
             </button>
@@ -469,7 +524,15 @@ export default function ReportIssueWizard({
               </div>
             </div>
 
-            <div className="rw-card-footer" style={{ justifyContent: 'flex-end' }}>
+            <div className="rw-card-footer" style={{ justifyContent: 'space-between' }}>
+              <button
+                type="button"
+                className="rw-btn-back"
+                onClick={() => handleRequestExit(() => onNavigate('dashboard'))}
+                id="rw-step1-cancel-btn"
+              >
+                Cancel
+              </button>
               <button
                 type="button"
                 className="rw-btn-continue"
@@ -845,6 +908,14 @@ export default function ReportIssueWizard({
           </div>
         )}
       </main>
+
+      {/* Start Over / Exit Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showExitModal}
+        presetId="start_over"
+        onClose={handleCancelExit}
+        onConfirm={handleConfirmExit}
+      />
     </div>
   );
 }

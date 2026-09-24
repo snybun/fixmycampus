@@ -111,7 +111,7 @@ export function ModalCard({
   return (
     <div className="modal-dialog">
       <div className={`modal-icon-badge ${resolvedBadgeClass}`}>
-        <ResolvedIcon size={24} strokeWidth={2} />
+        <ResolvedIcon size={26} strokeWidth={2.2} />
       </div>
 
       <h3 className="modal-title">{resolvedTitle}</h3>
