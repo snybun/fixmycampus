@@ -107,18 +107,7 @@ try {
     // POST action: create - Submit a new defect report (Authenticated users)
     // --------------------------------------------------------------------------
     if ($action === 'create' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        if (auth_check()) {
-            $user = auth_user();
-        } else {
-            // Guest or demo reporter fallback
-            $user = db_fetch_one("SELECT * FROM `users` WHERE `role_id` = 5 ORDER BY id ASC LIMIT 1");
-            if (!$user) {
-                $user = db_fetch_one("SELECT * FROM `users` ORDER BY id ASC LIMIT 1");
-            }
-            if (!$user) {
-                $user = ['id' => 1, 'full_name' => 'Campus Reporter', 'email' => 'student@phinmaed.com'];
-            }
-        }
+        $user = auth_require();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
 
         $title            = trim($input['title'] ?? '');

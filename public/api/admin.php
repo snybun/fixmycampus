@@ -128,6 +128,111 @@ try {
     }
 
     // --------------------------------------------------------------------------
+    // Action: create_user - Admin provisions employee accounts with phinmaed.com email
+    // --------------------------------------------------------------------------
+    if ($action === 'create_user' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+
+        $fullName     = trim($input['full_name'] ?? '');
+        $email        = strtolower(trim($input['email'] ?? ''));
+        $roleId       = (int)($input['role_id'] ?? 3); // Default to technician (employee)
+        $department   = trim($input['department'] ?? 'Facilities Management');
+        $phoneNumber  = trim($input['phone_number'] ?? '');
+        $password     = trim($input['password'] ?? 'Employee@1234');
+        $identifier   = trim($input['user_identifier'] ?? '');
+
+        if (empty($fullName)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Employee full name is required.',
+            ], 400);
+        }
+
+        if (empty($email)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Employee email address is required.',
+            ], 400);
+        }
+
+        // Auto-append @phinmaed.com domain if only username prefix provided
+        if (!str_contains($email, '@')) {
+            $email .= '@phinmaed.com';
+        }
+
+        // Ensure institutional phinmaed domain
+        $allowedDomain = strtolower(\FixMyCampus\Core\Env::get('GOOGLE_ALLOWED_DOMAIN', 'phinmaed.com'));
+        if (!str_ends_with($email, '@' . $allowedDomain)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => "Employee email must be an institutional address ending in @{$allowedDomain}.",
+            ], 400);
+        }
+
+        // Verify role exists
+        $role = db_fetch_one("SELECT id, name, display_name FROM `roles` WHERE id = :id LIMIT 1", [':id' => $roleId]);
+        if (!$role) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Invalid role specified.',
+            ], 400);
+        }
+
+        // Check if email already registered
+        $existingEmail = db_fetch_one("SELECT id FROM `users` WHERE email = :email LIMIT 1", [':email' => $email]);
+        if ($existingEmail) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => "A user with email '{$email}' already exists.",
+            ], 409);
+        }
+
+        // Generate user identifier if not provided
+        if (empty($identifier)) {
+            $prefix = match ($role['name']) {
+                'admin'      => 'ADM-',
+                'supervisor' => 'MGT-',
+                'technician' => 'TEC-',
+                'faculty'    => 'FAC-',
+                default      => 'EMP-',
+            };
+            $identifier = $prefix . random_int(1000, 9999);
+            while (db_fetch_one("SELECT id FROM `users` WHERE user_identifier = :id LIMIT 1", [':id' => $identifier])) {
+                $identifier = $prefix . random_int(1000, 9999);
+            }
+        }
+
+        $passwordHash = password_hash($password, PASSWORD_BCRYPT);
+
+        $newUserId = db_insert('users', [
+            'role_id'         => $roleId,
+            'user_identifier' => $identifier,
+            'full_name'       => $fullName,
+            'email'           => $email,
+            'password_hash'   => $passwordHash,
+            'phone_number'    => $phoneNumber,
+            'department'      => $department,
+            'status'          => 'active',
+        ]);
+
+        $createdUser = db_fetch_one("
+            SELECT u.id, u.role_id, r.name as role_name, r.display_name as role_display,
+                   u.user_identifier, u.full_name, u.email, u.phone_number,
+                   u.department, u.status, u.created_at
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE u.id = :id
+            LIMIT 1
+        ", [':id' => $newUserId]);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => "Employee account '{$email}' created successfully.",
+            'user'    => $createdUser,
+        ], 201);
+    }
+
+    // --------------------------------------------------------------------------
     // Action: update_role - Promote or change user role
     // --------------------------------------------------------------------------
     if ($action === 'update_role' && $_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -112,10 +112,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
         setSuccessMsg(`Welcome, ${res.user?.full_name}! Verified institutional account (@${allowedDomain}).`);
         if (onLoginSuccess) {
           onLoginSuccess(res.user);
-        }
-        setTimeout(() => {
+        } else {
           onNavigate('dashboard');
-        }, 800);
+        }
       } else {
         setError(res.message || 'Google authentication failed.');
       }
@@ -173,10 +172,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
         setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Authentication successful.`);
         if (onLoginSuccess) {
           onLoginSuccess(res.user);
-        }
-        setTimeout(() => {
+        } else {
           onNavigate('dashboard');
-        }, 800);
+        }
       } else {
         setError(res.message || 'Invalid email or password.');
       }

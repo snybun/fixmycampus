@@ -20,7 +20,7 @@ ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`);
 -- -----------------------------------------------------------------------------
 -- Seed: users
 -- Passwords:
--- Admin:        admin@fixmycampus.edu       / Admin@1234
+-- Admin:        admin@phinmaed.com          / Admin@1234
 -- Supervisor:   supervisor@fixmycampus.edu  / Supervisor@1234
 -- Technician 1: worker.john@fixmycampus.edu / Worker@1234
 -- Technician 2: worker.carlos@fixmycampus.edu/ Worker@1234
@@ -29,7 +29,7 @@ ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`);
 -- Student 2:    student.emily@fixmycampus.edu/ Student@1234
 -- -----------------------------------------------------------------------------
 INSERT INTO `users` (`id`, `role_id`, `user_identifier`, `full_name`, `email`, `password_hash`, `phone_number`, `department`, `status`) VALUES
-(1, 1, 'ADM-001', 'System Administrator', 'admin@fixmycampus.edu', '$2b$10$Yp4C56roPWXZR1i7HrOPiOynb.juQw7/djpV6XrlOHzUGZuW0xWuG', '+1-555-0100', 'IT & Physical Plant', 'active'),
+(1, 1, 'ADM-001', 'Campus Administrator', 'admin@phinmaed.com', '$2y$10$4OVucJtSLw5mXeoJnC2szuFg1NPpoR91hCr.WFLWeYSEeTSG4oL/q', '+1-555-0100', 'IT & Physical Plant', 'active'),
 (2, 2, 'MGT-001', 'Robert Vance', 'supervisor@fixmycampus.edu', '$2b$10$vBvtFsuY97qVoir6weJc6eZOxNz67Lk/7J1KtxRZavSk0DwjiqL/S', '+1-555-0101', 'Facilities Management', 'active'),
 (3, 3, 'TEC-001', 'John Miller', 'worker.john@fixmycampus.edu', '$2b$10$5zxljZD0GBS/wFVSyovKeOVYqx3UtC4MuUDFCDknDiKVPHPRMH0py', '+1-555-0102', 'HVAC & Electrical Maintenance', 'active'),
 (4, 3, 'TEC-002', 'Carlos Ramos', 'worker.carlos@fixmycampus.edu', '$2b$10$5zxljZD0GBS/wFVSyovKeOVYqx3UtC4MuUDFCDknDiKVPHPRMH0py', '+1-555-0103', 'Carpentry & General Repairs', 'active'),

@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function CtaBanner({ onNavigate }) {
+export default function CtaBanner({ onNavigate, currentUser }) {
   return (
     <section className="landing-cta-banner">
       <div className="cta-container reveal-on-scroll">
@@ -16,7 +16,7 @@ export default function CtaBanner({ onNavigate }) {
           <button
             type="button"
             className="btn-cta-white"
-            onClick={() => onNavigate && onNavigate('report-issue')}
+            onClick={() => onNavigate && onNavigate(currentUser ? 'report-issue' : 'login')}
           >
             Report a defect
           </button>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/landing/Navbar';
 import Hero from './components/landing/Hero';
 import StatsStrip from './components/landing/StatsStrip';
@@ -32,16 +32,29 @@ export default function App() {
 
   const [currentView, setCurrentView] = useState(getInitialView);
   const [currentUser, setCurrentUser] = useState(null);
+  const currentUserRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Accessing FixMyCampus Portal...');
+
+  useEffect(() => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
 
   // Check existing session on mount
   useEffect(() => {
     fetchAuthMe().then((res) => {
       if (res && res.authenticated && res.user) {
         setCurrentUser(res.user);
-        if (window.location.hash === '#dashboard') {
-          setCurrentView('dashboard');
+        const hash = window.location.hash.replace('#', '');
+        if (hash === 'dashboard' || hash === 'report-issue' || hash === 'admin') {
+          setCurrentView(hash);
+        }
+      } else {
+        setCurrentUser(null);
+        const hash = window.location.hash.replace('#', '');
+        if (['dashboard', 'report-issue', 'admin'].includes(hash)) {
+          setCurrentView('login');
+          window.location.hash = 'login';
         }
       }
     });
@@ -50,6 +63,10 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
+      if (['dashboard', 'report-issue', 'admin'].includes(hash) && !currentUser) {
+        handleNavigate('login');
+        return;
+      }
       if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
@@ -59,7 +76,7 @@ export default function App() {
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [currentUser]);
 
   // IntersectionObserver for scroll-driven section and card reveals
   useEffect(() => {
@@ -86,33 +103,43 @@ export default function App() {
     return () => observer.disconnect();
   }, [currentView]);
 
-  const handleNavigate = (view) => {
-    if (view === currentView) return;
+  const handleNavigate = (view, userOverride = null) => {
+    const activeUser = userOverride || currentUserRef.current || currentUser;
+
+    // Route guard: if trying to access dashboard, report-issue, or admin while logged out, redirect to login
+    let targetView = view;
+    if (['dashboard', 'report-issue', 'admin'].includes(view) && !activeUser) {
+      targetView = 'login';
+    }
+
+    if (targetView === currentView && !userOverride) return;
 
     // Show loading screen when navigating to auth views, dashboard, admin, report-issue, or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(view)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(targetView)) {
       setLoadingMessage(
-        view === 'register'
+        targetView === 'register'
           ? 'Opening Student Registration...'
-          : view === 'dashboard'
+          : targetView === 'dashboard'
           ? 'Opening FixMyCampus Dashboard...'
-          : view === 'admin'
+          : targetView === 'admin'
           ? 'Accessing FixMyCampus Admin Console...'
-          : view === 'report-issue'
+          : targetView === 'report-issue'
           ? 'Opening Report Issue Wizard...'
+          : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin'].includes(view)
+          ? 'Please log in to FixMyCampus to continue...'
           : 'Accessing FixMyCampus Portal...'
       );
       setIsLoading(true);
 
       setTimeout(() => {
-        setCurrentView(view);
-        window.location.hash = view;
+        setCurrentView(targetView);
+        window.location.hash = targetView;
         window.scrollTo({ top: 0 });
 
         setTimeout(() => {
           setIsLoading(false);
-        }, 300);
-      }, 550);
+        }, 200);
+      }, 350);
     } else {
       setIsLoading(true);
       setLoadingMessage('Returning to Home...');
@@ -124,14 +151,15 @@ export default function App() {
 
         setTimeout(() => {
           setIsLoading(false);
-        }, 250);
-      }, 500);
+        }, 200);
+      }, 350);
     }
   };
 
   const handleLoginSuccess = (user) => {
+    currentUserRef.current = user;
     setCurrentUser(user);
-    handleNavigate('dashboard');
+    handleNavigate('dashboard', user);
   };
 
   const handleLogout = async () => {
@@ -140,7 +168,9 @@ export default function App() {
     } catch (e) {
       console.warn('Logout request completed with warning:', e);
     }
+    currentUserRef.current = null;
     setCurrentUser(null);
+    window.location.hash = '';
     handleNavigate('landing');
   };
 
@@ -206,9 +236,9 @@ export default function App() {
 
       {currentView === 'landing' && (
         <div className="landing-app">
-          <Navbar onNavigate={handleNavigate} onScrollTo={handleScrollTo} />
+          <Navbar onNavigate={handleNavigate} onScrollTo={handleScrollTo} currentUser={currentUser} />
           <main>
-            <Hero onNavigate={handleNavigate} onScrollTo={handleScrollTo} />
+            <Hero onNavigate={handleNavigate} onScrollTo={handleScrollTo} currentUser={currentUser} />
             <StatsStrip />
             <ProcessSteps />
             <RolesSection />
@@ -216,7 +246,7 @@ export default function App() {
             <TimelineFeature />
             <AnalyticsFeature />
             <Testimonial />
-            <CtaBanner onNavigate={handleNavigate} />
+            <CtaBanner onNavigate={handleNavigate} currentUser={currentUser} />
           </main>
           <Footer onScrollTo={handleScrollTo} />
         </div>
