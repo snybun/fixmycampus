@@ -19,41 +19,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
 
   const googleBtnRef = useRef(null);
 
-  // Initialize GIS once client ID and window.google are ready
-  const initGis = (activeClientId) => {
-    if (!activeClientId) return;
-    if (!window.google?.accounts?.id) {
-      // Retry in 300ms if script is still downloading
-      setTimeout(() => initGis(activeClientId), 300);
-      return;
-    }
-
-    try {
-      window.google.accounts.id.initialize({
-        client_id: activeClientId,
-        callback: handleGoogleCredentialResponse,
-        hosted_domain: allowedDomain,
-        auto_select: false,
-        cancel_on_tap_outside: true,
-      });
-
-      if (googleBtnRef.current) {
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: 'outline',
-          size: 'large',
-          shape: 'rectangular',
-          text: 'signin_with',
-          logo_alignment: 'left',
-          width: 380,
-        });
-      }
-      setGisLoaded(true);
-    } catch (err) {
-      console.warn('Google Identity Services initialization failed:', err);
-    }
-  };
-
   useEffect(() => {
     // 1. Fetch configured Client ID from backend or localStorage
     const savedLocalId = localStorage.getItem('fmc_google_client_id') || '';
@@ -66,10 +31,71 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       if (activeId) {
         setClientId(activeId);
         setTempClientId(activeId);
-        initGis(activeId);
       }
     });
   }, []);
+
+  // Initialize and render Google Identity Services once clientId and DOM ref are ready
+  useEffect(() => {
+    if (!clientId) return;
+
+    let cancelled = false;
+    let timer = null;
+
+    const renderGis = (attempts = 0) => {
+      if (cancelled) return;
+
+      if (!window.google?.accounts?.id) {
+        if (attempts < 25) {
+          timer = setTimeout(() => renderGis(attempts + 1), 200);
+        }
+        return;
+      }
+
+      if (!googleBtnRef.current) {
+        if (attempts < 25) {
+          timer = setTimeout(() => renderGis(attempts + 1), 100);
+        }
+        return;
+      }
+
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse,
+          hosted_domain: allowedDomain,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          shape: 'rectangular',
+          text: 'signin_with',
+          logo_alignment: 'left',
+          width: 380,
+        });
+
+        // Check if button iframe was successfully rendered into container
+        setTimeout(() => {
+          if (!cancelled && googleBtnRef.current && googleBtnRef.current.children.length > 0) {
+            setGisLoaded(true);
+          }
+        }, 150);
+      } catch (err) {
+        console.warn('Google Identity Services initialization failed:', err);
+      }
+    };
+
+    renderGis();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [clientId, allowedDomain]);
 
   const handleSaveClientId = (e) => {
     e.preventDefault();
@@ -77,7 +103,6 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     if (!trimmed) return;
     localStorage.setItem('fmc_google_client_id', trimmed);
     setClientId(trimmed);
-    initGis(trimmed);
   };
 
   const handleGoogleCredentialResponse = async (response) => {
@@ -114,8 +139,29 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     setError('');
     setSuccessMsg('');
 
-    if (clientId && window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
+    if (!window.google?.accounts?.id) {
+      setError('Google Sign-In is unavailable or blocked by browser extensions (e.g. ad blocker, Brave Shields). Please allow accounts.google.com to continue.');
+      return;
+    }
+
+    if (clientId) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse,
+          hosted_domain: allowedDomain,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed()) {
+            const reason = notification.getNotDisplayedReason();
+            setError(`Google prompt not displayed (${reason || 'restricted by browser'}). Please check third-party cookies or browser popup permissions.`);
+          }
+        });
+      } catch (err) {
+        setError('Error initiating Google Sign-In.');
+      }
     } else {
       setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
     }
@@ -212,72 +258,48 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               </span>
             </div>
 
-            {/* Official Google GIS Button Container */}
-            <div style={{ marginBottom: '1.25rem' }}>
-              {clientId ? (
-                <div>
-                  <div
-                    ref={googleBtnRef}
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'center',
-                      minHeight: '44px',
-                    }}
-                  />
-                  {!gisLoaded && (
-                    <button
-                      type="button"
-                      className="auth-google-btn"
-                      onClick={handleTriggerGooglePrompt}
-                      disabled={googleLoading}
-                    >
-                      <svg className="auth-google-icon" viewBox="0 0 24 24" width="20" height="20">
-                        <path
-                          fill="#4285F4"
-                          d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                        />
-                        <path
-                          fill="#EA4335"
-                          d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                        />
-                      </svg>
-                      <span>{googleLoading ? 'Connecting...' : `Sign in with @${allowedDomain}`}</span>
-                    </button>
-                  )}
-                </div>
-              ) : (
+            {/* Google Authentication Section */}
+            <div style={{ marginBottom: '1.25rem', width: '100%' }}>
+              {/* Official Google GIS Button Container */}
+              <div
+                ref={googleBtnRef}
+                style={{
+                  display: gisLoaded ? 'flex' : 'none',
+                  justifyContent: 'center',
+                  minHeight: '44px',
+                  width: '100%',
+                }}
+              />
+
+              {/* Styled Fallback Google Button (Visible if GIS is loading, not yet rendered, or blocked) */}
+              {!gisLoaded && (
                 <button
                   type="button"
                   className="auth-google-btn"
                   onClick={handleTriggerGooglePrompt}
+                  disabled={googleLoading}
                 >
-                  <svg className="auth-google-icon" viewBox="0 0 24 24" width="20" height="20">
+                  <svg className="google-icon-svg" viewBox="0 0 24 24">
                     <path
                       fill="#4285F4"
-                      d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
+                      d="M23.745 12.27c0-.7-.06-1.4-.19-2.07H12v4.51h6.6c-.29 1.52-1.14 2.82-2.4 3.68v3.05h3.88c2.27-2.09 3.665-5.17 3.665-9.17z"
                     />
                     <path
                       fill="#34A853"
-                      d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
+                      d="M12 24c3.24 0 5.95-1.08 7.93-2.91l-3.88-3.05c-1.08.72-2.45 1.16-4.05 1.16-3.12 0-5.77-2.1-6.72-4.93H1.25v3.15C3.26 21.36 7.34 24 12 24z"
                     />
                     <path
                       fill="#FBBC05"
-                      d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
+                      d="M5.28 14.27c-.25-.72-.38-1.49-.38-2.27s.13-1.55.38-2.27V6.58H1.25C.45 8.18 0 9.99 0 12s.45 3.82 1.25 5.42l4.03-3.15z"
                     />
                     <path
                       fill="#EA4335"
-                      d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
+                      d="M12 4.75c1.77 0 3.35.61 4.6 1.8l3.42-3.42C17.95 1.19 15.24 0 12 0 7.34 0 3.26 2.64 1.25 6.58l4.03 3.15c.95-2.83 3.6-4.98 6.72-4.98z"
                     />
                   </svg>
-                  <span>Sign in with Google (@{allowedDomain})</span>
+                  <span>
+                    {googleLoading ? 'Connecting to Google...' : `Sign in with Google (@${allowedDomain})`}
+                  </span>
                 </button>
               )}
             </div>

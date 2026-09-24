@@ -26,38 +26,6 @@ export default function RegisterPage({ onNavigate }) {
 
   const googleBtnRef = useRef(null);
 
-  const initGis = (activeClientId) => {
-    if (!activeClientId) return;
-    if (!window.google?.accounts?.id) {
-      setTimeout(() => initGis(activeClientId), 300);
-      return;
-    }
-
-    try {
-      window.google.accounts.id.initialize({
-        client_id: activeClientId,
-        callback: handleGoogleCredentialResponse,
-        hosted_domain: allowedDomain,
-      });
-
-      if (googleBtnRef.current) {
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: 'outline',
-          size: 'large',
-          type: 'standard',
-          shape: 'rectangular',
-          text: 'signup_with',
-          logo_alignment: 'left',
-          width: 380,
-        });
-      }
-      setGisLoaded(true);
-    } catch (err) {
-      console.warn('GIS error on register:', err);
-    }
-  };
-
   useEffect(() => {
     const savedLocalId = localStorage.getItem('fmc_google_client_id') || '';
 
@@ -69,10 +37,72 @@ export default function RegisterPage({ onNavigate }) {
       if (activeId) {
         setClientId(activeId);
         setTempClientId(activeId);
-        initGis(activeId);
       }
     });
   }, []);
+
+  // Initialize and render Google Identity Services once clientId and DOM ref are ready
+  useEffect(() => {
+    if (!clientId) return;
+
+    let cancelled = false;
+    let timer = null;
+
+    const renderGis = (attempts = 0) => {
+      if (cancelled) return;
+
+      if (!window.google?.accounts?.id) {
+        if (attempts < 25) {
+          timer = setTimeout(() => renderGis(attempts + 1), 200);
+        }
+        return;
+      }
+
+      if (!googleBtnRef.current) {
+        if (attempts < 25) {
+          timer = setTimeout(() => renderGis(attempts + 1), 100);
+        }
+        return;
+      }
+
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse,
+          hosted_domain: allowedDomain,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+
+        googleBtnRef.current.innerHTML = '';
+        window.google.accounts.id.renderButton(googleBtnRef.current, {
+          theme: 'outline',
+          size: 'large',
+          type: 'standard',
+          shape: 'rectangular',
+          text: 'signup_with',
+          logo_alignment: 'left',
+          width: 380,
+        });
+
+        // Check if button iframe was successfully rendered into container
+        setTimeout(() => {
+          if (!cancelled && googleBtnRef.current && googleBtnRef.current.children.length > 0) {
+            setGisLoaded(true);
+          }
+        }, 150);
+      } catch (err) {
+        console.warn('GIS error on register:', err);
+      }
+    };
+
+    renderGis();
+
+    return () => {
+      cancelled = true;
+      if (timer) clearTimeout(timer);
+    };
+  }, [clientId, allowedDomain]);
 
   const handleSaveClientId = (e) => {
     e.preventDefault();
@@ -80,7 +110,6 @@ export default function RegisterPage({ onNavigate }) {
     if (!trimmed) return;
     localStorage.setItem('fmc_google_client_id', trimmed);
     setClientId(trimmed);
-    initGis(trimmed);
   };
 
   const handleGoogleCredentialResponse = async (response) => {
@@ -114,8 +143,29 @@ export default function RegisterPage({ onNavigate }) {
     setError('');
     setSuccessMsg('');
 
-    if (clientId && window.google?.accounts?.id) {
-      window.google.accounts.id.prompt();
+    if (!window.google?.accounts?.id) {
+      setError('Google Sign-In is unavailable or blocked by browser extensions (e.g. ad blocker, Brave Shields). Please allow accounts.google.com to continue.');
+      return;
+    }
+
+    if (clientId) {
+      try {
+        window.google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse,
+          hosted_domain: allowedDomain,
+          auto_select: false,
+          cancel_on_tap_outside: true,
+        });
+        window.google.accounts.id.prompt((notification) => {
+          if (notification.isNotDisplayed()) {
+            const reason = notification.getNotDisplayedReason();
+            setError(`Google prompt not displayed (${reason || 'restricted by browser'}). Please check third-party cookies or browser popup permissions.`);
+          }
+        });
+      } catch (err) {
+        setError('Error initiating Google Sign-In.');
+      }
     } else {
       setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
     }
