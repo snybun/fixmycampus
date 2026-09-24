@@ -5,7 +5,7 @@ declare(strict_types=1);
 /**
  * FixMyCampus REST API - Stats Endpoint
  * Returns aggregated defect ticket metrics, breakdowns by status/category/building,
- * and 6-month trends for the Super Admin Facilities Dashboard.
+ * and timeline trends for the Super Admin Facilities Dashboard.
  */
 
 require_once dirname(__DIR__, 2) . '/src/config/app.php';
@@ -17,6 +17,8 @@ header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
 header('Access-Control-Allow-Methods: GET, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
+header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
+header('Pragma: no-cache');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
@@ -84,8 +86,8 @@ try {
         $payload['by_building'] = db_fetch_all("
             SELECT 
                 b.id, 
-                b.code,
-                b.name,
+                b.code, 
+                b.name, 
                 COUNT(r.id) AS count
             FROM `buildings` b
             LEFT JOIN `locations` l ON b.id = l.building_id
@@ -95,15 +97,16 @@ try {
             ORDER BY count DESC, b.name ASC
         ");
 
-        // 6-Month Timeline
-        $payload['timeline_6m'] = [
-            ['month' => 'Mar', 'count' => 12],
-            ['month' => 'Apr', 'count' => 8],
-            ['month' => 'May', 'count' => 19],
-            ['month' => 'Jun', 'count' => 16],
-            ['month' => 'Jul', 'count' => 6],
-            ['month' => 'Aug', 'count' => 21],
-        ];
+        // Timeline (last 6 months dynamically based on real reports)
+        $months = [];
+        for ($i = 5; $i >= 0; $i--) {
+            $mKey = date('Y-m', strtotime("-$i months"));
+            $mLabel = date('M', strtotime("-$i months"));
+            $count = (int) db_fetch_column("SELECT COUNT(*) FROM `reports` WHERE DATE_FORMAT(`reported_at`, '%Y-%m') = :mKey", [':mKey' => $mKey]);
+            $months[] = ['month' => $mLabel, 'count' => $count];
+        }
+        $payload['timeline_6m'] = $months;
+        $payload['data']        = $payload;
     }
 } catch (\Throwable $e) {
     $payload['db_connected'] = false;

@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 
-export default function Navbar({ onNavigate, onScrollTo }) {
+export default function Navbar({ onNavigate, onScrollTo, currentUser }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleNavClick = (e, targetId) => {
@@ -27,7 +27,7 @@ export default function Navbar({ onNavigate, onScrollTo }) {
   const handleReportClick = () => {
     setMobileMenuOpen(false);
     if (onNavigate) {
-      onNavigate('login');
+      onNavigate(currentUser ? 'report-issue' : 'login');
     }
   };
 

@@ -194,14 +194,17 @@ export async function sendOtp(email) {
     const res = await fetch(`${API_BASE}/auth.php?action=send_otp`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email }),
     });
-    if (res.ok) return await res.json();
+    return await res.json();
   } catch (err) {
-    console.warn('Backend send_otp failed; providing simulated code for demo:', err);
+    console.warn('Backend send_otp failed:', err);
+    return {
+      success: false,
+      message: 'Unable to connect to the authentication server. Please verify Docker backend is running.',
+    };
   }
-  const randomCode = Math.floor(100000 + Math.random() * 900000).toString();
-  return { success: true, message: 'OTP sent successfully.', code: randomCode };
 }
 
 export async function resetPassword({ email, otp, newPassword }) {
@@ -209,13 +212,17 @@ export async function resetPassword({ email, otp, newPassword }) {
     const res = await fetch(`${API_BASE}/auth.php?action=reset_password`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ email, otp, password: newPassword }),
     });
-    if (res.ok) return await res.json();
+    return await res.json();
   } catch (err) {
-    console.warn('Backend reset_password failed; providing demo success:', err);
+    console.warn('Backend reset_password failed:', err);
+    return {
+      success: false,
+      message: 'Unable to connect to the authentication server.',
+    };
   }
-  return { success: true, message: 'Password updated successfully.' };
 }
 
 export async function fetchGoogleConfig() {
@@ -260,3 +267,74 @@ export async function logoutUser() {
   }
   return { success: true };
 }
+
+export async function fetchAdminOverview() {
+  try {
+    const res = await fetch(`${API_BASE}/admin.php?action=overview`, {
+      credentials: 'include',
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('fetchAdminOverview error:', err);
+    return { success: false, message: 'Failed to fetch admin overview.' };
+  }
+}
+
+export async function fetchAdminUsers(params = {}) {
+  try {
+    const query = new URLSearchParams(params).toString();
+    const res = await fetch(`${API_BASE}/admin.php?action=users&${query}`, {
+      credentials: 'include',
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('fetchAdminUsers error:', err);
+    return { success: false, message: 'Failed to fetch users list.' };
+  }
+}
+
+export async function updateAdminUserRole(userId, roleId) {
+  try {
+    const res = await fetch(`${API_BASE}/admin.php?action=update_role`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ user_id: userId, role_id: roleId }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('updateAdminUserRole error:', err);
+    return { success: false, message: 'Failed to update user role.' };
+  }
+}
+
+export async function updateAdminUserStatus(userId, status) {
+  try {
+    const res = await fetch(`${API_BASE}/admin.php?action=update_status`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ user_id: userId, status }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('updateAdminUserStatus error:', err);
+    return { success: false, message: 'Failed to update user status.' };
+  }
+}
+
+export async function createReport(reportData) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(reportData),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('createReport error:', err);
+    return { success: false, message: 'Failed to submit report. Please check server connection.' };
+  }
+}
+

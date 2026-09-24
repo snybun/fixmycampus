@@ -15,12 +15,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [clientId, setClientId] = useState('');
   const [allowedDomain, setAllowedDomain] = useState('phinmaed.com');
   const [tempClientId, setTempClientId] = useState('');
-  const [gisLoaded, setGisLoaded] = useState(false);
+  const [googleIframeRendered, setGoogleIframeRendered] = useState(false);
 
   const googleBtnRef = useRef(null);
 
+  // 1. Fetch configured Client ID from backend or localStorage on mount
   useEffect(() => {
-    // 1. Fetch configured Client ID from backend or localStorage
     const savedLocalId = localStorage.getItem('fmc_google_client_id') || '';
 
     fetchGoogleConfig().then((cfg) => {
@@ -35,64 +35,55 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     });
   }, []);
 
-  // Initialize and render Google Identity Services once clientId and DOM ref are ready
+  // 2. Initialize and render Google Identity Services whenever clientId or allowedDomain changes
   useEffect(() => {
     if (!clientId) return;
 
-    let cancelled = false;
     let timer = null;
+    let attempts = 0;
 
-    const renderGis = (attempts = 0) => {
-      if (cancelled) return;
+    const renderGoogleGsi = () => {
+      attempts++;
+      if (window.google?.accounts?.id && googleBtnRef.current) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+            hosted_domain: allowedDomain,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
 
-      if (!window.google?.accounts?.id) {
-        if (attempts < 25) {
-          timer = setTimeout(() => renderGis(attempts + 1), 200);
+          googleBtnRef.current.innerHTML = '';
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: 'outline',
+            size: 'large',
+            shape: 'rectangular',
+            text: 'signin_with',
+            logo_alignment: 'left',
+            width: 380,
+          });
+
+          // Check if Google successfully injected an iframe / content
+          setTimeout(() => {
+            if (googleBtnRef.current && googleBtnRef.current.children.length > 0) {
+              setGoogleIframeRendered(true);
+            }
+          }, 350);
+          return;
+        } catch (err) {
+          console.warn('GIS render error:', err);
         }
-        return;
       }
 
-      if (!googleBtnRef.current) {
-        if (attempts < 25) {
-          timer = setTimeout(() => renderGis(attempts + 1), 100);
-        }
-        return;
-      }
-
-      try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleGoogleCredentialResponse,
-          hosted_domain: allowedDomain,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: 'outline',
-          size: 'large',
-          shape: 'rectangular',
-          text: 'signin_with',
-          logo_alignment: 'left',
-          width: 380,
-        });
-
-        // Check if button iframe was successfully rendered into container
-        setTimeout(() => {
-          if (!cancelled && googleBtnRef.current && googleBtnRef.current.children.length > 0) {
-            setGisLoaded(true);
-          }
-        }, 150);
-      } catch (err) {
-        console.warn('Google Identity Services initialization failed:', err);
+      if (attempts < 25) {
+        timer = setTimeout(renderGoogleGsi, 200);
       }
     };
 
-    renderGis();
+    renderGoogleGsi();
 
     return () => {
-      cancelled = true;
       if (timer) clearTimeout(timer);
     };
   }, [clientId, allowedDomain]);
@@ -121,10 +112,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
         setSuccessMsg(`Welcome, ${res.user?.full_name}! Verified institutional account (@${allowedDomain}).`);
         if (onLoginSuccess) {
           onLoginSuccess(res.user);
-        }
-        setTimeout(() => {
+        } else {
           onNavigate('dashboard');
-        }, 800);
+        }
       } else {
         setError(res.message || 'Google authentication failed.');
       }
@@ -144,26 +134,35 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       return;
     }
 
-    if (clientId) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleGoogleCredentialResponse,
-          hosted_domain: allowedDomain,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed()) {
-            const reason = notification.getNotDisplayedReason();
-            setError(`Google prompt not displayed (${reason || 'restricted by browser'}). Please check third-party cookies or browser popup permissions.`);
-          }
-        });
-      } catch (err) {
-        setError('Error initiating Google Sign-In.');
-      }
-    } else {
+    if (!clientId) {
       setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
+      return;
+    }
+
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredentialResponse,
+        hosted_domain: allowedDomain,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed()) {
+          const reason = notification.getNotDisplayedReason() || 'not_displayed';
+          console.warn('Google One Tap not displayed:', reason);
+          if (reason === 'opt_out_or_no_session') {
+            setError(`Please ensure you are signed into your @${allowedDomain} account in this browser, or click below.`);
+          } else if (reason === 'suppressed_by_user') {
+            setError('Google prompt was dismissed recently. Please wait a moment or clear site data.');
+          } else {
+            setError(`Google Sign-In prompt status: ${reason}. Ensure http://localhost:8080 is added to Authorized JavaScript Origins in Google Cloud Console.`);
+          }
+        }
+      });
+    } catch (e) {
+      console.error('Google prompt trigger error:', e);
+      setError('Error initiating Google sign-in.');
     }
   };
 
@@ -184,10 +183,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
         setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Authentication successful.`);
         if (onLoginSuccess) {
           onLoginSuccess(res.user);
-        }
-        setTimeout(() => {
+        } else {
           onNavigate('dashboard');
-        }, 800);
+        }
       } else {
         setError(res.message || 'Invalid email or password.');
       }
@@ -258,26 +256,27 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               </span>
             </div>
 
-            {/* Google Authentication Section */}
+            {/* Official Google GIS Button Container */}
             <div style={{ marginBottom: '1.25rem', width: '100%' }}>
-              {/* Official Google GIS Button Container */}
+              {/* Google's official rendered button iframe container */}
               <div
                 ref={googleBtnRef}
                 style={{
-                  display: gisLoaded ? 'flex' : 'none',
+                  display: googleIframeRendered ? 'flex' : 'none',
                   justifyContent: 'center',
                   minHeight: '44px',
                   width: '100%',
                 }}
               />
 
-              {/* Styled Fallback Google Button (Visible if GIS is loading, not yet rendered, or blocked) */}
-              {!gisLoaded && (
+              {/* Styled Fallback Button: ALWAYS visible if Google iframe isn't injected yet */}
+              {!googleIframeRendered && (
                 <button
                   type="button"
                   className="auth-google-btn"
                   onClick={handleTriggerGooglePrompt}
                   disabled={googleLoading}
+                  style={{ width: '100%' }}
                 >
                   <svg className="google-icon-svg" viewBox="0 0 24 24">
                     <path

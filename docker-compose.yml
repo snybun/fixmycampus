@@ -23,6 +23,15 @@ services:
       DB_DATABASE: ${DB_DATABASE:-fixmycampus_db}
       DB_USERNAME: ${DB_USERNAME:-fmc_user}
       DB_PASSWORD: ${DB_PASSWORD:-admin}
+      GOOGLE_ALLOWED_DOMAIN: ${GOOGLE_ALLOWED_DOMAIN:-phinmaed.com}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID:-}
+      SMTP_HOST: ${SMTP_HOST:-smtp.gmail.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_ENCRYPTION: ${SMTP_ENCRYPTION:-tls}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM_EMAIL: ${SMTP_FROM_EMAIL:-no-reply@fixmycampus.edu}
+      SMTP_FROM_NAME: ${SMTP_FROM_NAME:-FixMyCampus - PHINMA Education}
     depends_on:
       database:
         condition: service_healthy

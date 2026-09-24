@@ -30,3 +30,8 @@ desktop.ini
 *.njsproj
 *.sln
 *.sw?
+
+# Milestone documentation files
+database/DATABASE_SCHEMA_MILESTONE.md
+*MILESTONE*.md
+

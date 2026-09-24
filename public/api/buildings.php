@@ -28,7 +28,6 @@ try {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $name = trim($input['name'] ?? '');
         $code = strtoupper(trim($input['code'] ?? ''));
-        $description = trim($input['description'] ?? '');
         $floorsCount = max(1, (int)($input['floors_count'] ?? 1));
 
         if (empty($name) || empty($code)) {
@@ -39,19 +38,18 @@ try {
         }
 
         db_execute("
-            INSERT INTO `buildings` (`code`, `name`, `description`, `is_active`)
-            VALUES (:code, :name, :description, 1)
+            INSERT INTO `buildings` (`code`, `name`, `is_active`)
+            VALUES (:code, :name, 1)
         ", [
-            ':code'        => $code,
-            ':name'        => $name,
-            ':description' => $description
+            ':code' => $code,
+            ':name' => $name
         ]);
 
         $newId = (int)db_last_insert_id();
 
         // Seed default floors for the new building
-        for ($i = 0; $i < $floorsCount; $i++) {
-            $floorName = ($i === 0) ? 'Ground Floor' : "{$i}th Floor";
+        for ($i = 1; $i <= $floorsCount; $i++) {
+            $floorName = ($i === 1) ? '1st Floor' : ($i === 2 ? '2nd Floor' : ($i === 3 ? '3rd Floor' : "{$i}th Floor"));
             db_execute("
                 INSERT INTO `floors` (`building_id`, `floor_number`, `floor_name`)
                 VALUES (:bid, :fnum, :fname)
@@ -69,7 +67,6 @@ try {
                 'id'            => $newId,
                 'code'          => $code,
                 'name'          => $name,
-                'description'   => $description,
                 'floors_count'  => $floorsCount,
                 'rooms_count'   => 0,
                 'reports_count' => 0
@@ -83,7 +80,6 @@ try {
             b.id, 
             b.code, 
             b.name, 
-            b.description,
             (SELECT COUNT(*) FROM `floors` f WHERE f.building_id = b.id) AS floors_count,
             (SELECT COUNT(*) FROM `locations` l WHERE l.building_id = b.id) AS rooms_count,
             (
@@ -97,13 +93,23 @@ try {
         ORDER BY b.id ASC
     ");
 
+    $floors = db_fetch_all("
+        SELECT id, building_id, floor_number, floor_name
+        FROM `floors`
+        ORDER BY building_id ASC, floor_number ASC
+    ");
+
     // Assign realistic images matching each real building type
     $buildingImages = [
-        'ENG-BLDG' => 'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=800&q=80',
-        'SCI-HALL' => 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=800&q=80',
-        'ADM-CTR'  => 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
-        'LIB-MAIN' => 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80',
-        'SPT-CMP'  => 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
+        'PTC'   => 'https://images.unsplash.com/photo-1541829070764-84a7d30dd3f3?auto=format&fit=crop&w=800&q=80',
+        'CMA'   => 'https://images.unsplash.com/photo-1562774053-701939374585?auto=format&fit=crop&w=800&q=80',
+        'NH'    => 'https://images.unsplash.com/photo-1497366216548-37526070297c?auto=format&fit=crop&w=800&q=80',
+        'MBA'   => 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80',
+        'RS'    => 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
+        'BE'    => 'https://images.unsplash.com/photo-1523050854058-8df90110c9f1?auto=format&fit=crop&w=800&q=80',
+        'CCJE'  => 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
+        'LIB'   => 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80',
+        'GYM'   => 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
     ];
 
     foreach ($buildings as &$b) {
@@ -135,11 +141,12 @@ try {
     \FixMyCampus\Core\Response::json([
         'success'   => true,
         'buildings' => $buildings,
+        'floors'    => $floors,
         'locations' => $locations,
     ]);
 } catch (\Throwable $e) {
     \FixMyCampus\Core\Response::json([
         'success' => false,
-        'error'   => $e->getMessage(),
+        'message' => $e->getMessage()
     ], 500);
 }

@@ -12,7 +12,7 @@ import {
   Search
 } from 'lucide-react';
 
-export default function Hero({ onNavigate, onScrollTo }) {
+export default function Hero({ onNavigate, onScrollTo, currentUser }) {
   return (
     <section className="landing-hero">
       <div className="hero-content">
@@ -27,7 +27,7 @@ export default function Hero({ onNavigate, onScrollTo }) {
           <button
             type="button"
             className="btn-hero-primary"
-            onClick={() => onNavigate && onNavigate('login')}
+            onClick={() => onNavigate && onNavigate(currentUser ? 'report-issue' : 'login')}
           >
             Report a defect
           </button>
@@ -85,7 +85,7 @@ export default function Hero({ onNavigate, onScrollTo }) {
               <button
                 type="button"
                 className="mockup-action-btn"
-                onClick={() => onNavigate && onNavigate('login')}
+                onClick={() => onNavigate && onNavigate(currentUser ? 'report-issue' : 'login')}
               >
                 <Plus size={14} />
                 <span>New Report</span>

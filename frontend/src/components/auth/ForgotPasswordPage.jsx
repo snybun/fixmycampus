@@ -26,15 +26,19 @@ export default function ForgotPasswordPage({ onNavigate }) {
     setSendingOtp(true);
     try {
       const res = await sendOtp(email);
-      setOtpSent(true);
-      if (res.code) {
-        setSuccessMsg(`OTP sent to ${email}. (Demo Code: ${res.code})`);
-        setOtp(res.code); // auto-fill in demo for convenience
+      if (res && res.success) {
+        setOtpSent(true);
+        if (res.code) {
+          setSuccessMsg(res.message || `OTP sent to ${email}. (Demo Code: ${res.code})`);
+          setOtp(res.code);
+        } else {
+          setSuccessMsg(res.message || `OTP has been dispatched to ${email}. Please check your inbox or spam folder.`);
+        }
       } else {
-        setSuccessMsg(`OTP has been sent to ${email}. Please check your inbox.`);
+        setError((res && res.message) || 'Failed to send OTP. Please verify your institutional email address.');
       }
     } catch (err) {
-      setError('Failed to send OTP. Please try again.');
+      setError('Connection error while sending OTP. Please try again.');
     } finally {
       setSendingOtp(false);
     }
