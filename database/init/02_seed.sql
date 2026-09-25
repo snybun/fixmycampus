@@ -24,9 +24,9 @@ ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`);
 -- (Maintenance staff accounts will be registered via the Admin page)
 -- -----------------------------------------------------------------------------
 INSERT INTO `users` (`id`, `role_id`, `user_identifier`, `full_name`, `email`, `password_hash`, `phone_number`, `department`, `status`) VALUES
-(1, 1, 'ADM-001', 'Campus Administrator', 'admin@phinmaed.com', '$2y$10$4OVucJtSLw5mXeoJnC2szuFg1NPpoR91hCr.WFLWeYSEeTSG4oL/q', '+1-555-0100', 'Facilities & Administration', 'active'),
+(1, 1, 'ADM-001', 'Campus Administrator', 'admin@phinmaed.com', '$2y$10$pj8PZHjsujG2W2bOmTQYyetGak6xr/.YGgf2oA22ObvWAd9Sy.uPu', '+1-555-0100', 'Facilities & Administration', 'active'),
 (11, 5, '03-01-2526-045589', 'Mark Dyvie Cerna', 'mafe.cerna.up@phinmaed.com', '$2y$10$HulORYDbVIJ5wuRet5/r4O9Uo1RMt72/72Cvz22U.VlBghlTuxwRC', NULL, 'CITE - College of Information Technology Education', 'active')
-ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`), `department` = VALUES(`department`);
+ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`), `department` = VALUES(`department`), `password_hash` = VALUES(`password_hash`);
 
 -- -----------------------------------------------------------------------------
 -- Seed: categories (Aligned with Figma 9 Defect Categories)
