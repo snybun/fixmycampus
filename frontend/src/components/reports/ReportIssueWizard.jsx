@@ -228,6 +228,10 @@ export default function ReportIssueWizard({
         setErrorMsg('Please select an issue category.');
         return;
       }
+      if (!primaryPhoto) {
+        setErrorMsg('Please upload a primary photo of the defect before continuing.');
+        return;
+      }
       setCurrentStep(2);
     } else if (currentStep === 2) {
       if (isOthersBuilding && !customFloor.trim()) {
@@ -538,6 +542,7 @@ export default function ReportIssueWizard({
                       </div>
                       <h4 className="rw-upload-prompt-title">Add Primary Photo</h4>
                       <p className="rw-upload-prompt-sub">Drag & drop or browse device</p>
+                      <span className="rw-upload-required-badge">Required to continue</span>
                     </div>
                   )}
                 </div>
@@ -579,7 +584,9 @@ export default function ReportIssueWizard({
                 type="button"
                 className="rw-btn-continue"
                 onClick={goToNextStep}
+                disabled={!primaryPhoto}
                 id="rw-step1-continue-btn"
+                title={!primaryPhoto ? 'Please upload a primary photo of the defect to continue' : 'Continue to defect location'}
               >
                 Continue
               </button>
