@@ -67,6 +67,21 @@ export async function updateReportStatus({ report_id, status, remarks = '', chan
   }
 }
 
+export async function deleteReport(reportId) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ report_id: reportId }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting report:', err);
+    return { success: false, message: 'Connection error while deleting report.' };
+  }
+}
+
 export async function fetchCategories() {
   try {
     const res = await fetch(`${API_BASE}/categories.php`);

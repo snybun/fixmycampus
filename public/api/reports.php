@@ -317,17 +317,23 @@ try {
     // -------------------------------------------------------------------------
     if ($action === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $reportId = (int)($input['report_id'] ?? 0);
+        $reportId = (int)($input['report_id'] ?? $input['id'] ?? 0);
 
         if ($reportId <= 0) {
             \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Valid report_id required.'], 400);
+        }
+
+        $report = db_fetch_one("SELECT id, title, ticket_number FROM `reports` WHERE `id` = :id LIMIT 1", [':id' => $reportId]);
+        if (!$report) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Report not found or already deleted.'], 404);
         }
 
         db_execute("DELETE FROM `reports` WHERE `id` = :id", [':id' => $reportId]);
 
         \FixMyCampus\Core\Response::json([
             'success' => true,
-            'message' => "Defect report #{$reportId} deleted successfully.",
+            'message' => "Defect report #{$reportId} ({$report['title']}) deleted successfully.",
+            'id'      => $reportId,
         ]);
     }
 
