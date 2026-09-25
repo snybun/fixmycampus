@@ -256,7 +256,7 @@ export default function RegisterPage({ onNavigate }) {
           <div className="auth-domain-banner">
             <ShieldCheck size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
             <div>
-              <strong>Institutional Registration:</strong> Open exclusively to verified{' '}
+              <strong>Exclusively for PHINMA University of Pangasinan:</strong> Registration is open only to verified{' '}
               <span className="auth-domain-tag">@{allowedDomain}</span> accounts.
             </div>
           </div>
@@ -426,7 +426,7 @@ export default function RegisterPage({ onNavigate }) {
                   id="reg-email"
                   type="email"
                   className="auth-input"
-                  placeholder="your.name.up@phinmaed.com"
+                  placeholder="yourname.up@phinmaed.com"
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
                   required
