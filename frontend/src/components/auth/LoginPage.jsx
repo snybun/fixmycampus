@@ -367,7 +367,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             </div>
 
             {/* Password Login Form */}
-            <form className="auth-form" onSubmit={handleSubmit}>
+            <form className="auth-form" onSubmit={handleSubmit} autoComplete="off">
+              {/* Hidden absorbers to prevent browser from auto-filling saved admin credentials */}
+              <input type="text" name="chrome_autofill_prevent_user" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
+              <input type="password" name="chrome_autofill_prevent_pass" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="new-password" />
+
               {/* Email Address or Identifier */}
               <div className="auth-field">
                 <label className="auth-label" htmlFor="login-email">
@@ -376,10 +380,13 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="login-email"
+                    name="login_identifier_field"
                     type="text"
                     className="auth-input"
                     placeholder="yourname.up@phinmaed.com"
                     autoComplete="off"
+                    data-lpignore="true"
+                    data-form-type="other"
                     value={loginInput}
                     onChange={(e) => setLoginInput(e.target.value)}
                     required
@@ -394,10 +401,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="login-password"
+                    name="login_secret_field"
                     type={showPassword ? 'text' : 'password'}
                     className="auth-input auth-input-has-toggle"
                     placeholder="Enter your password"
                     autoComplete="new-password"
+                    data-lpignore="true"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required

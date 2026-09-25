@@ -248,6 +248,16 @@
   font-weight: 400;
 }
 
+/* Neutralize Chrome/Safari autofill blue styling to keep inputs crisp and clean */
+.auth-input:-webkit-autofill,
+.auth-input:-webkit-autofill:hover,
+.auth-input:-webkit-autofill:focus,
+.auth-input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #ffffff inset !important;
+  -webkit-text-fill-color: #0f172a !important;
+  transition: background-color 5000s ease-in-out 0s;
+}
+
 .auth-input:focus,
 .auth-select:focus {
   outline: none;
