@@ -219,15 +219,15 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 style={{
                   display: 'inline-flex',
                   alignItems: 'center',
-                  gap: '0.4rem',
-                  padding: '0.3rem 0.75rem',
+                  gap: '0.35rem',
+                  padding: '0.2rem 0.65rem',
                   borderRadius: '20px',
                   background: '#eff6ff',
                   border: '1px solid #bfdbfe',
                   color: '#1d4ed8',
-                  fontSize: '0.78rem',
+                  fontSize: '0.72rem',
                   fontWeight: 600,
-                  marginBottom: '0.75rem',
+                  marginBottom: '0.4rem',
                 }}
               >
                 <span>PHINMA University of Pangasinan Only</span>
@@ -240,49 +240,35 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
 
             {error && (
               <div className="auth-alert auth-alert-error" role="alert">
-                <AlertCircle size={18} className="auth-alert-icon" />
+                <AlertCircle size={16} className="auth-alert-icon" />
                 <span>{error}</span>
               </div>
             )}
 
             {successMsg && (
               <div className="auth-alert auth-alert-success" role="status">
-                <CheckCircle2 size={18} className="auth-alert-icon" />
+                <CheckCircle2 size={16} className="auth-alert-icon" />
                 <span>{successMsg}</span>
               </div>
             )}
 
             {/* Institutional Domain Banner */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.65rem',
-                padding: '0.75rem 0.9rem',
-                background: 'rgba(59, 130, 246, 0.06)',
-                border: '1px solid rgba(59, 130, 246, 0.2)',
-                borderRadius: '8px',
-                marginBottom: '1.25rem',
-                fontSize: '0.8125rem',
-                color: '#1e40af',
-                lineHeight: 1.4,
-              }}
-            >
-              <ShieldCheck size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
+            <div className="auth-domain-banner">
+              <ShieldCheck size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
               <span>
-                This system is exclusively for <strong>PHINMA University of Pangasinan</strong>. Please sign in with your official <strong>@{allowedDomain}</strong> institutional account.
+                Exclusively for <strong>PHINMA University of Pangasinan</strong>. Please sign in with your official <strong>@{allowedDomain}</strong> account.
               </span>
             </div>
 
             {/* Official Google GIS Button Container */}
-            <div style={{ marginBottom: '1.25rem', width: '100%' }}>
+            <div style={{ marginBottom: '0.75rem', width: '100%' }}>
               {/* Google's official rendered button iframe container */}
               <div
                 ref={googleBtnRef}
                 style={{
                   display: googleIframeRendered ? 'flex' : 'none',
                   justifyContent: 'center',
-                  minHeight: '44px',
+                  minHeight: '40px',
                   width: '100%',
                 }}
               />
