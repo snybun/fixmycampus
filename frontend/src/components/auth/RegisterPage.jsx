@@ -161,14 +161,14 @@ export default function RegisterPage({ onNavigate }) {
   };
 
   const departments = [
-    'College of Engineering & Technology',
-    'College of Computer Studies / IT',
-    'College of Arts & Sciences',
-    'College of Business & Accountancy',
-    'College of Education',
-    'Facilities Management & Physical Plant',
-    'General Campus Administration',
-    'Student Affairs Office',
+    'CITE - College of Information Technology Education',
+    'CAHS - College of Allied Health Sciences',
+    'CEA - College of Engineering and Architecture',
+    'CCJE - College of Criminal Justice Education',
+    'CELA - College of Education and Liberal Arts',
+    'CMA - College of Management and Accountancy',
+    'CHTM - College of Hospitality and Tourism Management',
+    'SHS - Senior High School Department',
   ];
 
   const handleChange = (field, value) => {
@@ -394,6 +394,7 @@ export default function RegisterPage({ onNavigate }) {
                     placeholder="e.g. 02-2324-00123"
                     value={formData.identifier}
                     onChange={(e) => handleChange('identifier', e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -411,6 +412,7 @@ export default function RegisterPage({ onNavigate }) {
                     placeholder="e.g. Juan Dela Cruz"
                     value={formData.fullName}
                     onChange={(e) => handleChange('fullName', e.target.value)}
+                    autoComplete="off"
                     required
                   />
                 </div>
@@ -429,6 +431,7 @@ export default function RegisterPage({ onNavigate }) {
                   placeholder="yourname.up@phinmaed.com"
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
+                  autoComplete="off"
                   required
                 />
               </div>

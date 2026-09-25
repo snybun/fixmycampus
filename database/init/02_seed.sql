@@ -19,24 +19,14 @@ ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`);
 
 -- -----------------------------------------------------------------------------
 -- Seed: users
--- Passwords:
--- Admin:        admin@phinmaed.com          / Admin@1234
--- Supervisor:   supervisor@fixmycampus.edu  / Supervisor@1234
--- Technician 1: worker.john@fixmycampus.edu / Worker@1234
--- Technician 2: worker.carlos@fixmycampus.edu/ Worker@1234
--- Faculty:      prof.smith@fixmycampus.edu  / Faculty@1234
--- Student 1:    student.alex@fixmycampus.edu/ Student@1234
--- Student 2:    student.emily@fixmycampus.edu/ Student@1234
+-- 1. System Administrator
+-- 2. Mark Dyvie Cerna (Student, CITE)
+-- (Maintenance staff accounts will be registered via the Admin page)
 -- -----------------------------------------------------------------------------
 INSERT INTO `users` (`id`, `role_id`, `user_identifier`, `full_name`, `email`, `password_hash`, `phone_number`, `department`, `status`) VALUES
-(1, 1, 'ADM-001', 'Campus Administrator', 'admin@phinmaed.com', '$2y$10$4OVucJtSLw5mXeoJnC2szuFg1NPpoR91hCr.WFLWeYSEeTSG4oL/q', '+1-555-0100', 'IT & Physical Plant', 'active'),
-(2, 2, 'MGT-001', 'Robert Vance', 'supervisor@fixmycampus.edu', '$2b$10$vBvtFsuY97qVoir6weJc6eZOxNz67Lk/7J1KtxRZavSk0DwjiqL/S', '+1-555-0101', 'Facilities Management', 'active'),
-(3, 3, 'TEC-001', 'John Miller', 'worker.john@fixmycampus.edu', '$2b$10$5zxljZD0GBS/wFVSyovKeOVYqx3UtC4MuUDFCDknDiKVPHPRMH0py', '+1-555-0102', 'HVAC & Electrical Maintenance', 'active'),
-(4, 3, 'TEC-002', 'Carlos Ramos', 'worker.carlos@fixmycampus.edu', '$2b$10$5zxljZD0GBS/wFVSyovKeOVYqx3UtC4MuUDFCDknDiKVPHPRMH0py', '+1-555-0103', 'Carpentry & General Repairs', 'active'),
-(5, 4, 'FAC-101', 'Dr. Sarah Smith', 'prof.smith@fixmycampus.edu', '$2b$10$aDmuUIl5mLdIrh7cfrQhrefC7TVv1wuG.IVNH9HUod3Bk2GXI5iEm', '+1-555-0104', 'Computer Science & Engineering', 'active'),
-(6, 5, 'STU-202401', 'Alex Johnson', 'student.alex@fixmycampus.edu', '$2b$10$BtifN8uWvjQAai5p9PLHJe3iOzRJMAPAx2xH8pu7e/SVTCqAfEVlS', '+1-555-0105', 'Civil Engineering', 'active'),
-(7, 5, 'STU-202402', 'Emily Chen', 'student.emily@fixmycampus.edu', '$2b$10$BtifN8uWvjQAai5p9PLHJe3iOzRJMAPAx2xH8pu7e/SVTCqAfEVlS', '+1-555-0106', 'Information Technology', 'active')
-ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`);
+(1, 1, 'ADM-001', 'Campus Administrator', 'admin@phinmaed.com', '$2y$10$4OVucJtSLw5mXeoJnC2szuFg1NPpoR91hCr.WFLWeYSEeTSG4oL/q', '+1-555-0100', 'Facilities & Administration', 'active'),
+(11, 5, '03-01-2526-045589', 'Mark Dyvie Cerna', 'mafe.cerna.up@phinmaed.com', '$2y$10$HulORYDbVIJ5wuRet5/r4O9Uo1RMt72/72Cvz22U.VlBghlTuxwRC', NULL, 'CITE - College of Information Technology Education', 'active')
+ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`), `department` = VALUES(`department`);
 
 -- -----------------------------------------------------------------------------
 -- Seed: categories (Aligned with Figma 9 Defect Categories)
