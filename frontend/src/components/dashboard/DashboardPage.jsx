@@ -117,7 +117,7 @@ export default function DashboardPage({
       if (onLogout) {
         onLogout();
       } else {
-        onNavigate('landing');
+        onNavigate('login');
       }
     } else if (currentPreset === 'delete_report') {
       if (!reportToDelete) {

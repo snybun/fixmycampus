@@ -18,13 +18,24 @@ import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
 import DashboardPage from './components/dashboard/DashboardPage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ReportIssueWizard from './components/reports/ReportIssueWizard';
+import MaintenanceStaffDashboard from './components/maintenance/MaintenanceStaffDashboard';
 import { fetchAuthMe, logoutUser } from './services/api';
 
+const isMaintenanceStaffUser = (u) => {
+  if (!u) return false;
+  return (
+    u.role_name === 'supervisor' ||
+    u.role_name === 'technician' ||
+    u.role_id === 2 ||
+    u.role_id === 3
+  );
+};
+
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin, #report-issue)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin, #report-issue, #maintenance)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'maintenance'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -46,9 +57,11 @@ export default function App() {
       if (res && res.authenticated && res.user) {
         setCurrentUser(res.user);
         const hash = window.location.hash.replace('#', '');
-        if (hash === 'dashboard' || hash === 'report-issue' || hash === 'admin') {
+        if (hash === 'dashboard' || hash === 'report-issue' || hash === 'admin' || hash === 'maintenance') {
           if ((res.user.role_name === 'admin' || res.user.role_id === 1) && hash === 'dashboard') {
             setCurrentView('admin');
+          } else if (isMaintenanceStaffUser(res.user) && (hash === 'dashboard' || hash === 'maintenance')) {
+            setCurrentView('maintenance');
           } else {
             setCurrentView(hash);
           }
@@ -56,7 +69,7 @@ export default function App() {
       } else {
         setCurrentUser(null);
         const hash = window.location.hash.replace('#', '');
-        if (['dashboard', 'report-issue', 'admin'].includes(hash)) {
+        if (['dashboard', 'report-issue', 'admin', 'maintenance'].includes(hash)) {
           setCurrentView('login');
           window.location.hash = 'login';
         }
@@ -67,11 +80,11 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['dashboard', 'report-issue', 'admin'].includes(hash) && !currentUser) {
+      if (['dashboard', 'report-issue', 'admin', 'maintenance'].includes(hash) && !currentUser) {
         handleNavigate('login');
         return;
       }
-      if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(hash)) {
+      if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'maintenance'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -107,31 +120,34 @@ export default function App() {
     return () => observer.disconnect();
   }, [currentView]);
 
-  const handleNavigate = (view, userOverride = null) => {
+  const handleNavigate = (view, userOverride = null, customLoadingMessage = null) => {
     const activeUser = userOverride || currentUserRef.current || currentUser;
 
-    // Route guard: if trying to access dashboard, report-issue, or admin while logged out, redirect to login
+    // Route guard: if trying to access dashboard, report-issue, admin, or maintenance while logged out, redirect to login
     let targetView = view;
-    if (['dashboard', 'report-issue', 'admin'].includes(view) && !activeUser) {
+    if (['dashboard', 'report-issue', 'admin', 'maintenance'].includes(view) && !activeUser) {
       targetView = 'login';
     }
 
     if (targetView === currentView && !userOverride) return;
 
-    // Show loading screen when navigating to auth views, dashboard, admin, report-issue, or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(targetView)) {
+    // Show loading screen when navigating to auth views, dashboard, admin, report-issue, maintenance, or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'maintenance'].includes(targetView)) {
       setLoadingMessage(
-        targetView === 'admin'
+        customLoadingMessage ||
+        (targetView === 'admin'
           ? 'Accessing Super Administrator Portal...'
+          : targetView === 'maintenance'
+          ? 'Opening Maintenance Staff Dashboard...'
           : targetView === 'register'
           ? 'Opening Student Registration...'
           : targetView === 'dashboard'
           ? 'Opening FixMyCampus Dashboard...'
           : targetView === 'report-issue'
           ? 'Opening Report Issue Wizard...'
-          : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin'].includes(view)
+          : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin', 'maintenance'].includes(view)
           ? 'Please log in to FixMyCampus to continue...'
-          : 'Accessing FixMyCampus Portal...'
+          : 'Accessing FixMyCampus Portal...')
       );
       setIsLoading(true);
 
@@ -146,7 +162,7 @@ export default function App() {
       }, 350);
     } else {
       setIsLoading(true);
-      setLoadingMessage('Returning to Home...');
+      setLoadingMessage(customLoadingMessage || 'Returning to Home...');
 
       setTimeout(() => {
         setCurrentView('landing');
@@ -165,6 +181,8 @@ export default function App() {
     setCurrentUser(user);
     if (user?.role_name === 'admin' || user?.role_id === 1) {
       handleNavigate('admin', user);
+    } else if (isMaintenanceStaffUser(user)) {
+      handleNavigate('maintenance', user);
     } else {
       handleNavigate('dashboard', user);
     }
@@ -178,8 +196,7 @@ export default function App() {
     }
     currentUserRef.current = null;
     setCurrentUser(null);
-    window.location.hash = '';
-    handleNavigate('landing');
+    handleNavigate('login', null, 'Signing out of FixMyCampus...');
   };
 
   const handleScrollTo = (sectionId) => {
@@ -199,6 +216,10 @@ export default function App() {
   const isAdminView =
     currentView === 'admin' ||
     (currentView === 'dashboard' && (currentUser?.role_name === 'admin' || currentUser?.role_id === 1));
+
+  const isMaintenanceView =
+    currentView === 'maintenance' ||
+    (currentView === 'dashboard' && isMaintenanceStaffUser(currentUser));
 
   return (
     <>
@@ -220,8 +241,17 @@ export default function App() {
         />
       )}
 
+      {/* Maintenance Staff Dashboard & Job Details */}
+      {isMaintenanceView && !isAdminView && (
+        <MaintenanceStaffDashboard
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
       {/* Student / Faculty / Reporter Dashboard */}
-      {currentView === 'dashboard' && !isAdminView && (
+      {currentView === 'dashboard' && !isAdminView && !isMaintenanceView && (
         <DashboardPage
           currentUser={currentUser}
           onNavigate={handleNavigate}

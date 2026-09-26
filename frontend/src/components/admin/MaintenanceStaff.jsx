@@ -180,7 +180,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff }) {
                   onChange={(e) => setRoleId(e.target.value)}
                 >
                   <option value="3">Maintenance Technician</option>
-                  <option value="2">Maintenance Supervisor</option>
+                  <option value="2">Maintenance Staff</option>
                 </select>
               </div>
 

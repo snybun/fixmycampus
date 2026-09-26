@@ -24,7 +24,7 @@ export default function ProcessSteps() {
     {
       num: '04',
       title: 'Verified Fix',
-      desc: 'Technicians upload completion photos, followed by supervisor verification and student sign-off.',
+      desc: 'Technicians upload completion photos, followed by maintenance staff verification and student sign-off.',
       icon: CheckCircle2,
     },
   ];
