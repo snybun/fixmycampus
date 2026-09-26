@@ -107,7 +107,7 @@ export default function App() {
     return () => observer.disconnect();
   }, [currentView]);
 
-  const handleNavigate = (view, userOverride = null) => {
+  const handleNavigate = (view, userOverride = null, customLoadingMessage = null) => {
     const activeUser = userOverride || currentUserRef.current || currentUser;
 
     // Route guard: if trying to access dashboard, report-issue, or admin while logged out, redirect to login
@@ -121,7 +121,8 @@ export default function App() {
     // Show loading screen when navigating to auth views, dashboard, admin, report-issue, or returning home
     if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(targetView)) {
       setLoadingMessage(
-        targetView === 'admin'
+        customLoadingMessage ||
+        (targetView === 'admin'
           ? 'Accessing Super Administrator Portal...'
           : targetView === 'register'
           ? 'Opening Student Registration...'
@@ -131,7 +132,7 @@ export default function App() {
           ? 'Opening Report Issue Wizard...'
           : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin'].includes(view)
           ? 'Please log in to FixMyCampus to continue...'
-          : 'Accessing FixMyCampus Portal...'
+          : 'Accessing FixMyCampus Portal...')
       );
       setIsLoading(true);
 
@@ -146,7 +147,7 @@ export default function App() {
       }, 350);
     } else {
       setIsLoading(true);
-      setLoadingMessage('Returning to Home...');
+      setLoadingMessage(customLoadingMessage || 'Returning to Home...');
 
       setTimeout(() => {
         setCurrentView('landing');
@@ -178,8 +179,7 @@ export default function App() {
     }
     currentUserRef.current = null;
     setCurrentUser(null);
-    window.location.hash = '';
-    handleNavigate('landing');
+    handleNavigate('login', null, 'Signing out of FixMyCampus...');
   };
 
   const handleScrollTo = (sectionId) => {

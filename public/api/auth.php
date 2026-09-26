@@ -258,13 +258,6 @@ try {
         ]);
     }
 
-    if ($action === 'logout') {
-        auth_logout();
-        \FixMyCampus\Core\Response::json([
-            'success' => true,
-            'message' => 'Logged out successfully.',
-        ]);
-    }
 
     if ($action === 'register' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
