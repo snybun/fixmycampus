@@ -91,10 +91,17 @@ try {
             LIMIT 1
         ", [':email' => $loginInput, ':identifier' => $loginInput]);
 
-        if (!$user || !password_verify($password, $user['password_hash'])) {
+        if (!$user) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
-                'message' => 'Invalid email or password.',
+                'message' => 'No account found matching this email address or Student/Employee ID. Please verify your details or register a new account.',
+            ], 404);
+        }
+
+        if (!password_verify($password, $user['password_hash'])) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Incorrect password. Please verify your password or use Forgot Password to reset it.',
             ], 401);
         }
 
@@ -353,8 +360,22 @@ try {
             ], 403);
         }
 
-        // Lookup user to attach name if available
-        $user = db_fetch_one("SELECT full_name FROM `users` WHERE email = :email LIMIT 1", [':email' => $email]);
+        // Verify account exists in database
+        $user = db_fetch_one("SELECT id, full_name, status FROM `users` WHERE email = :email LIMIT 1", [':email' => $email]);
+        if (!$user) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'No account found matching this institutional email address. Please make sure your account is registered first.',
+            ], 404);
+        }
+
+        if (isset($user['status']) && $user['status'] !== 'active') {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Your account is currently inactive or suspended. Please contact Campus Administration.',
+            ], 403);
+        }
+
         $recipientName = $user['full_name'] ?? '';
 
         // Generate 6-digit numeric OTP
@@ -471,6 +492,15 @@ try {
         }
 
         if ($isValid) {
+            // Verify user exists before updating
+            $user = db_fetch_one("SELECT id FROM `users` WHERE email = :email LIMIT 1", [':email' => $email]);
+            if (!$user) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'No registered account found matching this email address.',
+                ], 404);
+            }
+
             $passwordHash = password_hash($newPassword, PASSWORD_BCRYPT);
             db_query("UPDATE `users` SET `password_hash` = :hash, `updated_at` = NOW() WHERE `email` = :email", [
                 ':hash'  => $passwordHash,

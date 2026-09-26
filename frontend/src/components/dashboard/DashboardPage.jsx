@@ -14,7 +14,7 @@ import {
   ChevronRight,
   User,
 } from 'lucide-react';
-import { fetchStats, fetchReports } from '../../services/api';
+import { fetchStats, fetchReports, deleteReport } from '../../services/api';
 import ConfirmationModal, { MODAL_PRESETS } from '../common/ConfirmationModal';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import './dashboard.css';
@@ -32,6 +32,8 @@ export default function DashboardPage({
   });
 
   const [activeModalPreset, setActiveModalPreset] = useState(null);
+  const [reportToDelete, setReportToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'modals-gallery'
   const [unreadCount, setUnreadCount] = useState(3);
   const [toastMessage, setToastMessage] = useState('');
@@ -107,32 +109,78 @@ export default function DashboardPage({
   const firstName = displayName.split(' ')[0] || 'Mark';
 
   // Handle modal confirmation
-  const handleModalConfirm = () => {
+  const handleModalConfirm = async () => {
     const currentPreset = activeModalPreset;
-    setActiveModalPreset(null);
 
     if (currentPreset === 'logout') {
+      setActiveModalPreset(null);
       if (onLogout) {
         onLogout();
       } else {
         onNavigate('login');
       }
     } else if (currentPreset === 'delete_report') {
-      setToastMessage('Report was deleted.');
-      setTimeout(() => setToastMessage(''), 3000);
+      if (!reportToDelete) {
+        setActiveModalPreset(null);
+        return;
+      }
+
+      const targetId = reportToDelete.id;
+      const targetTitle = reportToDelete.title;
+      setIsDeleting(true);
+
+      try {
+        const res = await deleteReport(targetId);
+        setActiveModalPreset(null);
+        setReportToDelete(null);
+
+        if (res && res.success) {
+          setReports((prev) => prev.filter((r) => r.id !== targetId));
+          setToastMessage(`Report "${targetTitle}" was deleted successfully.`);
+          setTimeout(() => setToastMessage(''), 3500);
+
+          // Refresh live stats counters
+          fetchStats().then((sRes) => {
+            if (sRes && sRes.success) {
+              const statsData = sRes.data || sRes;
+              setStats({
+                total: statsData.total_reports ?? 0,
+                pending: statsData.pending_review ?? 0,
+                in_progress: statsData.in_progress ?? 0,
+                resolved: statsData.resolved ?? 0,
+              });
+            }
+          });
+        } else {
+          setToastMessage(res?.message || 'Failed to delete report.');
+          setTimeout(() => setToastMessage(''), 4000);
+        }
+      } catch (err) {
+        setActiveModalPreset(null);
+        setReportToDelete(null);
+        setToastMessage('Error connecting to server while deleting report.');
+        setTimeout(() => setToastMessage(''), 4000);
+      } finally {
+        setIsDeleting(false);
+      }
     } else if (currentPreset === 'submit_report') {
+      setActiveModalPreset(null);
       setToastMessage('Maintenance report submitted successfully!');
       setTimeout(() => setToastMessage(''), 3000);
     } else if (currentPreset === 'assign_worker') {
+      setActiveModalPreset(null);
       setToastMessage('Worker Mark Santos successfully assigned.');
       setTimeout(() => setToastMessage(''), 3000);
     } else if (currentPreset === 'update_status') {
+      setActiveModalPreset(null);
       setToastMessage('Report status updated to Repair Ongoing.');
       setTimeout(() => setToastMessage(''), 3000);
     } else if (currentPreset === 'mark_fixed') {
+      setActiveModalPreset(null);
       setToastMessage('Issue confirmed and marked as Fixed!');
       setTimeout(() => setToastMessage(''), 3000);
     } else {
+      setActiveModalPreset(null);
       setToastMessage('Action confirmed.');
       setTimeout(() => setToastMessage(''), 3000);
     }
@@ -431,8 +479,13 @@ export default function DashboardPage({
                         <button
                           type="button"
                           className="dash-card-action-btn"
-                          onClick={() => setActiveModalPreset('delete_report')}
-                          title="Delete report"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setReportToDelete(report);
+                            setActiveModalPreset('delete_report');
+                          }}
+                          title={`Delete report: ${report.title}`}
+                          aria-label={`Delete report: ${report.title}`}
                         >
                           <Trash2 size={14} />
                         </button>
@@ -511,9 +564,46 @@ export default function DashboardPage({
         <ConfirmationModal
           isOpen={Boolean(activeModalPreset)}
           presetId={activeModalPreset}
-          onClose={() => setActiveModalPreset(null)}
+          message={
+            activeModalPreset === 'delete_report' && reportToDelete
+              ? `Are you sure you want to delete report "${reportToDelete.title}"? This action cannot be undone.`
+              : undefined
+          }
+          loading={isDeleting}
+          onClose={() => {
+            if (!isDeleting) {
+              setActiveModalPreset(null);
+              setReportToDelete(null);
+            }
+          }}
           onConfirm={handleModalConfirm}
         />
+      )}
+
+      {/* Toast Notification */}
+      {toastMessage && (
+        <div
+          role="status"
+          style={{
+            position: 'fixed',
+            bottom: '24px',
+            right: '24px',
+            backgroundColor: '#0f172a',
+            color: '#ffffff',
+            padding: '12px 20px',
+            borderRadius: '10px',
+            fontSize: '0.875rem',
+            fontWeight: 500,
+            boxShadow: '0 10px 25px rgba(0, 0, 0, 0.25)',
+            zIndex: 9999,
+            display: 'flex',
+            alignItems: 'center',
+            gap: '8px',
+          }}
+        >
+          <CheckCircle2 size={16} style={{ color: '#22c55e' }} />
+          <span>{toastMessage}</span>
+        </div>
       )}
     </div>
   );

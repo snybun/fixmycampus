@@ -108,11 +108,9 @@ export default function ReportIssueWizard({
 
   // Form State
   const [selectedCategory, setSelectedCategory] = useState(CATEGORY_DEFINITIONS[0]); // Default to Air Conditioning
-  const [primaryPhoto, setPrimaryPhoto] = useState('/images/hero_ac_defect.jpg'); // Default realistic preview or custom upload
-  const [additionalPhotos, setAdditionalPhotos] = useState([
-    '/images/classroom_chairs.jpg',
-    '/images/faulty_light_switch.jpg',
-  ]);
+  const [primaryPhoto, setPrimaryPhoto] = useState(null); // User uploaded photo (no placeholder)
+  const [additionalPhotos, setAdditionalPhotos] = useState([]); // User uploaded additional photos (no placeholders)
+  const [isDragging, setIsDragging] = useState(false);
 
   // Location State
   const [buildings, setBuildings] = useState(DEFAULT_BUILDINGS);
@@ -174,6 +172,33 @@ export default function ReportIssueWizard({
       setPrimaryPhoto(uploadEvent.target.result);
     };
     reader.readAsDataURL(file);
+    e.target.value = '';
+  };
+
+  const handleDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    const file = e.dataTransfer?.files?.[0];
+    if (file && file.type.startsWith('image/')) {
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        setPrimaryPhoto(uploadEvent.target.result);
+      };
+      reader.readAsDataURL(file);
+    }
   };
 
   // Handle Additional Photos Upload
@@ -188,6 +213,7 @@ export default function ReportIssueWizard({
       };
       reader.readAsDataURL(file);
     });
+    e.target.value = '';
   };
 
   const removeAdditionalPhoto = (idxToRemove) => {
@@ -200,6 +226,10 @@ export default function ReportIssueWizard({
     if (currentStep === 1) {
       if (!selectedCategory) {
         setErrorMsg('Please select an issue category.');
+        return;
+      }
+      if (!primaryPhoto) {
+        setErrorMsg('Please upload a primary photo of the defect before continuing.');
         return;
       }
       setCurrentStep(2);
@@ -464,9 +494,12 @@ export default function ReportIssueWizard({
                   onChange={handlePhotoSelect}
                 />
                 <div
-                  className="rw-upload-dropzone"
+                  className={`rw-upload-dropzone ${isDragging ? 'drag-active' : ''}`}
                   onClick={() => fileInputRef.current?.click()}
-                  title="Click to select primary defect photo"
+                  onDragOver={handleDragOver}
+                  onDragLeave={handleDragLeave}
+                  onDrop={handleDrop}
+                  title="Click or drag image to select primary defect photo"
                 >
                   {primaryPhoto ? (
                     <div className="rw-preview-img-container">
@@ -487,6 +520,19 @@ export default function ReportIssueWizard({
                           <Camera size={14} />
                           Change Photo
                         </button>
+                        <button
+                          type="button"
+                          className="rw-overlay-btn danger"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setPrimaryPhoto(null);
+                            if (fileInputRef.current) fileInputRef.current.value = '';
+                          }}
+                          title="Remove photo"
+                        >
+                          <Trash2 size={14} />
+                          Remove
+                        </button>
                       </div>
                     </div>
                   ) : (
@@ -496,6 +542,7 @@ export default function ReportIssueWizard({
                       </div>
                       <h4 className="rw-upload-prompt-title">Add Primary Photo</h4>
                       <p className="rw-upload-prompt-sub">Drag & drop or browse device</p>
+                      <span className="rw-upload-required-badge">Required to continue</span>
                     </div>
                   )}
                 </div>
@@ -537,7 +584,9 @@ export default function ReportIssueWizard({
                 type="button"
                 className="rw-btn-continue"
                 onClick={goToNextStep}
+                disabled={!primaryPhoto}
                 id="rw-step1-continue-btn"
+                title={!primaryPhoto ? 'Please upload a primary photo of the defect to continue' : 'Continue to defect location'}
               >
                 Continue
               </button>
@@ -835,12 +884,34 @@ export default function ReportIssueWizard({
               {/* Left Column: Primary Photo Preview + Meta Box */}
               <div className="rw-review-left">
                 <div className="rw-review-primary-img-wrapper">
-                  <img
-                    src={primaryPhoto || '/images/hero_ac_defect.jpg'}
-                    alt="Review Primary Defect"
-                    className="rw-review-primary-img"
-                  />
+                  {primaryPhoto ? (
+                    <img
+                      src={primaryPhoto}
+                      alt="Review Primary Defect"
+                      className="rw-review-primary-img"
+                    />
+                  ) : (
+                    <div className="rw-review-no-photo">
+                      <Camera size={38} className="rw-review-no-photo-icon" />
+                      <span className="rw-review-no-photo-text">No Primary Photo Attached</span>
+                      <span className="rw-review-no-photo-sub">Optional attachment omitted</span>
+                    </div>
+                  )}
                 </div>
+
+                {additionalPhotos.length > 0 && (
+                  <div className="rw-review-additional-strip">
+                    {additionalPhotos.map((imgSrc, idx) => (
+                      <img
+                        key={idx}
+                        src={imgSrc}
+                        alt={`Additional photo ${idx + 1}`}
+                        className="rw-review-thumb-mini"
+                        title={`Attachment ${idx + 1}`}
+                      />
+                    ))}
+                  </div>
+                )}
 
                 <div className="rw-review-meta-box">
                   <div className="rw-meta-row border-bottom">

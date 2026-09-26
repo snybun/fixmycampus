@@ -161,14 +161,14 @@ export default function RegisterPage({ onNavigate }) {
   };
 
   const departments = [
-    'College of Engineering & Technology',
-    'College of Computer Studies / IT',
-    'College of Arts & Sciences',
-    'College of Business & Accountancy',
-    'College of Education',
-    'Facilities Management & Physical Plant',
-    'General Campus Administration',
-    'Student Affairs Office',
+    'CITE - College of Information Technology Education',
+    'CAHS - College of Allied Health Sciences',
+    'CEA - College of Engineering and Architecture',
+    'CCJE - College of Criminal Justice Education',
+    'CELA - College of Education and Liberal Arts',
+    'CMA - College of Management and Accountancy',
+    'CHTM - College of Hospitality and Tourism Management',
+    'SHS - Senior High School Department',
   ];
 
   const handleChange = (field, value) => {
@@ -256,7 +256,7 @@ export default function RegisterPage({ onNavigate }) {
           <div className="auth-domain-banner">
             <ShieldCheck size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
             <div>
-              <strong>Institutional Registration:</strong> Open exclusively to verified{' '}
+              <strong>Exclusively for PHINMA University of Pangasinan:</strong> Registration is open only to verified{' '}
               <span className="auth-domain-tag">@{allowedDomain}</span> accounts.
             </div>
           </div>
@@ -380,7 +380,11 @@ export default function RegisterPage({ onNavigate }) {
             <span>or register with manual details</span>
           </div>
 
-          <form className="auth-form" onSubmit={handleSubmit}>
+          <form className="auth-form" onSubmit={handleSubmit} autoComplete="off">
+            {/* Hidden absorbers to prevent browser password managers from auto-filling saved admin credentials */}
+            <input type="text" name="chrome_autofill_prevent_user" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
+            <input type="password" name="chrome_autofill_prevent_pass" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="new-password" />
+
             <div className="auth-form-row">
               <div className="auth-field">
                 <label className="auth-label" htmlFor="reg-identifier">
@@ -389,11 +393,15 @@ export default function RegisterPage({ onNavigate }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="reg-identifier"
+                    name="student_employee_identifier"
                     type="text"
                     className="auth-input"
                     placeholder="e.g. 02-2324-00123"
                     value={formData.identifier}
                     onChange={(e) => handleChange('identifier', e.target.value)}
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-form-type="other"
                     required
                   />
                 </div>
@@ -406,11 +414,14 @@ export default function RegisterPage({ onNavigate }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="reg-name"
+                    name="registrant_full_name"
                     type="text"
                     className="auth-input"
                     placeholder="e.g. Juan Dela Cruz"
                     value={formData.fullName}
                     onChange={(e) => handleChange('fullName', e.target.value)}
+                    autoComplete="off"
+                    data-lpignore="true"
                     required
                   />
                 </div>
@@ -424,11 +435,14 @@ export default function RegisterPage({ onNavigate }) {
               <div className="auth-input-wrapper">
                 <input
                   id="reg-email"
+                  name="registrant_campus_email"
                   type="email"
                   className="auth-input"
-                  placeholder="your.name.up@phinmaed.com"
+                  placeholder="yourname.up@phinmaed.com"
                   value={formData.email}
                   onChange={(e) => handleChange('email', e.target.value)}
+                  autoComplete="off"
+                  data-lpignore="true"
                   required
                 />
               </div>
@@ -467,11 +481,14 @@ export default function RegisterPage({ onNavigate }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="reg-password"
+                    name="new_user_password"
                     type={showPassword ? 'text' : 'password'}
                     className="auth-input auth-input-has-toggle"
-                    placeholder="Min. 8 characters"
+                    placeholder="Enter your password"
                     value={formData.password}
                     onChange={(e) => handleChange('password', e.target.value)}
+                    autoComplete="new-password"
+                    data-lpignore="true"
                     required
                   />
                   <button
@@ -492,11 +509,14 @@ export default function RegisterPage({ onNavigate }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="reg-confirm-password"
+                    name="confirm_user_password"
                     type={showConfirmPassword ? 'text' : 'password'}
                     className="auth-input auth-input-has-toggle"
-                    placeholder="Re-type password"
+                    placeholder="Repeat password"
                     value={formData.confirmPassword}
                     onChange={(e) => handleChange('confirmPassword', e.target.value)}
+                    autoComplete="new-password"
+                    data-lpignore="true"
                     required
                   />
                   <button

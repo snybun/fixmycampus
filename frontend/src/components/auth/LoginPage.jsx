@@ -215,56 +215,60 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             </button>
 
             <div className="auth-header">
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: '20px',
+                  background: '#eff6ff',
+                  border: '1px solid #bfdbfe',
+                  color: '#1d4ed8',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  marginBottom: '0.4rem',
+                }}
+              >
+                <span>PHINMA University of Pangasinan Only</span>
+              </div>
               <h1 className="auth-title">Welcome Back</h1>
               <p className="auth-subtitle">
-                Access your campus maintenance portal or submit facility tickets
+                Facility Defect and Maintenance Reporting System
               </p>
             </div>
 
             {error && (
               <div className="auth-alert auth-alert-error" role="alert">
-                <AlertCircle size={18} className="auth-alert-icon" />
+                <AlertCircle size={16} className="auth-alert-icon" />
                 <span>{error}</span>
               </div>
             )}
 
             {successMsg && (
               <div className="auth-alert auth-alert-success" role="status">
-                <CheckCircle2 size={18} className="auth-alert-icon" />
+                <CheckCircle2 size={16} className="auth-alert-icon" />
                 <span>{successMsg}</span>
               </div>
             )}
 
             {/* Institutional Domain Banner */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.65rem',
-                padding: '0.65rem 0.85rem',
-                background: 'rgba(59, 130, 246, 0.06)',
-                border: '1px solid rgba(59, 130, 246, 0.2)',
-                borderRadius: '8px',
-                marginBottom: '1.25rem',
-                fontSize: '0.8125rem',
-                color: '#1e40af',
-              }}
-            >
-              <ShieldCheck size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
+            <div className="auth-domain-banner">
+              <ShieldCheck size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
               <span>
-                FixMyCampus strictly accepts <strong>@{allowedDomain}</strong> accounts for Google Sign-In.
+                Exclusively for <strong>PHINMA University of Pangasinan</strong>. Please sign in with your official <strong>@{allowedDomain}</strong> account.
               </span>
             </div>
 
             {/* Official Google GIS Button Container */}
-            <div style={{ marginBottom: '1.25rem', width: '100%' }}>
+            <div style={{ marginBottom: '0.75rem', width: '100%' }}>
               {/* Google's official rendered button iframe container */}
               <div
                 ref={googleBtnRef}
                 style={{
                   display: googleIframeRendered ? 'flex' : 'none',
                   justifyContent: 'center',
-                  minHeight: '44px',
+                  minHeight: '40px',
                   width: '100%',
                 }}
               />
@@ -362,67 +366,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               <span>or sign in with password</span>
             </div>
 
-            {/* Quick Demo Credentials */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginInput('admin@fixmycampus.edu');
-                  setPassword('Admin@1234');
-                }}
-                style={{
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '6px 12px',
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                ⚡ Auto-fill Super Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginInput('supervisor@fixmycampus.edu');
-                  setPassword('Supervisor@1234');
-                }}
-                style={{
-                  background: '#f1f5f9',
-                  color: '#334155',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  padding: '6px 10px',
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                }}
-              >
-                Maintenance Staff
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginInput('student.alex@fixmycampus.edu');
-                  setPassword('Student@1234');
-                }}
-                style={{
-                  background: '#f1f5f9',
-                  color: '#334155',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  padding: '6px 10px',
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                }}
-              >
-                Student
-              </button>
-            </div>
-
             {/* Password Login Form */}
-            <form className="auth-form" onSubmit={handleSubmit}>
+            <form className="auth-form" onSubmit={handleSubmit} autoComplete="off">
+              {/* Hidden absorbers to prevent browser from auto-filling saved admin credentials */}
+              <input type="text" name="chrome_autofill_prevent_user" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
+              <input type="password" name="chrome_autofill_prevent_pass" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="new-password" />
+
               {/* Email Address or Identifier */}
               <div className="auth-field">
                 <label className="auth-label" htmlFor="login-email">
@@ -431,9 +380,13 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="login-email"
+                    name="login_identifier_field"
                     type="text"
                     className="auth-input"
-                    placeholder="e.g. name@phinmaed.com or STU-202401"
+                    placeholder="yourname.up@phinmaed.com"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-form-type="other"
                     value={loginInput}
                     onChange={(e) => setLoginInput(e.target.value)}
                     required
@@ -448,9 +401,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="login-password"
+                    name="login_secret_field"
                     type={showPassword ? 'text' : 'password'}
                     className="auth-input auth-input-has-toggle"
                     placeholder="Enter your password"
+                    autoComplete="new-password"
+                    data-lpignore="true"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     required
