@@ -399,7 +399,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                   cursor: 'pointer',
                 }}
               >
-                Supervisor
+                Maintenance Staff
               </button>
               <button
                 type="button"

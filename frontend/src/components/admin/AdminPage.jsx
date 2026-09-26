@@ -372,7 +372,7 @@ export default function AdminPage({ currentUser, onNavigate, onLogout }) {
                           onChange={(e) => handleRoleChange(u.id, Number(e.target.value))}
                         >
                           <option value="1">Admin</option>
-                          <option value="2">Supervisor</option>
+                          <option value="2">Maintenance Staff</option>
                           <option value="3">Technician</option>
                           <option value="4">Faculty</option>
                           <option value="5">Student</option>

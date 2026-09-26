@@ -11,7 +11,7 @@ SET foreign_key_checks = 0;
 -- -----------------------------------------------------------------------------
 INSERT INTO `roles` (`id`, `name`, `display_name`, `description`) VALUES
 (1, 'admin', 'Administrator', 'Full system management, user administration, and system configuration'),
-(2, 'supervisor', 'Maintenance Supervisor', 'Oversees maintenance operations, dispatches work orders, and verifies repairs'),
+(2, 'supervisor', 'Maintenance Staff', 'Oversees maintenance operations, dispatches work orders, and verifies repairs'),
 (3, 'technician', 'Maintenance Technician', 'Facility maintenance personnel who inspects, repairs, and uploads completion proof'),
 (4, 'faculty', 'Faculty Member', 'Academic and instructional staff reporting facility and classroom issues'),
 (5, 'student', 'Student', 'Enrolled campus student submitting and tracking defect reports')
@@ -20,8 +20,8 @@ ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`);
 -- -----------------------------------------------------------------------------
 -- Seed: users
 -- Passwords:
--- Admin:        admin@phinmaed.com          / Admin@1234
--- Supervisor:   supervisor@fixmycampus.edu  / Supervisor@1234
+-- Admin:             admin@phinmaed.com          / Admin@1234
+-- Maintenance Staff: supervisor@fixmycampus.edu  / Supervisor@1234
 -- Technician 1: worker.john@fixmycampus.edu / Worker@1234
 -- Technician 2: worker.carlos@fixmycampus.edu/ Worker@1234
 -- Faculty:      prof.smith@fixmycampus.edu  / Faculty@1234
