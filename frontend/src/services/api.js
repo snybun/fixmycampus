@@ -353,6 +353,21 @@ export async function updateProfilePicture(avatarData) {
   }
 }
 
+export async function updateUserProfile(profileData) {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=update_profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(profileData),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('updateUserProfile error:', err);
+    return { success: false, message: 'Failed to update profile details.' };
+  }
+}
+
 export async function changeUserPassword({ current_password, new_password }) {
   try {
     const res = await fetch(`${API_BASE}/auth.php?action=change_password`, {

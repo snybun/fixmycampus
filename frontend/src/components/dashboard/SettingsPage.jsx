@@ -1,4 +1,4 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import {
   ArrowLeft,
   Camera,
@@ -14,8 +14,29 @@ import {
   Eye,
   EyeOff,
 } from 'lucide-react';
-import { updateProfilePicture, changeUserPassword } from '../../services/api';
+import { updateProfilePicture, changeUserPassword, updateUserProfile } from '../../services/api';
 import './settings.css';
+
+const DEPARTMENTS = [
+  'CITE - College of Information Technology Education',
+  'CAHS - College of Allied Health Sciences',
+  'CEA - College of Engineering and Architecture',
+  'CCJE - College of Criminal Justice Education',
+  'CELA - College of Education and Liberal Arts',
+  'CMA - College of Management and Accountancy',
+  'CHTM - College of Hospitality and Tourism Management',
+  'SHS - Senior High School Department',
+];
+
+const YEAR_LEVELS = [
+  '1st Year Student',
+  '2nd Year Student',
+  '3rd Year Student',
+  '4th Year Student',
+  '5th Year Student',
+  'Senior High School',
+  'Faculty / Staff Member',
+];
 
 export default function SettingsPage({
   currentUser,
@@ -28,6 +49,23 @@ export default function SettingsPage({
   const [avatarPreview, setAvatarPreview] = useState(currentUser?.avatar_url || '');
   const [isUploading, setIsUploading] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+
+  // Sync avatarPreview if currentUser updates
+  useEffect(() => {
+    if (currentUser?.avatar_url) {
+      setAvatarPreview(currentUser.avatar_url);
+    }
+  }, [currentUser?.avatar_url]);
+
+  // Edit Profile Modal State
+  const [showEditProfileModal, setShowEditProfileModal] = useState(false);
+  const [editFirstName, setEditFirstName] = useState('');
+  const [editMiddleName, setEditMiddleName] = useState('');
+  const [editLastName, setEditLastName] = useState('');
+  const [editYear, setEditYear] = useState('');
+  const [editDepartment, setEditDepartment] = useState('');
+  const [editProfileError, setEditProfileError] = useState('');
+  const [isSubmittingProfile, setIsSubmittingProfile] = useState(false);
 
   // Password Modal State
   const [showPasswordModal, setShowPasswordModal] = useState(false);
@@ -46,18 +84,86 @@ export default function SettingsPage({
   const [slaAlerts, setSlaAlerts] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(false);
 
-  const displayName = currentUser?.full_name || 'Mark Cerna';
+  // Parse existing names from currentUser
+  const displayName = currentUser?.full_name || 'Mark Dyvie Cerna';
   const studentId = currentUser?.user_identifier || '03-01-2526-045589';
   const emailAddress = currentUser?.email || 'mafe.cerna.up@phinmaed.com';
-  const departmentName = currentUser?.department || 'Information Technology';
-  const roleDisplay = currentUser?.role_display || '2nd Year Student';
+  const departmentName = currentUser?.department || 'CITE - College of Information Technology Education';
+  const yearDisplay = currentUser?.year_level || '2nd Year Student';
 
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3500);
   };
 
-  // Handle Photo Picker Selection
+  // Open Edit Profile modal with populated values
+  const handleOpenEditProfile = () => {
+    setEditProfileError('');
+    
+    // Default or parsed names
+    let fn = currentUser?.first_name || '';
+    let mn = currentUser?.middle_name || '';
+    let ln = currentUser?.last_name || '';
+
+    if (!fn && !ln && currentUser?.full_name) {
+      const parts = currentUser.full_name.trim().split(/\s+/);
+      if (parts.length === 1) {
+        fn = parts[0];
+      } else if (parts.length === 2) {
+        fn = parts[0];
+        ln = parts[1];
+      } else if (parts.length >= 3) {
+        fn = parts[0];
+        mn = parts.slice(1, -1).join(' ');
+        ln = parts[parts.length - 1];
+      }
+    }
+
+    setEditFirstName(fn || 'Mark');
+    setEditMiddleName(mn || 'Dyvie');
+    setEditLastName(ln || 'Cerna');
+    setEditYear(currentUser?.year_level || '2nd Year Student');
+    setEditDepartment(currentUser?.department || 'CITE - College of Information Technology Education');
+    setShowEditProfileModal(true);
+  };
+
+  // Handle Edit Profile submission
+  const handleSaveProfile = async (e) => {
+    e.preventDefault();
+    setEditProfileError('');
+
+    if (!editFirstName.trim() || !editLastName.trim()) {
+      setEditProfileError('First Name and Last Name are required.');
+      return;
+    }
+
+    setIsSubmittingProfile(true);
+    try {
+      const res = await updateUserProfile({
+        first_name: editFirstName.trim(),
+        middle_name: editMiddleName.trim(),
+        last_name: editLastName.trim(),
+        year_level: editYear,
+        department: editDepartment,
+      });
+
+      if (res && res.success) {
+        showToast('Profile updated successfully!');
+        if (onUpdateUser && res.user) {
+          onUpdateUser(res.user);
+        }
+        setShowEditProfileModal(false);
+      } else {
+        setEditProfileError(res?.message || 'Failed to update profile details.');
+      }
+    } catch (err) {
+      setEditProfileError('Error connecting to server. Please try again.');
+    } finally {
+      setIsSubmittingProfile(false);
+    }
+  };
+
+  // Handle Photo Picker Selection (beside/on the profile avatar)
   const handlePhotoSelect = (e) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -122,14 +228,14 @@ export default function SettingsPage({
 
       if (res && res.success) {
         setPasswordSuccess(res.message || 'Password changed successfully!');
-        showToast('Password updated! You can now use this password on the login form.');
+        showToast('Password updated! You can now use this password to sign in via the textbox.');
         setTimeout(() => {
           setShowPasswordModal(false);
           setCurrentPassword('');
           setNewPassword('');
           setConfirmPassword('');
           setPasswordSuccess('');
-        }, 2000);
+        }, 1800);
       } else {
         setPasswordError(res?.message || 'Failed to change password.');
       }
@@ -142,7 +248,7 @@ export default function SettingsPage({
 
   return (
     <div className="settings-page-wrapper">
-      {/* Hidden File Input Triggered by "Edit Profile" */}
+      {/* Hidden File Input for Avatar Photo (Triggered only by camera badge on the avatar) */}
       <input
         type="file"
         ref={fileInputRef}
@@ -166,12 +272,12 @@ export default function SettingsPage({
 
       {/* Main Settings Card */}
       <div className="settings-card">
-        {/* User Avatar, Name, and Role */}
+        {/* User Avatar with Camera Badge Beside It */}
         <div className="settings-header">
           <div
             className="settings-avatar-wrapper"
             onClick={() => fileInputRef.current?.click()}
-            title="Click to edit profile picture"
+            title="Click camera icon to change profile photo"
           >
             {avatarPreview ? (
               <img
@@ -184,20 +290,20 @@ export default function SettingsPage({
                 <User size={46} strokeWidth={1.8} />
               </div>
             )}
-            <div className="settings-avatar-badge" title="Change photo">
+            <div className="settings-avatar-badge" title="Change profile photo">
               <Camera size={15} strokeWidth={2.4} />
             </div>
           </div>
 
           <h2 className="settings-user-name">{displayName}</h2>
-          <p className="settings-user-role">{roleDisplay}</p>
+          <p className="settings-user-role">{yearDisplay}</p>
         </div>
 
         <div className="settings-divider" />
 
-        {/* Read-Only Information Fields */}
+        {/* Information Fields */}
         <div className="settings-fields-group">
-          {/* Student ID */}
+          {/* Student ID (Read Only) */}
           <div className="settings-field">
             <label className="settings-field-label">Student ID</label>
             <input
@@ -210,7 +316,7 @@ export default function SettingsPage({
             />
           </div>
 
-          {/* Email Address */}
+          {/* Email Address (Read Only) */}
           <div className="settings-field">
             <label className="settings-field-label">Email Address</label>
             <input
@@ -223,7 +329,7 @@ export default function SettingsPage({
             />
           </div>
 
-          {/* Department */}
+          {/* Department (Displays Current Department) */}
           <div className="settings-field">
             <label className="settings-field-label">Department</label>
             <input
@@ -232,7 +338,7 @@ export default function SettingsPage({
               value={departmentName}
               readOnly
               disabled
-              title="Department enrollment"
+              title="Academic Department / College"
             />
           </div>
         </div>
@@ -241,12 +347,12 @@ export default function SettingsPage({
 
         {/* Action Buttons List */}
         <div className="settings-actions-list">
-          {/* 1. Edit Profile -> triggers file upload for profile picture */}
+          {/* 1. Edit Profile -> Opens Edit Profile dialog to change LN, FN, MN, Year, Department */}
           <button
             type="button"
             className="settings-action-row"
-            onClick={() => fileInputRef.current?.click()}
-            title="Update your profile photo"
+            onClick={handleOpenEditProfile}
+            title="Edit your name, academic year level, and department"
           >
             <div className="settings-action-left">
               <div className="settings-action-icon">
@@ -293,7 +399,7 @@ export default function SettingsPage({
             <ChevronRight size={17} className="settings-action-chevron" />
           </button>
 
-          {/* 4. Logout (Styled in soft Red matching Image 2) */}
+          {/* 4. Logout */}
           <button
             type="button"
             className="settings-action-row settings-action-logout"
@@ -310,6 +416,140 @@ export default function SettingsPage({
           </button>
         </div>
       </div>
+
+      {/* Edit Profile Modal (Name: FN, MN, LN, Year, Department) */}
+      {showEditProfileModal && (
+        <div className="settings-modal-overlay" onClick={() => setShowEditProfileModal(false)}>
+          <div className="settings-modal-dialog settings-modal-dialog-wide" onClick={(e) => e.stopPropagation()}>
+            <div className="settings-modal-header">
+              <div className="settings-modal-title">
+                <Pencil size={19} color="#059669" />
+                <span>Edit Profile Information</span>
+              </div>
+              <button
+                type="button"
+                className="settings-modal-close"
+                onClick={() => setShowEditProfileModal(false)}
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <p style={{ fontSize: '0.84rem', color: '#6b7280', margin: '0 0 16px 0', lineHeight: 1.45 }}>
+              Update your name details, academic year, and college department.
+            </p>
+
+            {editProfileError && (
+              <div style={{ background: '#fee2e2', color: '#b91c1c', padding: '10px 14px', borderRadius: '8px', fontSize: '0.84rem', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <AlertCircle size={16} />
+                <span>{editProfileError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleSaveProfile}>
+              {/* Name Row: FN & MN */}
+              <div className="settings-form-row-2col" style={{ marginBottom: '12px' }}>
+                <div className="settings-field">
+                  <label className="settings-field-label">First Name (FN) *</label>
+                  <input
+                    type="text"
+                    className="settings-field-input"
+                    value={editFirstName}
+                    onChange={(e) => setEditFirstName(e.target.value)}
+                    placeholder="e.g. Mark"
+                    required
+                  />
+                </div>
+                <div className="settings-field">
+                  <label className="settings-field-label">Middle Name (MN)</label>
+                  <input
+                    type="text"
+                    className="settings-field-input"
+                    value={editMiddleName}
+                    onChange={(e) => setEditMiddleName(e.target.value)}
+                    placeholder="e.g. Dyvie (Optional)"
+                  />
+                </div>
+              </div>
+
+              {/* Name Row: LN */}
+              <div className="settings-field" style={{ marginBottom: '12px' }}>
+                <label className="settings-field-label">Last Name (LN) *</label>
+                <input
+                  type="text"
+                  className="settings-field-input"
+                  value={editLastName}
+                  onChange={(e) => setEditLastName(e.target.value)}
+                  placeholder="e.g. Cerna"
+                  required
+                />
+              </div>
+
+              {/* Year Level Dropdown */}
+              <div className="settings-field" style={{ marginBottom: '12px' }}>
+                <label className="settings-field-label">Year Level *</label>
+                <select
+                  className="settings-field-select"
+                  value={editYear}
+                  onChange={(e) => setEditYear(e.target.value)}
+                  required
+                >
+                  {YEAR_LEVELS.map((yr) => (
+                    <option key={yr} value={yr}>
+                      {yr}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Department Dropdown */}
+              <div className="settings-field" style={{ marginBottom: '16px' }}>
+                <label className="settings-field-label">College / Department *</label>
+                <select
+                  className="settings-field-select"
+                  value={editDepartment}
+                  onChange={(e) => setEditDepartment(e.target.value)}
+                  required
+                >
+                  {DEPARTMENTS.map((dept) => (
+                    <option key={dept} value={dept}>
+                      {dept}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
+                <button
+                  type="button"
+                  style={{
+                    flex: 1,
+                    padding: '11px',
+                    background: '#ffffff',
+                    border: '1px solid #d1d5db',
+                    borderRadius: '8px',
+                    fontSize: '0.92rem',
+                    fontWeight: 600,
+                    color: '#374151',
+                    cursor: 'pointer',
+                  }}
+                  onClick={() => setShowEditProfileModal(false)}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="settings-modal-btn-submit"
+                  style={{ flex: 1, marginTop: 0 }}
+                  disabled={isSubmittingProfile}
+                >
+                  {isSubmittingProfile ? 'Saving Changes...' : 'Save Changes'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
 
       {/* Change Password Modal */}
       {showPasswordModal && (
@@ -356,7 +596,7 @@ export default function SettingsPage({
                     className="settings-field-input"
                     value={currentPassword}
                     onChange={(e) => setCurrentPassword(e.target.value)}
-                    placeholder="Leave blank if registering first password"
+                    placeholder="Leave blank if setting first password"
                     style={{ paddingRight: '40px' }}
                   />
                   <button

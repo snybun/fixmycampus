@@ -33,7 +33,8 @@ try {
         $user = auth_user();
         if (auth_check() && !empty($user['id'])) {
             $fresh = db_fetch_one("
-                SELECT u.id, u.role_id, u.user_identifier, u.full_name, u.email, u.phone_number, u.department, u.avatar_url, u.status,
+                SELECT u.id, u.role_id, u.user_identifier, u.first_name, u.middle_name, u.last_name, u.full_name,
+                       u.email, u.phone_number, u.department, u.year_level, u.avatar_url, u.status,
                        r.name as role_name, r.display_name as role_display
                 FROM `users` u
                 JOIN `roles` r ON u.role_id = r.id
@@ -115,7 +116,8 @@ try {
         ]);
 
         $updatedUser = db_fetch_one("
-            SELECT u.id, u.role_id, u.user_identifier, u.full_name, u.email, u.phone_number, u.department, u.avatar_url, u.status,
+            SELECT u.id, u.role_id, u.user_identifier, u.first_name, u.middle_name, u.last_name, u.full_name,
+                   u.email, u.phone_number, u.department, u.year_level, u.avatar_url, u.status,
                    r.name as role_name, r.display_name as role_display
             FROM `users` u
             JOIN `roles` r ON u.role_id = r.id
@@ -133,6 +135,76 @@ try {
             'message' => 'Profile picture updated successfully.',
             'avatar_url' => $avatarUrl,
             'user' => $updatedUser,
+        ]);
+    }
+
+    if ($action === 'update_profile' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!auth_check()) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Unauthorized. Please sign in.',
+            ], 401);
+        }
+
+        $userId = auth_id();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+
+        $firstName  = trim($input['first_name'] ?? '');
+        $middleName = trim($input['middle_name'] ?? '');
+        $lastName   = trim($input['last_name'] ?? '');
+        $yearLevel  = trim($input['year_level'] ?? '');
+        $department = trim($input['department'] ?? '');
+
+        // Compose full name if parts provided
+        $parts = array_filter([$firstName, $middleName, $lastName], fn($p) => $p !== '');
+        $fullName = !empty($parts) ? implode(' ', $parts) : trim($input['full_name'] ?? '');
+
+        if (empty($fullName)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'First and last name cannot be empty.',
+            ], 400);
+        }
+
+        db_query("
+            UPDATE `users`
+            SET `first_name` = :fn,
+                `middle_name` = :mn,
+                `last_name` = :ln,
+                `full_name` = :full_name,
+                `year_level` = :year_level,
+                `department` = :department,
+                `updated_at` = NOW()
+            WHERE `id` = :id
+        ", [
+            ':fn'         => !empty($firstName) ? $firstName : null,
+            ':mn'         => !empty($middleName) ? $middleName : null,
+            ':ln'         => !empty($lastName) ? $lastName : null,
+            ':full_name'  => $fullName,
+            ':year_level' => !empty($yearLevel) ? $yearLevel : null,
+            ':department' => !empty($department) ? $department : null,
+            ':id'         => $userId,
+        ]);
+
+        $updatedUser = db_fetch_one("
+            SELECT u.id, u.role_id, u.user_identifier, u.first_name, u.middle_name, u.last_name, u.full_name,
+                   u.email, u.phone_number, u.department, u.year_level, u.avatar_url, u.status,
+                   r.name as role_name, r.display_name as role_display
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE u.id = :id
+            LIMIT 1
+        ", [':id' => $userId]);
+
+        if ($updatedUser) {
+            unset($updatedUser['password_hash']);
+            session_set('user', $updatedUser);
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => 'Profile updated successfully.',
+            'user'    => $updatedUser,
         ]);
     }
 

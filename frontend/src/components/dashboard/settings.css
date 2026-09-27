@@ -367,6 +367,48 @@
   cursor: not-allowed;
 }
 
+.settings-field-select {
+  width: 100%;
+  padding: 10px 14px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.92rem;
+  color: #374151;
+  font-family: inherit;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.settings-field-select:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
+}
+
+.settings-modal-dialog-wide {
+  max-width: 520px;
+}
+
+.settings-form-row-2col {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+}
+
+.settings-form-row-3col {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 10px;
+}
+
+@media (max-width: 540px) {
+  .settings-form-row-2col,
+  .settings-form-row-3col {
+    grid-template-columns: 1fr;
+  }
+}
+
 /* Toast Message */
 .settings-toast {
   position: fixed;
