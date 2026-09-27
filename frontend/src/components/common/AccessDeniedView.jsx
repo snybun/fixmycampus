@@ -1,5 +1,5 @@
 import React from 'react';
-import { ShieldAlert, ArrowLeft, LogIn, Lock, AlertTriangle } from 'lucide-react';
+import { Lock, ArrowLeft, LogIn } from 'lucide-react';
 import './accessDenied.css';
 
 export default function AccessDeniedView({ currentUser, onNavigate, onLogout }) {
@@ -26,75 +26,48 @@ export default function AccessDeniedView({ currentUser, onNavigate, onLogout }) 
   };
 
   return (
-    <div className="fmc-denied-wrapper">
-      <div className="fmc-denied-card">
-        {/* Security Shield Icon */}
-        <div className="fmc-denied-icon-box">
-          <div className="fmc-denied-icon-pulse" />
-          <ShieldAlert size={36} strokeWidth={2.2} />
+    <div className="apple-denied-wrapper">
+      <div className="apple-denied-card">
+        {/* Apple Minimalist Icon */}
+        <div className="apple-denied-icon">
+          <Lock size={24} strokeWidth={2} />
         </div>
 
-        {/* 403 Forbidden Badge */}
-        <div className="fmc-denied-badge">
-          <Lock size={13} />
-          <span>403 &bull; Access Forbidden</span>
-        </div>
-
-        {/* Title */}
-        <h1 className="fmc-denied-title">Administrator Privileges Required</h1>
-
-        {/* Explanation */}
-        <p className="fmc-denied-desc">
-          Your institutional account does not have sufficient role permissions to access the
-          Super Administrator facilities portal. Server-side Role-Based Access Control (RBAC)
-          strictly monitors and restricts access to verified administrative accounts only.
+        {/* Clean Apple Typography */}
+        <h1 className="apple-denied-title">Administrator Access Required</h1>
+        <p className="apple-denied-subtitle">
+          This portal is restricted to facility administrators. Your current institutional account
+          does not have permission to view this page.
         </p>
 
-        {/* Role Comparison Pill */}
-        <div className="fmc-denied-role-box">
-          <div className="fmc-denied-role-item">
-            <span className="fmc-denied-role-label">Your Account</span>
-            <span className="fmc-denied-role-val fmc-role-user" title={userName}>
-              {userName}
-            </span>
-            <span className="fmc-denied-role-sub">{userIdentifier}</span>
+        {/* Minimalist Apple Info Group */}
+        <div className="apple-denied-info-inset">
+          <div className="apple-info-row">
+            <span className="apple-info-label">Account</span>
+            <span className="apple-info-value" title={userName}>{userName}</span>
           </div>
-
-          <div className="fmc-denied-role-divider" />
-
-          <div className="fmc-denied-role-item">
-            <span className="fmc-denied-role-label">Current Role</span>
-            <span className="fmc-denied-role-val fmc-role-current">
-              {currentRole}
-            </span>
-            <span className="fmc-denied-role-sub">Unauthorized for #admin</span>
+          <div className="apple-info-divider" />
+          <div className="apple-info-row">
+            <span className="apple-info-label">ID / Email</span>
+            <span className="apple-info-value apple-info-mono">{userIdentifier}</span>
           </div>
-
-          <div className="fmc-denied-role-divider" />
-
-          <div className="fmc-denied-role-item">
-            <span className="fmc-denied-role-label">Required Role</span>
-            <span className="fmc-denied-role-val fmc-role-required">
-              Super Administrator
-            </span>
-            <span className="fmc-denied-role-sub">Tier 1 Full Authority</span>
+          <div className="apple-info-divider" />
+          <div className="apple-info-row">
+            <span className="apple-info-label">Current Role</span>
+            <span className="apple-info-value apple-role-tag">{currentRole}</span>
           </div>
         </div>
 
-        {/* Security Notice */}
-        <div className="fmc-denied-notice">
-          <AlertTriangle size={15} className="fmc-notice-icon" />
-          <span>
-            Direct URL tampering (such as entering <code>#admin</code>) is intercepted and blocked
-            by server-side authentication guards.
-          </span>
-        </div>
+        {/* Discreet Footnote */}
+        <p className="apple-denied-note">
+          Direct navigation to <code>#admin</code> is blocked by server security policy.
+        </p>
 
-        {/* Actions */}
-        <div className="fmc-denied-actions">
+        {/* Apple Pill Action Buttons */}
+        <div className="apple-denied-actions">
           <button
             type="button"
-            className="fmc-denied-btn fmc-btn-primary"
+            className="apple-btn apple-btn-primary"
             onClick={handleReturnDashboard}
             id="fmc-return-dashboard-btn"
           >
@@ -104,18 +77,13 @@ export default function AccessDeniedView({ currentUser, onNavigate, onLogout }) 
 
           <button
             type="button"
-            className="fmc-denied-btn fmc-btn-secondary"
+            className="apple-btn apple-btn-secondary"
             onClick={handleSwitchAccount}
             id="fmc-switch-account-btn"
           >
             <LogIn size={16} />
-            <span>Log in with Admin Account</span>
+            <span>Sign in as Administrator</span>
           </button>
-        </div>
-
-        {/* Footer */}
-        <div className="fmc-denied-footer">
-          FixMyCampus &bull; PHINMA Education Facility Security &amp; RBAC System
         </div>
       </div>
     </div>
