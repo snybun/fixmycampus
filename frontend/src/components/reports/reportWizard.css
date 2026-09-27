@@ -53,19 +53,19 @@
 .rw-logo-icon {
   width: 34px;
   height: 34px;
-  background-color: #111827;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28);
 }
 
 .rw-logo-text {
   font-size: 1.125rem;
   font-weight: 750;
-  color: #111827;
+  color: #064e3b;
   letter-spacing: -0.02em;
 }
 
@@ -225,15 +225,16 @@
 
 /* Node States */
 .rw-step-node.active .rw-step-circle {
-  background-color: #111827;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
-  border: 2px solid #111827;
+  border: 2px solid #047857;
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.18);
 }
 
 .rw-step-node.completed .rw-step-circle {
-  background-color: #22c55e;
+  background-color: #10b981;
   color: #ffffff;
-  border: 2px solid #22c55e;
+  border: 2px solid #10b981;
 }
 
 .rw-step-node.upcoming .rw-step-circle {
@@ -249,12 +250,12 @@
 }
 
 .rw-step-node.active .rw-step-label {
-  color: #111827;
-  font-weight: 700;
+  color: #047857;
+  font-weight: 750;
 }
 
 .rw-step-node.completed .rw-step-label {
-  color: #15803d;
+  color: #059669;
 }
 
 .rw-step-node.upcoming .rw-step-label {
@@ -271,7 +272,7 @@
 }
 
 .rw-step-connector.completed {
-  background-color: #22c55e;
+  background-color: #10b981;
 }
 
 /* --------------------------------------------------------------------------
@@ -335,8 +336,8 @@
 
 .rw-upload-dropzone:hover,
 .rw-upload-dropzone.drag-active {
-  border-color: #0f172a;
-  background-color: #f1f5f9;
+  border-color: #059669;
+  background-color: #ecfdf5;
 }
 
 .rw-upload-empty {
@@ -464,16 +465,16 @@
 }
 
 .rw-category-card:hover:not(.selected) {
-  border-color: #cbd5e1;
-  background-color: #f8fafc;
+  border-color: #a7f3d0;
+  background-color: #ecfdf5;
   transform: translateY(-1px);
 }
 
 .rw-category-card.selected {
-  background-color: #111827;
-  border-color: #111827;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border-color: #047857;
   color: #ffffff;
-  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.15);
+  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.3);
 }
 
 .rw-cat-icon {
@@ -526,8 +527,8 @@
 .rw-select:focus,
 .rw-input:focus,
 .rw-textarea:focus {
-  border-color: #0f172a;
-  box-shadow: 0 0 0 3px rgba(15, 23, 42, 0.08);
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
 }
 
 /* Campus Map Placement Preview Visualizer */
@@ -590,16 +591,16 @@
 }
 
 .rw-map-block.highlighted {
-  background-color: #ffffff;
-  border: 2px solid #111827;
-  color: #111827;
+  background-color: #ecfdf5;
+  border: 2px solid #059669;
+  color: #065f46;
   font-weight: 750;
   min-width: 150px;
   min-height: 52px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.15);
 }
 
 /* --------------------------------------------------------------------------
@@ -708,9 +709,9 @@
 }
 
 .rw-add-photo-slot:hover {
-  border-color: #0f172a;
-  background-color: #f1f5f9;
-  color: #0f172a;
+  border-color: #059669;
+  background-color: #ecfdf5;
+  color: #059669;
 }
 
 /* --------------------------------------------------------------------------
@@ -927,22 +928,22 @@
 .rw-btn-continue,
 .rw-btn-submit {
   padding: 11px 32px;
-  background-color: #111827;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   border: none;
   border-radius: 10px;
   font-size: 0.9375rem;
   font-weight: 650;
   cursor: pointer;
-  transition: all 0.15s ease;
-  box-shadow: 0 2px 8px rgba(17, 24, 39, 0.1);
+  transition: all 0.18s ease;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28);
 }
 
 .rw-btn-continue:hover:not(:disabled),
 .rw-btn-submit:hover:not(:disabled) {
-  background-color: #1f2937;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 12px rgba(17, 24, 39, 0.18);
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.38);
 }
 
 .rw-btn-continue:disabled,
@@ -951,6 +952,7 @@
   cursor: not-allowed;
   transform: none;
   box-shadow: none;
+  background: #64748b;
 }
 
 /* --------------------------------------------------------------------------

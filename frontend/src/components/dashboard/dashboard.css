@@ -61,19 +61,20 @@
 .dash-logo-icon {
   width: 32px;
   height: 32px;
-  background-color: #111827;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28);
 }
 
 .dash-logo-text {
   font-size: 1.08rem;
-  font-weight: 700;
+  font-weight: 750;
   letter-spacing: -0.015em;
-  color: #111827;
+  color: #064e3b;
 }
 
 /* Navigation Links */
@@ -96,12 +97,23 @@
 }
 
 .dash-nav-link:hover {
-  color: #111827;
+  color: #059669;
 }
 
 .dash-nav-link.active {
-  color: #111827;
+  color: #047857;
   font-weight: 700;
+}
+
+.dash-nav-link.active::after {
+  content: '';
+  position: absolute;
+  bottom: -4px;
+  left: 0;
+  right: 0;
+  height: 2px;
+  background-color: #059669;
+  border-radius: 2px;
 }
 
 /* Right Controls */
@@ -213,9 +225,9 @@
 }
 
 .dash-states-pill:hover {
-  background-color: #111827;
+  background-color: #047857;
   color: #ffffff;
-  border-color: #111827;
+  border-color: #047857;
 }
 
 /* --------------------------------------------------------------------------
@@ -251,7 +263,7 @@
 }
 
 .dash-btn-primary {
-  background-color: #111827;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   border: none;
   font-size: 0.92rem;
@@ -262,15 +274,15 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
-  transition: all 0.15s ease;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28);
+  transition: all 0.18s ease;
   white-space: nowrap;
 }
 
 .dash-btn-primary:hover {
-  background-color: #1f2937;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.38);
 }
 
 /* --------------------------------------------------------------------------
@@ -510,13 +522,14 @@
   width: 24px;
   height: 24px;
   border-radius: 50%;
-  background-color: #111827;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   font-size: 0.75rem;
   font-weight: 700;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
 }
 
 .dash-step-circle.green {

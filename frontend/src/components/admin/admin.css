@@ -12,9 +12,11 @@
   --admin-text-main: #0f172a;
   --admin-text-muted: #64748b;
   --admin-text-light: #94a3b8;
-  --admin-dark-pill: #1e2430;
-  --admin-green: #16a34a;
-  --admin-green-bg: #dcfce7;
+  --admin-dark-pill: #059669;
+  --admin-emerald: #059669;
+  --admin-emerald-dark: #047857;
+  --admin-green: #10b981;
+  --admin-green-bg: #ecfdf5;
   --admin-blue: #2563eb;
   --admin-blue-bg: #dbeafe;
   --admin-amber: #d97706;
@@ -62,18 +64,19 @@
 .admin-brand-icon {
   width: 32px;
   height: 32px;
-  background-color: #0f172a;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.3);
 }
 
 .admin-brand-name {
   font-size: 1.15rem;
   font-weight: 700;
-  color: #0f172a;
+  color: #064e3b;
   letter-spacing: -0.02em;
 }
 
@@ -104,14 +107,15 @@
 }
 
 .admin-nav-item:hover {
-  background-color: #f1f5f9;
-  color: var(--admin-text-main);
+  background-color: #ecfdf5;
+  color: #047857;
 }
 
 .admin-nav-item.active {
-  background-color: var(--admin-dark-pill);
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.25);
 }
 
 .admin-nav-item.active svg {
@@ -219,7 +223,7 @@
   display: inline-flex;
   align-items: center;
   gap: 8px;
-  background-color: #0f172a;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   padding: 10px 18px;
   border-radius: 8px;
@@ -227,11 +231,14 @@
   font-weight: 600;
   border: none;
   cursor: pointer;
-  transition: background 0.15s ease, transform 0.1s ease;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.28);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
 .admin-btn-black:hover {
-  background-color: #1e293b;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.38);
+  transform: translateY(-1px);
 }
 
 .admin-btn-black:active {
@@ -707,7 +714,8 @@
 }
 
 .admin-search-input:focus {
-  border-color: #0f172a;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
 }
 
 .admin-filters-row {
@@ -728,7 +736,8 @@
 }
 
 .admin-filter-select:focus {
-  border-color: #0f172a;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
 }
 
 /* Pagination */
@@ -765,9 +774,9 @@
 }
 
 .admin-page-btn.active {
-  background-color: #0f172a;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
-  border-color: #0f172a;
+  border-color: #059669;
 }
 
 .admin-page-btn:disabled {
@@ -928,7 +937,8 @@
 }
 
 .admin-select-input:focus {
-  border-color: #0f172a;
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
 }
 
 .admin-upload-dropzone {

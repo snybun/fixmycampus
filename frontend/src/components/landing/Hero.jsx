@@ -36,7 +36,7 @@ export default function Hero({ onNavigate, onScrollTo, currentUser }) {
             className="btn-hero-secondary"
             onClick={() => onScrollTo ? onScrollTo('process') : document.getElementById('process')?.scrollIntoView({ behavior: 'smooth' })}
           >
-            Explore Demo
+            How it works
           </button>
         </div>
       </div>

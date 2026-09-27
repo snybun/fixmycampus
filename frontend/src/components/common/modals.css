@@ -143,14 +143,16 @@
 }
 
 .modal-btn-primary {
-  background-color: #0f172a;
-  border: 1px solid #0f172a;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border: 1px solid #047857;
   color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
 }
 
 .modal-btn-primary:hover {
-  background-color: #1e293b;
-  border-color: #1e293b;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #059669;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.35);
 }
 
 .modal-btn-danger {
