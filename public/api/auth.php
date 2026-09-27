@@ -30,9 +30,157 @@ $action = $_GET['action'] ?? 'me';
 
 try {
     if ($action === 'me') {
+        $user = auth_user();
+        if (auth_check() && !empty($user['id'])) {
+            $fresh = db_fetch_one("
+                SELECT u.id, u.role_id, u.user_identifier, u.full_name, u.email, u.phone_number, u.department, u.avatar_url, u.status,
+                       r.name as role_name, r.display_name as role_display
+                FROM `users` u
+                JOIN `roles` r ON u.role_id = r.id
+                WHERE u.id = :id
+                LIMIT 1
+            ", [':id' => $user['id']]);
+            if ($fresh) {
+                unset($fresh['password_hash']);
+                $user = $fresh;
+                session_set('user', $user);
+            }
+        }
         \FixMyCampus\Core\Response::json([
             'authenticated' => auth_check(),
-            'user'          => auth_user(),
+            'user'          => $user,
+        ]);
+    }
+
+    if ($action === 'update_avatar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!auth_check()) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Unauthorized. Please sign in.',
+            ], 401);
+        }
+
+        $userId = auth_id();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $avatarUrl = $input['avatar_url'] ?? '';
+
+        // Handle uploaded file if present
+        if (isset($_FILES['avatar']) && $_FILES['avatar']['error'] === UPLOAD_ERR_OK) {
+            $file = $_FILES['avatar'];
+            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
+            $allowed = ['jpg', 'jpeg', 'png', 'webp', 'gif'];
+            if (!in_array($ext, $allowed, true)) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'Invalid file format. Please upload JPG, PNG, WEBP, or GIF.',
+                ], 400);
+            }
+            $uploadDir = dirname(__DIR__) . '/uploads/avatars';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0755, true);
+            }
+            $filename = 'avatar_' . $userId . '_' . time() . '.' . $ext;
+            $destination = $uploadDir . '/' . $filename;
+            if (move_uploaded_file($file['tmp_name'], $destination)) {
+                $avatarUrl = '/uploads/avatars/' . $filename;
+            }
+        } elseif (!empty($avatarUrl) && str_starts_with($avatarUrl, 'data:image/')) {
+            // Base64 data URL
+            if (preg_match('/^data:image\/(\w+);base64,/', $avatarUrl, $type)) {
+                $data = substr($avatarUrl, strpos($avatarUrl, ',') + 1);
+                $type = strtolower($type[1]);
+                $data = base64_decode($data);
+                if ($data !== false) {
+                    $uploadDir = dirname(__DIR__) . '/uploads/avatars';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+                    $filename = 'avatar_' . $userId . '_' . time() . '.' . ($type === 'jpeg' ? 'jpg' : $type);
+                    file_put_contents($uploadDir . '/' . $filename, $data);
+                    $avatarUrl = '/uploads/avatars/' . $filename;
+                }
+            }
+        }
+
+        if (empty($avatarUrl)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'No image provided.',
+            ], 400);
+        }
+
+        db_query("UPDATE `users` SET `avatar_url` = :avatar, `updated_at` = NOW() WHERE `id` = :id", [
+            ':avatar' => $avatarUrl,
+            ':id'     => $userId,
+        ]);
+
+        $updatedUser = db_fetch_one("
+            SELECT u.id, u.role_id, u.user_identifier, u.full_name, u.email, u.phone_number, u.department, u.avatar_url, u.status,
+                   r.name as role_name, r.display_name as role_display
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE u.id = :id
+            LIMIT 1
+        ", [':id' => $userId]);
+
+        if ($updatedUser) {
+            unset($updatedUser['password_hash']);
+            session_set('user', $updatedUser);
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => 'Profile picture updated successfully.',
+            'avatar_url' => $avatarUrl,
+            'user' => $updatedUser,
+        ]);
+    }
+
+    if ($action === 'change_password' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        if (!auth_check()) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Unauthorized. Please sign in.',
+            ], 401);
+        }
+
+        $userId = auth_id();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $currentPassword = $input['current_password'] ?? '';
+        $newPassword = $input['new_password'] ?? '';
+
+        if (strlen($newPassword) < 6) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'New password must be at least 6 characters.',
+            ], 400);
+        }
+
+        $user = db_fetch_one("SELECT * FROM `users` WHERE `id` = :id LIMIT 1", [':id' => $userId]);
+        if (!$user) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'User not found.',
+            ], 404);
+        }
+
+        // If current password provided, verify it
+        if (!empty($currentPassword) && !password_verify($currentPassword, $user['password_hash'])) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Current password does not match.',
+            ], 400);
+        }
+
+        $newHash = password_hash($newPassword, PASSWORD_BCRYPT);
+        db_query("UPDATE `users` SET `password_hash` = :hash, `updated_at` = NOW() WHERE `id` = :id", [
+            ':hash' => $newHash,
+            ':id'   => $userId,
+        ]);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => 'Password updated successfully. You can now use this password to sign in via the login form.',
         ]);
     }
 
@@ -87,7 +235,7 @@ try {
             SELECT u.*, r.name as role_name, r.display_name as role_display
             FROM `users` u
             JOIN `roles` r ON u.role_id = r.id
-            WHERE u.email = :email OR u.user_identifier = :identifier
+            WHERE LOWER(u.email) = LOWER(:email) OR u.user_identifier = :identifier
             LIMIT 1
         ", [':email' => $loginInput, ':identifier' => $loginInput]);
 
@@ -101,7 +249,7 @@ try {
         if (!password_verify($password, $user['password_hash'])) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
-                'message' => 'Incorrect password. Please verify your password or use Forgot Password to reset it.',
+                'message' => 'Incorrect password. If you signed up with Google, use "Sign in with Google" or use Forgot Password to reset it.',
             ], 401);
         }
 
@@ -199,12 +347,12 @@ try {
             ], 403);
         }
 
-        // Look up user in database
+        // Look up user in database (case-insensitive by institutional email)
         $user = db_fetch_one("
             SELECT u.*, r.name as role_name, r.display_name as role_display
             FROM `users` u
             JOIN `roles` r ON u.role_id = r.id
-            WHERE u.email = :email
+            WHERE LOWER(u.email) = LOWER(:email)
             LIMIT 1
         ", [':email' => $email]);
 
@@ -214,6 +362,15 @@ try {
                     'success' => false,
                     'message' => 'Your account is currently suspended or inactive. Please contact Campus Administration.',
                 ], 403);
+            }
+
+            // Sync Google avatar if user has none saved yet
+            if (!empty($googleUser['picture']) && empty($user['avatar_url'])) {
+                db_query("UPDATE `users` SET `avatar_url` = :avatar, `updated_at` = NOW() WHERE `id` = :id", [
+                    ':avatar' => $googleUser['picture'],
+                    ':id'     => $user['id'],
+                ]);
+                $user['avatar_url'] = $googleUser['picture'];
             }
         } else {
             // Auto-provision student user for first-time institutional Google login
@@ -229,7 +386,7 @@ try {
             }
 
             $dummyPasswordHash = password_hash(bin2hex(random_bytes(16)), PASSWORD_BCRYPT);
-            $department = 'PHINMA Education';
+            $department = 'CITE - College of Information Technology Education';
 
             $newId = db_insert('users', [
                 'role_id'         => $roleId,
@@ -238,6 +395,7 @@ try {
                 'email'           => $email,
                 'password_hash'   => $dummyPasswordHash,
                 'department'      => $department,
+                'avatar_url'      => $googleUser['picture'] ?? null,
                 'status'          => 'active',
             ]);
 
@@ -248,11 +406,6 @@ try {
                 WHERE u.id = :id
                 LIMIT 1
             ", [':id' => $newId]);
-        }
-
-        // Attach avatar picture if available
-        if (!empty($googleUser['picture'])) {
-            $user['avatar_url'] = $googleUser['picture'];
         }
 
         // Initialize session

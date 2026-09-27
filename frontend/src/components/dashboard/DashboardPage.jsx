@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Wrench,
   Bell,
@@ -12,6 +12,7 @@ import {
   Trash2,
   SlidersHorizontal,
   ChevronRight,
+  ChevronDown,
   User,
 } from 'lucide-react';
 import { fetchStats, fetchReports, deleteReport } from '../../services/api';
@@ -37,6 +38,23 @@ export default function DashboardPage({
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'modals-gallery'
   const [unreadCount, setUnreadCount] = useState(3);
   const [toastMessage, setToastMessage] = useState('');
+  const [isProfileDropdownOpen, setIsProfileDropdownOpen] = useState(false);
+  const profileDropdownRef = useRef(null);
+
+  // Close profile dropdown on outside click
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(e.target)) {
+        setIsProfileDropdownOpen(false);
+      }
+    };
+    if (isProfileDropdownOpen) {
+      document.addEventListener('mousedown', handleOutsideClick);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleOutsideClick);
+    };
+  }, [isProfileDropdownOpen]);
 
   // Initial reports - start empty until reported as requested
   const [reports, setReports] = useState([]);
@@ -270,32 +288,81 @@ export default function DashboardPage({
               )}
             </button>
 
-            {/* User Profile Info */}
-            <div
-              className="dash-user-profile"
-              onClick={() => setActiveModalPreset('start_over')}
-              title="User Profile"
-            >
-              <div className="dash-user-avatar">
-                {currentUser?.avatar_url ? (
-                  <img src={currentUser.avatar_url} alt={displayName} />
-                ) : (
-                  <User size={18} strokeWidth={2.2} />
-                )}
-              </div>
-              <span className="dash-user-name">{displayName}</span>
-            </div>
+            {/* User Profile Menu with Settings & Logout Dropdown */}
+            <div className="dash-profile-menu-container" ref={profileDropdownRef}>
+              <button
+                type="button"
+                className="dash-user-profile-btn"
+                onClick={() => setIsProfileDropdownOpen((prev) => !prev)}
+                aria-expanded={isProfileDropdownOpen}
+                title="Account menu"
+                id="dash-user-profile-menu-btn"
+              >
+                <div className="dash-user-avatar">
+                  {currentUser?.avatar_url ? (
+                    <img src={currentUser.avatar_url} alt={displayName} />
+                  ) : (
+                    <User size={18} strokeWidth={2.2} />
+                  )}
+                </div>
+                <span className="dash-user-name">{displayName}</span>
+                <ChevronDown
+                  size={14}
+                  className={`dash-profile-chevron ${isProfileDropdownOpen ? 'open' : ''}`}
+                />
+              </button>
 
-            {/* Logout Trigger -> opens Logout? Confirmation Modal */}
-            <button
-              type="button"
-              className="dash-logout-btn"
-              onClick={() => setActiveModalPreset('logout')}
-              title="Log out of FixMyCampus"
-              id="dash-logout-button"
-            >
-              <LogOut size={18} strokeWidth={2} />
-            </button>
+              {/* Dropdown Menu */}
+              {isProfileDropdownOpen && (
+                <div className="dash-profile-dropdown" role="menu">
+                  <div className="dash-dropdown-header">
+                    <div className="dash-dropdown-avatar">
+                      {currentUser?.avatar_url ? (
+                        <img src={currentUser.avatar_url} alt={displayName} />
+                      ) : (
+                        <User size={18} strokeWidth={2} />
+                      )}
+                    </div>
+                    <div className="dash-dropdown-info">
+                      <span className="dash-dropdown-name">{displayName}</span>
+                      <span className="dash-dropdown-sub">
+                        {currentUser?.email || currentUser?.user_identifier || 'Student Account'}
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="dash-dropdown-divider" />
+
+                  {/* Settings Item */}
+                  <button
+                    type="button"
+                    className="dash-dropdown-item"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      onNavigate('settings');
+                    }}
+                    id="dash-dropdown-settings-btn"
+                  >
+                    <SlidersHorizontal size={16} className="dash-dropdown-icon" />
+                    <span>Settings</span>
+                  </button>
+
+                  {/* Logout Item */}
+                  <button
+                    type="button"
+                    className="dash-dropdown-item dash-dropdown-item-logout"
+                    onClick={() => {
+                      setIsProfileDropdownOpen(false);
+                      setActiveModalPreset('logout');
+                    }}
+                    id="dash-dropdown-logout-btn"
+                  >
+                    <LogOut size={16} className="dash-dropdown-icon" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </header>

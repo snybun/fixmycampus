@@ -18,13 +18,14 @@ import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
 import DashboardPage from './components/dashboard/DashboardPage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ReportIssueWizard from './components/reports/ReportIssueWizard';
+import SettingsPage from './components/dashboard/SettingsPage';
 import { fetchAuthMe, logoutUser } from './services/api';
 
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin, #report-issue)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin, #report-issue, #settings)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -46,7 +47,7 @@ export default function App() {
       if (res && res.authenticated && res.user) {
         setCurrentUser(res.user);
         const hash = window.location.hash.replace('#', '');
-        if (hash === 'dashboard' || hash === 'report-issue' || hash === 'admin') {
+        if (hash === 'dashboard' || hash === 'report-issue' || hash === 'admin' || hash === 'settings') {
           if ((res.user.role_name === 'admin' || res.user.role_id === 1) && hash === 'dashboard') {
             setCurrentView('admin');
           } else {
@@ -56,7 +57,7 @@ export default function App() {
       } else {
         setCurrentUser(null);
         const hash = window.location.hash.replace('#', '');
-        if (['dashboard', 'report-issue', 'admin'].includes(hash)) {
+        if (['dashboard', 'report-issue', 'admin', 'settings'].includes(hash)) {
           setCurrentView('login');
           window.location.hash = 'login';
         }
@@ -67,11 +68,11 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['dashboard', 'report-issue', 'admin'].includes(hash) && !currentUser) {
+      if (['dashboard', 'report-issue', 'admin', 'settings'].includes(hash) && !currentUser) {
         handleNavigate('login');
         return;
       }
-      if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(hash)) {
+      if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -110,16 +111,16 @@ export default function App() {
   const handleNavigate = (view, userOverride = null) => {
     const activeUser = userOverride || currentUserRef.current || currentUser;
 
-    // Route guard: if trying to access dashboard, report-issue, or admin while logged out, redirect to login
+    // Route guard: if trying to access dashboard, report-issue, admin, or settings while logged out, redirect to login
     let targetView = view;
-    if (['dashboard', 'report-issue', 'admin'].includes(view) && !activeUser) {
+    if (['dashboard', 'report-issue', 'admin', 'settings'].includes(view) && !activeUser) {
       targetView = 'login';
     }
 
     if (targetView === currentView && !userOverride) return;
 
-    // Show loading screen when navigating to auth views, dashboard, admin, report-issue, or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue'].includes(targetView)) {
+    // Show loading screen when navigating to auth views, dashboard, admin, report-issue, settings, or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings'].includes(targetView)) {
       setLoadingMessage(
         targetView === 'admin'
           ? 'Accessing Super Administrator Portal...'
@@ -129,7 +130,9 @@ export default function App() {
           ? 'Opening FixMyCampus Dashboard...'
           : targetView === 'report-issue'
           ? 'Opening Report Issue Wizard...'
-          : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin'].includes(view)
+          : targetView === 'settings'
+          ? 'Opening Profile & Account Settings...'
+          : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin', 'settings'].includes(view)
           ? 'Please log in to FixMyCampus to continue...'
           : 'Accessing FixMyCampus Portal...'
       );
@@ -226,6 +229,19 @@ export default function App() {
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
+        />
+      )}
+
+      {/* Account Profile & Settings */}
+      {currentView === 'settings' && (
+        <SettingsPage
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+          onUpdateUser={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            currentUserRef.current = updatedUser;
+          }}
         />
       )}
 

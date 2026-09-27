@@ -338,6 +338,36 @@ export async function updateAdminUserStatus(userId, status) {
   }
 }
 
+export async function updateProfilePicture(avatarData) {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=update_avatar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ avatar_url: avatarData }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('updateProfilePicture error:', err);
+    return { success: false, message: 'Failed to update profile picture.' };
+  }
+}
+
+export async function changeUserPassword({ current_password, new_password }) {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=change_password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ current_password, new_password }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('changeUserPassword error:', err);
+    return { success: false, message: 'Failed to update password.' };
+  }
+}
+
 export async function createReport(reportData) {
   try {
     const res = await fetch(`${API_BASE}/reports.php?action=create`, {
@@ -352,4 +382,5 @@ export async function createReport(reportData) {
     return { success: false, message: 'Failed to submit report. Please check server connection.' };
   }
 }
+
 

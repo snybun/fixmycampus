@@ -38,6 +38,7 @@ CREATE TABLE `users` (
     `password_hash` VARCHAR(255) NOT NULL,
     `phone_number` VARCHAR(25) NULL,
     `department` VARCHAR(100) NULL,
+    `avatar_url` LONGTEXT NULL,
     `status` ENUM('active', 'inactive', 'suspended') NOT NULL DEFAULT 'active',
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     `updated_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
