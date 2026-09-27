@@ -23,6 +23,7 @@ import {
 } from 'lucide-react';
 import { fetchBuildings, fetchCategories, createReport } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
+import UserProfileDropdown from '../common/UserProfileDropdown';
 import './reportWizard.css';
 
 // 9 Categories matching Screenshot 1
@@ -374,22 +375,13 @@ export default function ReportIssueWizard({
               {unreadCount > 0 && <span className="rw-notif-badge">{unreadCount}</span>}
             </button>
 
-            <div className="rw-user-pill">
-              <div className="rw-avatar-circle">
-                {displayName.charAt(0).toUpperCase()}
-              </div>
-              <span className="rw-user-name">{displayName}</span>
-            </div>
-
-            <button
-              type="button"
-              className="rw-logout-btn"
-              onClick={() => handleRequestExit(() => onLogout && onLogout())}
-              title="Log Out"
-              id="rw-logout-btn"
-            >
-              <LogOut size={18} />
-            </button>
+            <UserProfileDropdown
+              currentUser={currentUser}
+              onNavigate={onNavigate}
+              onSettingsClick={() => handleRequestExit(() => onNavigate && onNavigate('settings'))}
+              onLogout={() => handleRequestExit(() => onLogout && onLogout())}
+              idPrefix="rw-user-profile"
+            />
           </div>
         </div>
       </header>
