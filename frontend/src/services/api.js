@@ -283,6 +283,29 @@ export async function logoutUser() {
   return { success: true };
 }
 
+export async function verifyAdminRole() {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=verify_admin`, {
+      credentials: 'include',
+    });
+    const data = await res.json();
+    return {
+      ok: res.ok,
+      status: res.status,
+      ...data,
+    };
+  } catch (err) {
+    console.error('verifyAdminRole error:', err);
+    return {
+      ok: false,
+      status: 500,
+      success: false,
+      authorized: false,
+      message: 'Failed to verify administrative authorization with server.',
+    };
+  }
+}
+
 export async function fetchAdminOverview() {
   try {
     const res = await fetch(`${API_BASE}/admin.php?action=overview`, {

@@ -53,6 +53,38 @@ try {
         ]);
     }
 
+    // --------------------------------------------------------------------------
+    // Action: verify_admin -> Server-side RBAC check for Administrator privileges
+    // Returns HTTP 401 if unauthenticated, HTTP 403 if non-admin, HTTP 200 if admin
+    // --------------------------------------------------------------------------
+    if ($action === 'verify_admin') {
+        if (!auth_check()) {
+            \FixMyCampus\Core\Response::json([
+                'success'       => false,
+                'authorized'    => false,
+                'error_code'    => 'UNAUTHENTICATED',
+                'message'       => 'Authentication required. Please sign in.',
+            ], 401);
+        }
+
+        if (!auth_is_admin()) {
+            \FixMyCampus\Core\Response::json([
+                'success'       => false,
+                'authorized'    => false,
+                'error_code'    => 'FORBIDDEN',
+                'message'       => 'Access Denied: Administrator privileges required.',
+                'current_role'  => auth_role() ?? 'student',
+                'required_role' => 'admin',
+            ], 403);
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success'    => true,
+            'authorized' => true,
+            'user'       => auth_user(),
+        ]);
+    }
+
     if ($action === 'update_avatar' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         if (!auth_check()) {
             \FixMyCampus\Core\Response::json([

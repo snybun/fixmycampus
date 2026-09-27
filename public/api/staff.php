@@ -11,6 +11,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/src/config/app.php';
 require_once SRC_PATH . '/Core/Database.php';
 require_once SRC_PATH . '/Core/Response.php';
+require_once SRC_PATH . '/helpers/session.php';
+require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -25,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Only Super Administrators can register new maintenance staff personnel
+        $adminUser = auth_require_role('admin');
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $name = trim($input['full_name'] ?? '');
         $email = trim($input['email'] ?? '');
@@ -79,6 +83,9 @@ try {
     }
 
     // GET Request: fetch maintenance personnel (technicians & supervisors)
+    // Strictly restricted to authorized staff/admin personnel
+    $currentUser = auth_require_role(['admin', 'supervisor', 'technician']);
+
     $sql = "
         SELECT 
             u.id,
