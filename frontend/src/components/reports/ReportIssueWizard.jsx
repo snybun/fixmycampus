@@ -24,6 +24,7 @@ import {
 import { fetchBuildings, fetchCategories, createReport } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 import UserProfileDropdown from '../common/UserProfileDropdown';
+import CampusMapPlacement from './CampusMapPlacement';
 import './reportWizard.css';
 
 // 9 Categories matching Screenshot 1
@@ -50,7 +51,8 @@ const DEFAULT_BUILDINGS = [
   { id: 7, name: 'CCJE Building', floors: ['1st Floor', '2nd Floor', '3rd Floor', '4th Floor'] },
   { id: 8, name: 'Library', floors: ['1st Floor', '2nd Floor'] },
   { id: 9, name: 'GYM', floors: ['1st Floor'] },
-  { id: 10, name: 'Others', floors: [] },
+  { id: 10, name: 'SP (Student Plaza)', floors: ['1st Floor'] },
+  { id: 11, name: 'Others', floors: [] },
 ];
 
 export default function ReportIssueWizard({
@@ -663,68 +665,13 @@ export default function ReportIssueWizard({
               {/* Right Column: Campus Map Placement Preview */}
               <div>
                 <label className="rw-form-label">Campus Map Placement</label>
-                <div className="rw-map-card">
-                  <div className="rw-map-blueprint">
-                    <div className="rw-map-row">
-                      <div
-                        className={`rw-map-block ${
-                          selectedBuilding === 'NH Building' ? 'highlighted' : 'passive'
-                        }`}
-                        onClick={() => handleBuildingChange('NH Building')}
-                      >
-                        NH Building
-                      </div>
-                      <div
-                        className={`rw-map-block ${
-                          selectedBuilding === 'MBA Building' ? 'highlighted' : 'passive'
-                        }`}
-                        onClick={() => handleBuildingChange('MBA Building')}
-                      >
-                        MBA Building
-                      </div>
-                    </div>
-
-                    <div className="rw-map-road" />
-
-                    <div className="rw-map-row">
-                      <div
-                        className={`rw-map-block ${
-                          selectedBuilding === 'PTC Building' ? 'highlighted' : 'passive'
-                        }`}
-                        onClick={() => handleBuildingChange('PTC Building')}
-                      >
-                        PTC Building
-                      </div>
-                      <div
-                        className={`rw-map-block ${
-                          selectedBuilding === 'CMA Building' ? 'highlighted' : 'passive'
-                        }`}
-                        onClick={() => handleBuildingChange('CMA Building')}
-                      >
-                        CMA Building
-                      </div>
-                    </div>
-
-                    <div className="rw-map-row" style={{ marginTop: '4px' }}>
-                      <div
-                        className={`rw-map-block ${
-                          selectedBuilding === 'RS Building' ? 'highlighted' : 'passive'
-                        }`}
-                        onClick={() => handleBuildingChange('RS Building')}
-                      >
-                        RS Building
-                      </div>
-                      <div
-                        className={`rw-map-block ${
-                          selectedBuilding === 'Library' ? 'highlighted' : 'passive'
-                        }`}
-                        onClick={() => handleBuildingChange('Library')}
-                      >
-                        Library
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <CampusMapPlacement
+                  selectedBuilding={selectedBuilding}
+                  onSelectBuilding={handleBuildingChange}
+                  buildings={buildings}
+                  roomCoordinate={roomCoordinate}
+                  onCoordinateChange={setRoomCoordinate}
+                />
               </div>
             </div>
 
