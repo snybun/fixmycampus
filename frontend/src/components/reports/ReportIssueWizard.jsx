@@ -20,6 +20,12 @@ import {
   MoreHorizontal,
   UploadCloud,
   CheckCircle2,
+  Menu,
+  X,
+  Home,
+  FileText,
+  PlusCircle,
+  User,
 } from 'lucide-react';
 import { fetchBuildings, fetchCategories, createReport } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
@@ -66,6 +72,7 @@ export default function ReportIssueWizard({
   const [unreadCount, setUnreadCount] = useState(3);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Start Over / Exit Confirmation Modal State
   const [showExitModal, setShowExitModal] = useState(false);
@@ -384,8 +391,124 @@ export default function ReportIssueWizard({
               onLogout={() => handleRequestExit(() => onLogout && onLogout())}
               idPrefix="rw-user-profile"
             />
+
+            {/* Mobile Hamburger Menu Toggle Button */}
+            <button
+              type="button"
+              className="rw-mobile-toggle"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileMenuOpen}
+              id="rw-mobile-menu-toggle"
+            >
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+            </button>
           </div>
         </div>
+
+        {/* Mobile Slide-down Navigation Drawer & Backdrop */}
+        {mobileMenuOpen && (
+          <div className="rw-mobile-menu-container">
+            <div
+              className="rw-mobile-backdrop"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <div className="rw-mobile-drawer">
+              <nav className="rw-mobile-nav-list" aria-label="Mobile Navigation">
+                <button
+                  type="button"
+                  className="rw-mobile-nav-item"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleRequestExit(() => onNavigate('dashboard'));
+                  }}
+                  id="rw-mobile-nav-home"
+                >
+                  <Home size={18} className="rw-mobile-nav-icon" />
+                  <span>Home</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="rw-mobile-nav-item"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleRequestExit(() => onNavigate('dashboard'));
+                  }}
+                  id="rw-mobile-nav-my-reports"
+                >
+                  <FileText size={18} className="rw-mobile-nav-icon" />
+                  <span>My Reports</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="rw-mobile-nav-item active"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    if (currentStep > 1) {
+                      handleRequestExit(() => setCurrentStep(1));
+                    } else {
+                      setCurrentStep(1);
+                    }
+                  }}
+                  id="rw-mobile-nav-report-issue"
+                >
+                  <PlusCircle size={18} className="rw-mobile-nav-icon" />
+                  <span>Report Issue</span>
+                  <span className="rw-mobile-active-tag">Active</span>
+                </button>
+              </nav>
+
+              <div className="rw-mobile-divider" />
+
+              {/* Mobile User Profile Summary & Quick Actions */}
+              <div className="rw-mobile-user-section">
+                <div className="rw-mobile-user-row">
+                  <div className="rw-mobile-avatar">
+                    {currentUser?.avatar_url ? (
+                      <img src={currentUser.avatar_url} alt={currentUser?.full_name || 'User'} />
+                    ) : (
+                      <User size={18} />
+                    )}
+                  </div>
+                  <div className="rw-mobile-user-meta">
+                    <span className="rw-mobile-user-name">
+                      {currentUser?.full_name || 'Mark Dyvie Cerna'}
+                    </span>
+                    <span className="rw-mobile-user-role">
+                      {currentUser?.role_display || 'Student Account'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="rw-mobile-user-actions">
+                  <button
+                    type="button"
+                    className="rw-mobile-action-btn"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleRequestExit(() => onNavigate && onNavigate('settings'));
+                    }}
+                  >
+                    <span>Account Settings</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="rw-mobile-action-btn rw-mobile-logout"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      handleRequestExit(() => onLogout && onLogout());
+                    }}
+                  >
+                    <LogOut size={15} />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* --------------------------------------------------------------------

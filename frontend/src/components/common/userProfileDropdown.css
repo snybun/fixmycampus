@@ -264,3 +264,20 @@
 .fmc-dropdown-item-logout:hover .fmc-dropdown-icon {
   color: #b91c1c;
 }
+
+/* Mobile responsive compact state */
+@media (max-width: 640px) {
+  .fmc-user-name,
+  .fmc-user-sub-label,
+  .fmc-profile-chevron {
+    display: none;
+  }
+  .fmc-user-profile-btn {
+    padding: 2px;
+  }
+  .fmc-profile-dropdown {
+    right: 0;
+    width: 220px;
+  }
+}
+
