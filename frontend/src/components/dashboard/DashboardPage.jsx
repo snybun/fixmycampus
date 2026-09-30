@@ -470,7 +470,7 @@ export default function DashboardPage({
             <span className="dash-stat-label">TOTAL REPORTS</span>
             <div className="dash-stat-body">
               <span className="dash-stat-number">{stats.total}</span>
-              <div className="dash-stat-icon-box" title="Statistics">
+              <div className="dash-stat-icon-box indigo" title="Statistics">
                 <BarChart2 size={18} strokeWidth={2} />
               </div>
             </div>
@@ -480,8 +480,8 @@ export default function DashboardPage({
           <div className="dash-stat-card">
             <span className="dash-stat-label">PENDING REVIEW</span>
             <div className="dash-stat-body">
-              <span className="dash-stat-number">{stats.pending}</span>
-              <div className="dash-stat-icon-box" title="Pending Reviews">
+              <span className="dash-stat-number amber">{stats.pending}</span>
+              <div className="dash-stat-icon-box amber" title="Pending Reviews">
                 <BarChart2 size={18} strokeWidth={2} />
               </div>
             </div>
@@ -491,8 +491,8 @@ export default function DashboardPage({
           <div className="dash-stat-card">
             <span className="dash-stat-label">IN PROGRESS</span>
             <div className="dash-stat-body">
-              <span className="dash-stat-number">{stats.in_progress}</span>
-              <div className="dash-stat-icon-box" title="Active Repairs">
+              <span className="dash-stat-number blue">{stats.in_progress}</span>
+              <div className="dash-stat-icon-box blue" title="Active Repairs">
                 <BarChart2 size={18} strokeWidth={2} />
               </div>
             </div>
