@@ -1169,10 +1169,9 @@
 
 .admin-building-stats-row {
   display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  padding: 10px 0;
+  grid-template-columns: repeat(2, 1fr);
+  padding: 12px 0 2px 0;
   border-top: 1px solid var(--admin-border-subtle);
-  border-bottom: 1px solid var(--admin-border-subtle);
 }
 
 .admin-b-stat-col {
