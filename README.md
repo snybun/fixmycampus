@@ -103,7 +103,7 @@ The database is automatically initialized and seeded upon container creation wit
 | Role | Name | Email | Password | Identifier |
 | :--- | :--- | :--- | :--- | :--- |
 | **Administrator** | System Administrator | `admin@fixmycampus.edu` | `Admin@1234` | `ADM-001` |
-| **Maintenance Supervisor** | Robert Vance | `supervisor@fixmycampus.edu` | `Supervisor@1234` | `MGT-001` |
+| **Maintenance Staff** | Robert Vance | `supervisor@fixmycampus.edu` | `Supervisor@1234` | `MGT-001` |
 | **Maintenance Technician** | John Miller | `worker.john@fixmycampus.edu` | `Worker@1234` | `TEC-001` |
 | **Maintenance Technician** | Carlos Ramos | `worker.carlos@fixmycampus.edu`| `Worker@1234` | `TEC-002` |
 | **Faculty Member** | Dr. Sarah Smith | `prof.smith@fixmycampus.edu` | `Faculty@1234` | `FAC-101` |

@@ -20,16 +20,27 @@ import AdminDashboard from './components/admin/AdminDashboard';
 import ReportIssueWizard from './components/reports/ReportIssueWizard';
 import SettingsPage from './components/dashboard/SettingsPage';
 import AccessDeniedView from './components/common/AccessDeniedView';
+import MaintenanceStaffDashboard from './components/maintenance/MaintenanceStaffDashboard';
 import { fetchAuthMe, logoutUser } from './services/api';
 
 // Role validation helper: Only user records with role_name 'admin' or role_id 1 are administrators
 const isUserAdmin = (user) => Boolean(user && (user.role_name === 'admin' || user.role_id === 1));
 
+const isMaintenanceStaffUser = (u) => {
+  if (!u) return false;
+  return (
+    u.role_name === 'supervisor' ||
+    u.role_name === 'technician' ||
+    u.role_id === 2 ||
+    u.role_id === 3
+  );
+};
+
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin, #report-issue, #settings, #access-denied)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin, #report-issue, #settings, #access-denied, #maintenance)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings', 'access-denied'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings', 'access-denied', 'maintenance'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -60,10 +71,13 @@ export default function App() {
             setCurrentView('access-denied');
             window.location.hash = 'access-denied';
           }
-        } else if (hash === 'dashboard' || hash === 'report-issue' || hash === 'settings') {
+        } else if (hash === 'dashboard' || hash === 'report-issue' || hash === 'settings' || hash === 'maintenance') {
           if (isUserAdmin(res.user) && hash === 'dashboard') {
             setCurrentView('admin');
             window.location.hash = 'admin';
+          } else if (isMaintenanceStaffUser(res.user) && (hash === 'dashboard' || hash === 'maintenance')) {
+            setCurrentView('maintenance');
+            window.location.hash = 'maintenance';
           } else {
             setCurrentView(hash);
           }
@@ -72,7 +86,7 @@ export default function App() {
         setCurrentUser(null);
         currentUserRef.current = null;
         const hash = window.location.hash.replace('#', '');
-        if (['dashboard', 'report-issue', 'admin', 'settings', 'access-denied'].includes(hash)) {
+        if (['dashboard', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
           setCurrentView('login');
           window.location.hash = 'login';
         }
@@ -85,7 +99,7 @@ export default function App() {
       const hash = window.location.hash.replace('#', '');
       const activeUser = currentUserRef.current || currentUser;
 
-      if (['dashboard', 'report-issue', 'admin', 'settings', 'access-denied'].includes(hash) && !activeUser) {
+      if (['dashboard', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash) && !activeUser) {
         handleNavigate('login');
         return;
       }
@@ -99,7 +113,7 @@ export default function App() {
         }
       }
 
-      if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings', 'access-denied'].includes(hash)) {
+      if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -135,12 +149,12 @@ export default function App() {
     return () => observer.disconnect();
   }, [currentView]);
 
-  const handleNavigate = (view, userOverride = null) => {
+  const handleNavigate = (view, userOverride = null, customLoadingMessage = null) => {
     const activeUser = userOverride || currentUserRef.current || currentUser;
 
     // Route guard: if trying to access protected views while logged out, redirect to login
     let targetView = view;
-    if (['dashboard', 'report-issue', 'admin', 'settings', 'access-denied'].includes(view) && !activeUser) {
+    if (['dashboard', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(view) && !activeUser) {
       targetView = 'login';
     } else if (view === 'admin' && !isUserAdmin(activeUser)) {
       // Non-admin attempting to access #admin is blocked by RBAC
@@ -149,13 +163,16 @@ export default function App() {
 
     if (targetView === currentView && !userOverride) return;
 
-    // Show loading screen when navigating to auth views, dashboard, admin, report-issue, settings, or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings', 'access-denied'].includes(targetView)) {
+    // Show loading screen when navigating to auth views, dashboard, admin, report-issue, settings, maintenance, or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(targetView)) {
       setLoadingMessage(
-        targetView === 'admin'
+        customLoadingMessage ||
+        (targetView === 'admin'
           ? 'Verifying Administrator Authorization...'
           : targetView === 'access-denied'
           ? 'Enforcing Role-Based Access Control...'
+          : targetView === 'maintenance'
+          ? 'Opening Maintenance Staff Dashboard...'
           : targetView === 'register'
           ? 'Opening Student Registration...'
           : targetView === 'dashboard'
@@ -164,9 +181,9 @@ export default function App() {
           ? 'Opening Report Issue Wizard...'
           : targetView === 'settings'
           ? 'Opening Profile & Account Settings...'
-          : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin', 'settings'].includes(view)
+          : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin', 'settings', 'maintenance'].includes(view)
           ? 'Please log in to FixMyCampus to continue...'
-          : 'Accessing FixMyCampus Portal...'
+          : 'Accessing FixMyCampus Portal...')
       );
       setIsLoading(true);
 
@@ -181,7 +198,7 @@ export default function App() {
       }, 350);
     } else {
       setIsLoading(true);
-      setLoadingMessage('Returning to Home...');
+      setLoadingMessage(customLoadingMessage || 'Returning to Home...');
 
       setTimeout(() => {
         setCurrentView('landing');
@@ -200,6 +217,8 @@ export default function App() {
     setCurrentUser(user);
     if (isUserAdmin(user)) {
       handleNavigate('admin', user);
+    } else if (isMaintenanceStaffUser(user)) {
+      handleNavigate('maintenance', user);
     } else {
       handleNavigate('dashboard', user);
     }
@@ -213,8 +232,7 @@ export default function App() {
     }
     currentUserRef.current = null;
     setCurrentUser(null);
-    window.location.hash = '';
-    handleNavigate('landing');
+    handleNavigate('login', null, 'Signing out of FixMyCampus...');
   };
 
   const handleScrollTo = (sectionId) => {
@@ -233,6 +251,10 @@ export default function App() {
 
   const isAdmin = isUserAdmin(currentUser);
   const isAdminView = currentView === 'admin' && isAdmin;
+
+  const isMaintenanceView =
+    currentView === 'maintenance' ||
+    (currentView === 'dashboard' && isMaintenanceStaffUser(currentUser));
 
   return (
     <>
@@ -256,8 +278,17 @@ export default function App() {
         />
       )}
 
+      {/* Maintenance Staff Dashboard & Job Details */}
+      {isMaintenanceView && !isAdminView && (
+        <MaintenanceStaffDashboard
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
       {/* Student / Faculty / Reporter Dashboard */}
-      {currentView === 'dashboard' && !isAdmin && (
+      {currentView === 'dashboard' && !isAdminView && !isMaintenanceView && (
         <DashboardPage
           currentUser={currentUser}
           onNavigate={handleNavigate}

@@ -53,7 +53,7 @@ export default function UsersView() {
           >
             <option value="all">All Roles</option>
             <option value="admin">Administrator</option>
-            <option value="supervisor">Maintenance Supervisor</option>
+            <option value="supervisor">Maintenance Staff</option>
             <option value="technician">Technician / Worker</option>
             <option value="faculty">Faculty Member</option>
             <option value="student">Student</option>
