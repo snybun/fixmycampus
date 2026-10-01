@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Wrench,
   Bell,
@@ -12,11 +12,17 @@ import {
   Trash2,
   SlidersHorizontal,
   ChevronRight,
+  ChevronDown,
   User,
+  Menu,
+  X,
+  Home,
+  PlusCircle,
 } from 'lucide-react';
 import { fetchStats, fetchReports, deleteReport } from '../../services/api';
 import ConfirmationModal, { MODAL_PRESETS } from '../common/ConfirmationModal';
 import ModalsGalleryView from '../common/ModalsGalleryView';
+import UserProfileDropdown from '../common/UserProfileDropdown';
 import './dashboard.css';
 
 export default function DashboardPage({
@@ -37,6 +43,7 @@ export default function DashboardPage({
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'modals-gallery'
   const [unreadCount, setUnreadCount] = useState(3);
   const [toastMessage, setToastMessage] = useState('');
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Initial reports - start empty until reported as requested
   const [reports, setReports] = useState([]);
@@ -270,34 +277,137 @@ export default function DashboardPage({
               )}
             </button>
 
-            {/* User Profile Info */}
-            <div
-              className="dash-user-profile"
-              onClick={() => setActiveModalPreset('start_over')}
-              title="User Profile"
-            >
-              <div className="dash-user-avatar">
-                {currentUser?.avatar_url ? (
-                  <img src={currentUser.avatar_url} alt={displayName} />
-                ) : (
-                  <User size={18} strokeWidth={2.2} />
-                )}
-              </div>
-              <span className="dash-user-name">{displayName}</span>
-            </div>
+            {/* User Profile Menu with Settings & Logout Dropdown */}
+            <UserProfileDropdown
+              currentUser={currentUser}
+              onNavigate={onNavigate}
+              onLogout={() => setActiveModalPreset('logout')}
+              idPrefix="dash-user-profile"
+            />
 
-            {/* Logout Trigger -> opens Logout? Confirmation Modal */}
+            {/* Mobile Hamburger Menu Toggle Button */}
             <button
               type="button"
-              className="dash-logout-btn"
-              onClick={() => setActiveModalPreset('logout')}
-              title="Log out of FixMyCampus"
-              id="dash-logout-button"
+              className="dash-mobile-toggle"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileMenuOpen}
+              id="dash-mobile-menu-toggle"
             >
-              <LogOut size={18} strokeWidth={2} />
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
+
+        {/* Mobile Slide-down Navigation Drawer & Backdrop */}
+        {mobileMenuOpen && (
+          <div className="dash-mobile-menu-container">
+            <div
+              className="dash-mobile-backdrop"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <div className="dash-mobile-drawer">
+              <nav className="dash-mobile-nav-list" aria-label="Mobile Navigation">
+                <button
+                  type="button"
+                  className="dash-mobile-nav-item active"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onNavigate('dashboard');
+                  }}
+                >
+                  <Home size={18} className="dash-mobile-nav-icon" />
+                  <span>Home</span>
+                  <span className="dash-mobile-active-tag">Active</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="dash-mobile-nav-item"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setToastMessage('Navigating to My Reports...');
+                    setTimeout(() => setToastMessage(''), 2000);
+                  }}
+                >
+                  <FileText size={18} className="dash-mobile-nav-icon" />
+                  <span>My Reports</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="dash-mobile-nav-item"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onNavigate('report-issue');
+                  }}
+                >
+                  <PlusCircle size={18} className="dash-mobile-nav-icon" />
+                  <span>Report Issue</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="dash-mobile-nav-item"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setActiveView('modals-gallery');
+                  }}
+                >
+                  <SlidersHorizontal size={18} className="dash-mobile-nav-icon" />
+                  <span>System Modals & States (7)</span>
+                </button>
+              </nav>
+
+              <div className="dash-mobile-divider" />
+
+              {/* Mobile User Profile Summary & Quick Actions */}
+              <div className="dash-mobile-user-section">
+                <div className="dash-mobile-user-row">
+                  <div className="dash-mobile-avatar">
+                    {currentUser?.avatar_url ? (
+                      <img src={currentUser.avatar_url} alt={currentUser?.full_name || 'User'} />
+                    ) : (
+                      <User size={18} />
+                    )}
+                  </div>
+                  <div className="dash-mobile-user-meta">
+                    <span className="dash-mobile-user-name">
+                      {currentUser?.full_name || 'Mark Dyvie Cerna'}
+                    </span>
+                    <span className="dash-mobile-user-role">
+                      {currentUser?.role_display || 'Student Account'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="dash-mobile-user-actions">
+                  <button
+                    type="button"
+                    className="dash-mobile-action-btn"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onNavigate('settings');
+                    }}
+                  >
+                    <span>Account Settings</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="dash-mobile-action-btn dash-mobile-logout"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setActiveModalPreset('logout');
+                    }}
+                  >
+                    <LogOut size={15} />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Toast alert banner if action triggered */}
@@ -360,7 +470,7 @@ export default function DashboardPage({
             <span className="dash-stat-label">TOTAL REPORTS</span>
             <div className="dash-stat-body">
               <span className="dash-stat-number">{stats.total}</span>
-              <div className="dash-stat-icon-box" title="Statistics">
+              <div className="dash-stat-icon-box indigo" title="Statistics">
                 <BarChart2 size={18} strokeWidth={2} />
               </div>
             </div>
@@ -370,8 +480,8 @@ export default function DashboardPage({
           <div className="dash-stat-card">
             <span className="dash-stat-label">PENDING REVIEW</span>
             <div className="dash-stat-body">
-              <span className="dash-stat-number">{stats.pending}</span>
-              <div className="dash-stat-icon-box" title="Pending Reviews">
+              <span className="dash-stat-number amber">{stats.pending}</span>
+              <div className="dash-stat-icon-box amber" title="Pending Reviews">
                 <BarChart2 size={18} strokeWidth={2} />
               </div>
             </div>
@@ -381,8 +491,8 @@ export default function DashboardPage({
           <div className="dash-stat-card">
             <span className="dash-stat-label">IN PROGRESS</span>
             <div className="dash-stat-body">
-              <span className="dash-stat-number">{stats.in_progress}</span>
-              <div className="dash-stat-icon-box" title="Active Repairs">
+              <span className="dash-stat-number blue">{stats.in_progress}</span>
+              <div className="dash-stat-icon-box blue" title="Active Repairs">
                 <BarChart2 size={18} strokeWidth={2} />
               </div>
             </div>

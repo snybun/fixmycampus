@@ -222,9 +222,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                   gap: '0.35rem',
                   padding: '0.2rem 0.65rem',
                   borderRadius: '20px',
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  color: '#1d4ed8',
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
+                  color: '#065f46',
                   fontSize: '0.72rem',
                   fontWeight: 600,
                   marginBottom: '0.4rem',
@@ -254,7 +254,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
 
             {/* Institutional Domain Banner */}
             <div className="auth-domain-banner">
-              <ShieldCheck size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
+              <ShieldCheck size={16} style={{ color: '#059669', flexShrink: 0 }} />
               <span>
                 Exclusively for <strong>PHINMA University of Pangasinan</strong>. Please sign in with your official <strong>@{allowedDomain}</strong> account.
               </span>

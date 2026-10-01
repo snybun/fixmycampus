@@ -253,11 +253,12 @@ try {
     // POST /api/reports.php?action=assign -> Assign maintenance technician
     // -------------------------------------------------------------------------
     if ($action === 'assign' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $actorUser = auth_require_role(['admin', 'supervisor']);
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? 0);
         $technicianId = (int)($input['assigned_to'] ?? 0);
         $notes = trim($input['notes'] ?? 'Assigned by Administrator');
-        $assignedBy = (int)($input['assigned_by'] ?? ($_SESSION['user_id'] ?? 1));
+        $assignedBy = (int)($input['assigned_by'] ?? ($actorUser['id'] ?? 1));
 
         if ($reportId <= 0 || $technicianId <= 0) {
             \FixMyCampus\Core\Response::json([
@@ -344,11 +345,12 @@ try {
     // POST /api/reports.php?action=update_status -> Update report status
     // -------------------------------------------------------------------------
     if ($action === 'update_status' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $actorUser = auth_require_role(['admin', 'supervisor', 'technician']);
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? 0);
         $newStatus = trim($input['status'] ?? '');
-        $remarks = trim($input['remarks'] ?? 'Status updated by Administrator');
-        $changedBy = (int)($input['changed_by'] ?? ($_SESSION['user_id'] ?? 1));
+        $remarks = trim($input['remarks'] ?? 'Status updated by Staff');
+        $changedBy = (int)($input['changed_by'] ?? ($actorUser['id'] ?? 1));
 
         $allowedStatuses = ['submitted', 'under_review', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'rejected'];
         if ($reportId <= 0 || !in_array($newStatus, $allowedStatuses, true)) {
@@ -403,6 +405,7 @@ try {
     // POST /api/reports.php?action=delete -> Delete report
     // -------------------------------------------------------------------------
     if ($action === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $adminUser = auth_require_role('admin');
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? $input['id'] ?? 0);
 

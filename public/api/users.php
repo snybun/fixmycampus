@@ -10,6 +10,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/src/config/app.php';
 require_once SRC_PATH . '/Core/Database.php';
 require_once SRC_PATH . '/Core/Response.php';
+require_once SRC_PATH . '/helpers/session.php';
+require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -21,6 +23,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     http_response_code(200);
     exit;
 }
+
+// Strict Server-Side RBAC Enforcement: Administrator privileges required
+$currentUser = auth_require_role('admin');
 
 try {
     $roleFilter = $_GET['role'] ?? null;

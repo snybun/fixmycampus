@@ -283,6 +283,29 @@ export async function logoutUser() {
   return { success: true };
 }
 
+export async function verifyAdminRole() {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=verify_admin`, {
+      credentials: 'include',
+    });
+    const data = await res.json();
+    return {
+      ok: res.ok,
+      status: res.status,
+      ...data,
+    };
+  } catch (err) {
+    console.error('verifyAdminRole error:', err);
+    return {
+      ok: false,
+      status: 500,
+      success: false,
+      authorized: false,
+      message: 'Failed to verify administrative authorization with server.',
+    };
+  }
+}
+
 export async function fetchAdminOverview() {
   try {
     const res = await fetch(`${API_BASE}/admin.php?action=overview`, {
@@ -338,6 +361,51 @@ export async function updateAdminUserStatus(userId, status) {
   }
 }
 
+export async function updateProfilePicture(avatarData) {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=update_avatar`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ avatar_url: avatarData }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('updateProfilePicture error:', err);
+    return { success: false, message: 'Failed to update profile picture.' };
+  }
+}
+
+export async function updateUserProfile(profileData) {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=update_profile`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(profileData),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('updateUserProfile error:', err);
+    return { success: false, message: 'Failed to update profile details.' };
+  }
+}
+
+export async function changeUserPassword({ current_password, new_password }) {
+  try {
+    const res = await fetch(`${API_BASE}/auth.php?action=change_password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ current_password, new_password }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('changeUserPassword error:', err);
+    return { success: false, message: 'Failed to update password.' };
+  }
+}
+
 export async function createReport(reportData) {
   try {
     const res = await fetch(`${API_BASE}/reports.php?action=create`, {
@@ -352,4 +420,5 @@ export async function createReport(reportData) {
     return { success: false, message: 'Failed to submit report. Please check server connection.' };
   }
 }
+
 

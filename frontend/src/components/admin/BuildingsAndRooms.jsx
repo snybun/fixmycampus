@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Plus, Edit2, Trash2, ChevronRight, X, DoorOpen } from 'lucide-react';
+import { Plus, Edit2, Trash2, X } from 'lucide-react';
 
 export default function BuildingsAndRooms({
   buildings = [],
@@ -7,7 +7,6 @@ export default function BuildingsAndRooms({
   onAddBuilding,
 }) {
   const [showAddModal, setShowAddModal] = useState(false);
-  const [selectedBuildingRooms, setSelectedBuildingRooms] = useState(null);
   const [name, setName] = useState('');
   const [code, setCode] = useState('');
   const [description, setDescription] = useState('');
@@ -31,11 +30,6 @@ export default function BuildingsAndRooms({
     setCode('');
     setDescription('');
   };
-
-  // Rooms for selected building
-  const activeRooms = selectedBuildingRooms
-    ? locations.filter((loc) => Number(loc.building_id) === Number(selectedBuildingRooms.id))
-    : [];
 
   return (
     <div>
@@ -103,122 +97,16 @@ export default function BuildingsAndRooms({
                 </div>
 
                 <div className="admin-b-stat-col">
-                  <span className="admin-b-stat-label">ROOMS</span>
-                  <span className="admin-b-stat-num">{b.rooms_count || 0}</span>
-                </div>
-
-                <div className="admin-b-stat-col">
                   <span className="admin-b-stat-label">REPORTS</span>
                   <span className="admin-b-stat-num green">
                     {b.reports_count || 0}
                   </span>
                 </div>
               </div>
-
-              <div className="admin-building-footer">
-                <button
-                  type="button"
-                  className="admin-manage-rooms-btn"
-                  onClick={() => setSelectedBuildingRooms(b)}
-                >
-                  Manage Rooms <ChevronRight size={14} />
-                </button>
-              </div>
             </div>
           </div>
         ))}
       </div>
-
-      {/* Manage Rooms Modal */}
-      {selectedBuildingRooms && (
-        <div
-          className="admin-modal-backdrop"
-          onClick={() => setSelectedBuildingRooms(null)}
-        >
-          <div
-            className="admin-modal-dialog"
-            style={{ maxWidth: 640 }}
-            onClick={(e) => e.stopPropagation()}
-          >
-            <div className="admin-modal-header">
-              <div>
-                <h3 className="admin-modal-title">
-                  Rooms in {selectedBuildingRooms.name}
-                </h3>
-                <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
-                  Code: {selectedBuildingRooms.code} &bull; Total Registered Rooms: {activeRooms.length}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="admin-modal-close-btn"
-                onClick={() => setSelectedBuildingRooms(null)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <div style={{ maxHeight: 380, overflowY: 'auto' }}>
-              {activeRooms.length === 0 ? (
-                <p style={{ padding: '24px 0', textAlign: 'center', color: '#94a3b8' }}>
-                  No designated rooms recorded in this building yet.
-                </p>
-              ) : (
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-                  {activeRooms.map((room) => (
-                    <div
-                      key={room.id}
-                      style={{
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'space-between',
-                        padding: '10px 14px',
-                        background: '#f8fafc',
-                        borderRadius: 8,
-                        border: '1px solid #e2e8f0',
-                      }}
-                    >
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <DoorOpen size={16} color="#64748b" />
-                        <div>
-                          <strong style={{ fontSize: '0.88rem', color: '#0f172a' }}>
-                            {room.room_number || 'Room'}
-                          </strong>
-                          <span style={{ fontSize: '0.82rem', color: '#64748b', marginLeft: 8 }}>
-                            {room.name}
-                          </span>
-                        </div>
-                      </div>
-                      <span
-                        style={{
-                          fontSize: '0.74rem',
-                          background: '#e2e8f0',
-                          color: '#334155',
-                          padding: '2px 8px',
-                          borderRadius: 4,
-                          textTransform: 'capitalize',
-                        }}
-                      >
-                        {room.type || 'Facility'}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-
-            <div className="admin-modal-footer">
-              <button
-                type="button"
-                className="admin-btn-black"
-                onClick={() => setSelectedBuildingRooms(null)}
-              >
-                Done
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Add Building Modal */}
       {showAddModal && (

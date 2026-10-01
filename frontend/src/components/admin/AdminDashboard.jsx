@@ -33,6 +33,7 @@ import BuildingsAndRooms from './BuildingsAndRooms';
 import AnalyticsView from './AnalyticsView';
 import UsersView from './UsersView';
 import AdminSettings from './AdminSettings';
+import UserProfileDropdown from '../common/UserProfileDropdown';
 import './admin.css';
 
 export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
@@ -268,32 +269,17 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
         {/* Bottom Profile Footer */}
         <div className="admin-sidebar-footer">
-          <div className="admin-user-profile">
-            <div className="admin-user-avatar">
-              {currentUser?.avatar_url ? (
-                <img
-                  src={currentUser.avatar_url}
-                  alt={displayName}
-                  style={{ width: '100%', height: '100%', borderRadius: '50%' }}
-                />
-              ) : (
-                <User size={18} />
-              )}
-            </div>
-            <div className="admin-user-info">
-              <span className="admin-user-name">{displayName}</span>
-              <span className="admin-user-role">{displayRole}</span>
-            </div>
-          </div>
-
-          <button
-            type="button"
-            className="admin-logout-btn"
-            title="Log out of Super Admin"
-            onClick={onLogout}
-          >
-            <LogOut size={18} />
-          </button>
+          <UserProfileDropdown
+            currentUser={currentUser}
+            onNavigate={onNavigate}
+            onSettingsClick={() => setActiveTab('settings')}
+            onLogout={onLogout}
+            direction="up"
+            fullWidth={true}
+            showSubInButton={true}
+            subTitle={displayRole}
+            idPrefix="admin-sidebar-profile"
+          />
         </div>
       </aside>
 

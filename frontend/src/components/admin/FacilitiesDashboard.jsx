@@ -78,7 +78,7 @@ export default function FacilitiesDashboard({
             <span className="admin-stat-title">TOTAL REPORTS</span>
             <span className="admin-stat-value">{total}</span>
           </div>
-          <div className="admin-stat-icon" title="Total Reports">
+          <div className="admin-stat-icon indigo" title="Total Reports">
             <FileText size={22} />
           </div>
         </div>
@@ -86,9 +86,9 @@ export default function FacilitiesDashboard({
         <div className="admin-stat-card">
           <div className="admin-stat-meta">
             <span className="admin-stat-title">PENDING REVIEW</span>
-            <span className="admin-stat-value">{pending}</span>
+            <span className="admin-stat-value amber">{pending}</span>
           </div>
-          <div className="admin-stat-icon" title="Pending Review">
+          <div className="admin-stat-icon amber" title="Pending Review">
             <Hourglass size={20} />
           </div>
         </div>
@@ -96,9 +96,9 @@ export default function FacilitiesDashboard({
         <div className="admin-stat-card">
           <div className="admin-stat-meta">
             <span className="admin-stat-title">IN PROGRESS</span>
-            <span className="admin-stat-value">{inProgress}</span>
+            <span className="admin-stat-value blue">{inProgress}</span>
           </div>
-          <div className="admin-stat-icon" title="In Progress">
+          <div className="admin-stat-icon blue" title="In Progress">
             <Clock size={20} />
           </div>
         </div>
@@ -106,7 +106,7 @@ export default function FacilitiesDashboard({
         <div className="admin-stat-card">
           <div className="admin-stat-meta">
             <span className="admin-stat-title">FIXED / RESOLVED</span>
-            <span className="admin-stat-value" style={{ color: '#16a34a' }}>
+            <span className="admin-stat-value green">
               {fixed}
             </span>
           </div>
@@ -141,31 +141,31 @@ export default function FacilitiesDashboard({
                   cy="60"
                   r="46"
                   fill="none"
-                  stroke="#22c55e"
+                  stroke="#10b981"
                   strokeWidth="12"
                   strokeDasharray={`${fixedStroke} ${circumference}`}
                   strokeDashoffset="0"
                   transform="rotate(-90 60 60)"
                 />
-                {/* In Progress (Dark Slate) */}
+                {/* In Progress (Blue) */}
                 <circle
                   cx="60"
                   cy="60"
                   r="46"
                   fill="none"
-                  stroke="#1e293b"
+                  stroke="#3b82f6"
                   strokeWidth="12"
                   strokeDasharray={`${inProgressStroke} ${circumference}`}
                   strokeDashoffset={-fixedStroke}
                   transform="rotate(-90 60 60)"
                 />
-                {/* Pending Review (Light Slate) */}
+                {/* Pending Review (Amber/Yellow) */}
                 <circle
                   cx="60"
                   cy="60"
                   r="46"
                   fill="none"
-                  stroke="#cbd5e1"
+                  stroke="#f59e0b"
                   strokeWidth="12"
                   strokeDasharray={`${pendingStroke} ${circumference}`}
                   strokeDashoffset={-(fixedStroke + inProgressStroke)}
@@ -184,11 +184,11 @@ export default function FacilitiesDashboard({
                 <span>Fixed ({fixed})</span>
               </div>
               <div className="admin-legend-item">
-                <span className="admin-legend-dot dark" />
+                <span className="admin-legend-dot blue" />
                 <span>In Progress ({inProgress})</span>
               </div>
               <div className="admin-legend-item">
-                <span className="admin-legend-dot gray" />
+                <span className="admin-legend-dot amber" />
                 <span>Pending Review ({pending})</span>
               </div>
             </div>
@@ -199,18 +199,21 @@ export default function FacilitiesDashboard({
         <div className="admin-widget-card">
           <h3 className="admin-widget-header">Reports by Category</h3>
           <div className="admin-category-list">
-            {categories.map((cat) => {
+            {categories.map((cat, idx) => {
               const count = Number(cat.count) || 0;
-              const barWidth = `${Math.min(100, Math.max(8, (count / maxCategoryCount) * 100))}%`;
+              const barWidth = count === 0 ? '0%' : `${Math.min(100, Math.max(8, (count / maxCategoryCount) * 100))}%`;
               return (
-                <div key={cat.id} className="admin-cat-row">
+                <div key={cat.id || idx} className="admin-cat-row">
                   <span className="admin-cat-name" title={cat.name}>
                     {cat.name}
                   </span>
                   <div className="admin-cat-bar-bg">
-                    <div className="admin-cat-bar-fill" style={{ width: barWidth }} />
+                    <div
+                      className={`admin-cat-bar-fill ${count > 0 ? 'active' : ''}`}
+                      style={{ width: barWidth }}
+                    />
                   </div>
-                  <span className="admin-cat-count">{count}</span>
+                  <span className={`admin-cat-count ${count > 0 ? 'has-reports' : ''}`}>{count}</span>
                 </div>
               );
             })}
@@ -228,15 +231,18 @@ export default function FacilitiesDashboard({
           <div className="admin-buildings-chart">
             {buildings.map((b) => {
               const count = Number(b.count) || 0;
-              const barHeight = Math.max(14, Math.round((count / maxBuildingCount) * 100));
+              const barHeight = count > 0 
+                ? Math.max(22, Math.round((count / maxBuildingCount) * 110))
+                : 6;
               const shortName = b.code
                 ? b.code.replace('-BLDG', '').replace('-HALL', '').replace('-CTR', '').replace('-MAIN', '').replace('-CMP', '')
                 : b.name.split(' ')[0];
 
               return (
                 <div key={b.id} className="admin-bar-col">
+                  {count > 0 && <span className="admin-bar-top-count">{count}</span>}
                   <div
-                    className="admin-bar-rect"
+                    className={`admin-bar-rect ${count > 0 ? 'active' : 'empty'}`}
                     style={{ height: `${barHeight}px` }}
                     title={`${b.name}: ${count} reports`}
                   />
@@ -257,10 +263,20 @@ export default function FacilitiesDashboard({
               viewBox={`0 0 ${svgWidth} ${svgHeight}`}
               style={{ width: '100%', height: '110px', overflow: 'visible' }}
             >
+              <defs>
+                <linearGradient id="adminTimelineGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#10b981" stopOpacity="0.22" />
+                  <stop offset="100%" stopColor="#10b981" stopOpacity="0.0" />
+                </linearGradient>
+              </defs>
+              <polygon
+                points={`${points} ${svgWidth - 20},${svgHeight - 15} 20,${svgHeight - 15}`}
+                fill="url(#adminTimelineGrad)"
+              />
               <polyline
                 fill="none"
-                stroke="#1e293b"
-                strokeWidth="2.4"
+                stroke="#10b981"
+                strokeWidth="2.6"
                 strokeLinecap="round"
                 strokeLinejoin="round"
                 points={points}
@@ -273,10 +289,10 @@ export default function FacilitiesDashboard({
                     key={idx}
                     cx={x}
                     cy={y}
-                    r="4"
+                    r="4.5"
                     fill="#ffffff"
-                    stroke="#1e293b"
-                    strokeWidth="2"
+                    stroke="#059669"
+                    strokeWidth="2.5"
                   />
                 );
               })}

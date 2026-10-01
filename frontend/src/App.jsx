@@ -18,8 +18,13 @@ import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
 import DashboardPage from './components/dashboard/DashboardPage';
 import AdminDashboard from './components/admin/AdminDashboard';
 import ReportIssueWizard from './components/reports/ReportIssueWizard';
+import SettingsPage from './components/dashboard/SettingsPage';
+import AccessDeniedView from './components/common/AccessDeniedView';
 import MaintenanceStaffDashboard from './components/maintenance/MaintenanceStaffDashboard';
 import { fetchAuthMe, logoutUser } from './services/api';
+
+// Role validation helper: Only user records with role_name 'admin' or role_id 1 are administrators
+const isUserAdmin = (user) => Boolean(user && (user.role_name === 'admin' || user.role_id === 1));
 
 const isMaintenanceStaffUser = (u) => {
   if (!u) return false;
@@ -32,10 +37,10 @@ const isMaintenanceStaffUser = (u) => {
 };
 
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin, #report-issue, #maintenance)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin, #report-issue, #settings, #access-denied, #maintenance)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'maintenance'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings', 'access-denied', 'maintenance'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -55,21 +60,33 @@ export default function App() {
   useEffect(() => {
     fetchAuthMe().then((res) => {
       if (res && res.authenticated && res.user) {
+        currentUserRef.current = res.user;
         setCurrentUser(res.user);
         const hash = window.location.hash.replace('#', '');
-        if (hash === 'dashboard' || hash === 'report-issue' || hash === 'admin' || hash === 'maintenance') {
-          if ((res.user.role_name === 'admin' || res.user.role_id === 1) && hash === 'dashboard') {
+        if (hash === 'admin') {
+          if (isUserAdmin(res.user)) {
             setCurrentView('admin');
+          } else {
+            // Server-side RBAC guard: student or maintenance role cannot access #admin
+            setCurrentView('access-denied');
+            window.location.hash = 'access-denied';
+          }
+        } else if (hash === 'dashboard' || hash === 'report-issue' || hash === 'settings' || hash === 'maintenance') {
+          if (isUserAdmin(res.user) && hash === 'dashboard') {
+            setCurrentView('admin');
+            window.location.hash = 'admin';
           } else if (isMaintenanceStaffUser(res.user) && (hash === 'dashboard' || hash === 'maintenance')) {
             setCurrentView('maintenance');
+            window.location.hash = 'maintenance';
           } else {
             setCurrentView(hash);
           }
         }
       } else {
         setCurrentUser(null);
+        currentUserRef.current = null;
         const hash = window.location.hash.replace('#', '');
-        if (['dashboard', 'report-issue', 'admin', 'maintenance'].includes(hash)) {
+        if (['dashboard', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
           setCurrentView('login');
           window.location.hash = 'login';
         }
@@ -80,11 +97,23 @@ export default function App() {
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['dashboard', 'report-issue', 'admin', 'maintenance'].includes(hash) && !currentUser) {
+      const activeUser = currentUserRef.current || currentUser;
+
+      if (['dashboard', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash) && !activeUser) {
         handleNavigate('login');
         return;
       }
-      if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'maintenance'].includes(hash)) {
+
+      if (hash === 'admin') {
+        if (!isUserAdmin(activeUser)) {
+          // Block unauthorized role from #admin URL bypass
+          setCurrentView('access-denied');
+          window.location.hash = 'access-denied';
+          return;
+        }
+      }
+
+      if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -123,20 +152,25 @@ export default function App() {
   const handleNavigate = (view, userOverride = null, customLoadingMessage = null) => {
     const activeUser = userOverride || currentUserRef.current || currentUser;
 
-    // Route guard: if trying to access dashboard, report-issue, admin, or maintenance while logged out, redirect to login
+    // Route guard: if trying to access protected views while logged out, redirect to login
     let targetView = view;
-    if (['dashboard', 'report-issue', 'admin', 'maintenance'].includes(view) && !activeUser) {
+    if (['dashboard', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(view) && !activeUser) {
       targetView = 'login';
+    } else if (view === 'admin' && !isUserAdmin(activeUser)) {
+      // Non-admin attempting to access #admin is blocked by RBAC
+      targetView = 'access-denied';
     }
 
     if (targetView === currentView && !userOverride) return;
 
-    // Show loading screen when navigating to auth views, dashboard, admin, report-issue, maintenance, or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'maintenance'].includes(targetView)) {
+    // Show loading screen when navigating to auth views, dashboard, admin, report-issue, settings, maintenance, or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(targetView)) {
       setLoadingMessage(
         customLoadingMessage ||
         (targetView === 'admin'
-          ? 'Accessing Super Administrator Portal...'
+          ? 'Verifying Administrator Authorization...'
+          : targetView === 'access-denied'
+          ? 'Enforcing Role-Based Access Control...'
           : targetView === 'maintenance'
           ? 'Opening Maintenance Staff Dashboard...'
           : targetView === 'register'
@@ -145,7 +179,9 @@ export default function App() {
           ? 'Opening FixMyCampus Dashboard...'
           : targetView === 'report-issue'
           ? 'Opening Report Issue Wizard...'
-          : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin', 'maintenance'].includes(view)
+          : targetView === 'settings'
+          ? 'Opening Profile & Account Settings...'
+          : targetView === 'login' && !activeUser && ['dashboard', 'report-issue', 'admin', 'settings', 'maintenance'].includes(view)
           ? 'Please log in to FixMyCampus to continue...'
           : 'Accessing FixMyCampus Portal...')
       );
@@ -179,7 +215,7 @@ export default function App() {
   const handleLoginSuccess = (user) => {
     currentUserRef.current = user;
     setCurrentUser(user);
-    if (user?.role_name === 'admin' || user?.role_id === 1) {
+    if (isUserAdmin(user)) {
       handleNavigate('admin', user);
     } else if (isMaintenanceStaffUser(user)) {
       handleNavigate('maintenance', user);
@@ -213,9 +249,8 @@ export default function App() {
     }
   };
 
-  const isAdminView =
-    currentView === 'admin' ||
-    (currentView === 'dashboard' && (currentUser?.role_name === 'admin' || currentUser?.role_id === 1));
+  const isAdmin = isUserAdmin(currentUser);
+  const isAdminView = currentView === 'admin' && isAdmin;
 
   const isMaintenanceView =
     currentView === 'maintenance' ||
@@ -225,17 +260,19 @@ export default function App() {
     <>
       <LoadingScreen isVisible={isLoading} message={loadingMessage} />
 
-      {/* Super Administrator Facilities Dashboard */}
+      {/* Super Administrator Facilities Dashboard - Strictly Protected by RBAC */}
       {isAdminView && (
         <AdminDashboard
-          currentUser={
-            currentUser || {
-              full_name: 'Campus Administrator',
-              role_display: 'Super Administrator',
-              role_name: 'admin',
-              id: 1,
-            }
-          }
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* 403 Forbidden Access Denied View for Unauthorized #admin Access Attempts */}
+      {(currentView === 'access-denied' || (currentView === 'admin' && !isAdmin)) && (
+        <AccessDeniedView
+          currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
         />
@@ -256,6 +293,19 @@ export default function App() {
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
+        />
+      )}
+
+      {/* Account Profile & Settings */}
+      {currentView === 'settings' && (
+        <SettingsPage
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+          onUpdateUser={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            currentUserRef.current = updatedUser;
+          }}
         />
       )}
 

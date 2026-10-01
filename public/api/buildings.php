@@ -11,6 +11,8 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/src/config/app.php';
 require_once SRC_PATH . '/Core/Database.php';
 require_once SRC_PATH . '/Core/Response.php';
+require_once SRC_PATH . '/helpers/session.php';
+require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
 
 header('Content-Type: application/json; charset=utf-8');
@@ -25,6 +27,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+        // Only Super Administrators can register new campus buildings and infrastructure
+        $adminUser = auth_require_role('admin');
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $name = trim($input['name'] ?? '');
         $code = strtoupper(trim($input['code'] ?? ''));
@@ -110,6 +114,7 @@ try {
         'CCJE'  => 'https://images.unsplash.com/photo-1580582932707-520aed937b7b?auto=format&fit=crop&w=800&q=80',
         'LIB'   => 'https://images.unsplash.com/photo-1521587760476-6c12a4b040da?auto=format&fit=crop&w=800&q=80',
         'GYM'   => 'https://images.unsplash.com/photo-1534438327276-14e5300c3a48?auto=format&fit=crop&w=800&q=80',
+        'SP'    => 'https://images.unsplash.com/photo-1519452635265-7b1fbfd1e4e0?auto=format&fit=crop&w=800&q=80',
     ];
 
     foreach ($buildings as &$b) {

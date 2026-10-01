@@ -56,7 +56,8 @@ INSERT INTO `buildings` (`id`, `code`, `name`, `is_active`) VALUES
 (7, 'CCJE', 'CCJE Building', 1),
 (8, 'LIB', 'Library', 1),
 (9, 'GYM', 'GYM', 1),
-(10, 'OTHERS', 'Others', 1)
+(10, 'OTHERS', 'Others', 1),
+(11, 'SP', 'SP (Student Plaza)', 1)
 ON DUPLICATE KEY UPDATE `name` = VALUES(`name`);
 
 -- -----------------------------------------------------------------------------
@@ -116,7 +117,10 @@ INSERT INTO `floors` (`id`, `building_id`, `floor_number`, `floor_name`) VALUES
 (36, 8, 2, '2nd Floor'),
 
 -- GYM - 1 floor
-(37, 9, 1, '1st Floor')
+(37, 9, 1, '1st Floor'),
+
+-- SP (Student Plaza) - 1 floor
+(38, 11, 1, '1st Floor')
 ON DUPLICATE KEY UPDATE `floor_name` = VALUES(`floor_name`);
 
 -- Note: All sample defect reports and mock data have been reset to 0 until actual reports are filed.
