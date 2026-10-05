@@ -119,7 +119,7 @@ export default function RegisterPage({ onNavigate }) {
           onNavigate('landing');
         }, 1000);
       } else {
-        setError(res.message || 'Google registration failed.');
+        setError(res.message || res.error || 'Google registration failed.');
       }
     } catch (err) {
       setError('Unable to verify Google credential token with server.');

@@ -116,7 +116,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
           onNavigate('dashboard');
         }
       } else {
-        setError(res.message || 'Google authentication failed.');
+        setError(res.message || res.error || 'Google authentication failed.');
       }
     } catch (err) {
       setError('Unable to verify Google login token with server.');
