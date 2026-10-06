@@ -114,6 +114,7 @@ export default function DashboardPage({
 
   const displayName = currentUser?.full_name || 'Mark Cerna';
   const firstName = displayName.split(' ')[0] || 'Mark';
+  const isAdmin = Boolean(currentUser && (currentUser.role_name === 'admin' || currentUser.role_id === 1));
 
   // Handle modal confirmation
   const handleModalConfirm = async () => {
@@ -250,15 +251,17 @@ export default function DashboardPage({
 
           {/* Right Controls */}
           <div className="dash-nav-right">
-            {/* Quick Preview Toggle for Modals Collection & Empty States */}
-            <button
-              type="button"
-              className="dash-states-pill"
-              onClick={() => setActiveView('modals-gallery')}
-              title="View the Confirmation Modals Collection & Empty States Registry mockups"
-            >
-              System Modals & States (7)
-            </button>
+            {/* Quick Preview Toggle for Modals Collection & Empty States (Admin Only) */}
+            {isAdmin && (
+              <button
+                type="button"
+                className="dash-states-pill"
+                onClick={() => setActiveView('modals-gallery')}
+                title="View the Confirmation Modals Collection & Empty States Registry mockups"
+              >
+                System Modals & States (7)
+              </button>
+            )}
 
             {/* Notification Bell with Badge */}
             <button
@@ -346,17 +349,19 @@ export default function DashboardPage({
                   <span>Report Issue</span>
                 </button>
 
-                <button
-                  type="button"
-                  className="dash-mobile-nav-item"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setActiveView('modals-gallery');
-                  }}
-                >
-                  <SlidersHorizontal size={18} className="dash-mobile-nav-icon" />
-                  <span>System Modals & States (7)</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="dash-mobile-nav-item"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setActiveView('modals-gallery');
+                    }}
+                  >
+                    <SlidersHorizontal size={18} className="dash-mobile-nav-icon" />
+                    <span>System Modals & States (7)</span>
+                  </button>
+                )}
               </nav>
 
               <div className="dash-mobile-divider" />
