@@ -1,0 +1,449 @@
+/* ==========================================================================
+   FixMyCampus - My Reports Tab Styles
+   Pixel-perfect match to user's design mockup
+   ========================================================================== */
+
+.myreports-page-wrapper {
+  background-color: #faf9f5;
+  min-height: calc(100vh - 66px);
+  padding: 36px 32px 80px 32px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.myreports-container {
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+/* --------------------------------------------------------------------------
+   Header Row: Title & Search/Filter
+   -------------------------------------------------------------------------- */
+.myreports-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.myreports-title {
+  font-size: 2.15rem;
+  font-weight: 750;
+  color: #111827;
+  letter-spacing: -0.025em;
+  margin: 0 0 6px 0;
+  line-height: 1.15;
+}
+
+.myreports-subtitle {
+  font-size: 0.94rem;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.myreports-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  flex-shrink: 0;
+}
+
+.myreports-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  width: 250px;
+}
+
+.myreports-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.myreports-search-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 12px 0 36px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+}
+
+.myreports-search-input:focus {
+  border-color: #111827;
+  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.08);
+}
+
+.myreports-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.myreports-filter-btn {
+  width: 38px;
+  height: 38px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #4b5563;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.myreports-filter-btn:hover {
+  background-color: #f3f4f6;
+  border-color: #d1d5db;
+  color: #111827;
+}
+
+/* --------------------------------------------------------------------------
+   Filter Tabs Bar & Horizontal Divider Line
+   -------------------------------------------------------------------------- */
+.myreports-tabs-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.myreports-tabs-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.myreports-tab {
+  background: transparent;
+  border: none;
+  padding: 6px 14px;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #4b5563;
+  border-radius: 6px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.myreports-tab:hover {
+  color: #111827;
+  background-color: rgba(0, 0, 0, 0.04);
+}
+
+.myreports-tab.active {
+  background-color: #111827;
+  color: #ffffff;
+  font-weight: 600;
+}
+
+.myreports-divider {
+  width: 100%;
+  height: 1px;
+  background-color: #e5e7eb;
+  margin-top: 14px;
+  margin-bottom: 24px;
+}
+
+/* --------------------------------------------------------------------------
+   Reports List & Cards
+   -------------------------------------------------------------------------- */
+.myreports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.myreports-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.myreports-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  transform: translateY(-1px);
+}
+
+.myreports-card-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: 1;
+  min-width: 0;
+}
+
+.myreports-card-thumb {
+  width: 76px;
+  height: 76px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #f3f4f6;
+  border: 1px solid #edf0f3;
+}
+
+.myreports-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.myreports-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.myreports-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.myreports-card-ticket {
+  color: #059669;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.myreports-card-dot {
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.myreports-card-date {
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.myreports-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.015em;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.myreports-card-location {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   Right Side Badges & Arrow
+   -------------------------------------------------------------------------- */
+.myreports-card-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Priority Badges */
+.myreports-priority-badge {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  line-height: 1.35;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.myreports-priority-badge.priority-high {
+  background-color: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #dc2626;
+}
+
+.myreports-priority-badge.priority-urgent,
+.myreports-priority-badge.priority-emergency {
+  background-color: #111827;
+  border: 1px solid #111827;
+  color: #ffffff;
+}
+
+.myreports-priority-badge.priority-medium {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #d97706;
+}
+
+.myreports-priority-badge.priority-low {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+}
+
+/* Status Badges */
+.myreports-status-badge {
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 6px;
+  line-height: 1.35;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.myreports-status-badge.status-worker_assigned,
+.myreports-status-badge.status-assigned {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.myreports-status-badge.status-in_progress,
+.myreports-status-badge.status-repair_ongoing {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.myreports-status-badge.status-verified,
+.myreports-status-badge.status-under_review {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.myreports-status-badge.status-resolved,
+.myreports-status-badge.status-fixed,
+.myreports-status-badge.status-closed {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.myreports-status-badge.status-submitted,
+.myreports-status-badge.status-reported,
+.myreports-status-badge.status-pending {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+/* Chevron Arrow Button */
+.myreports-card-arrow-btn {
+  width: 28px;
+  height: 28px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.myreports-card:hover .myreports-card-arrow-btn {
+  background-color: #111827;
+  border-color: #111827;
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   Empty States
+   -------------------------------------------------------------------------- */
+.myreports-empty-state {
+  background-color: #ffffff;
+  border: 1.5px dashed #e5e7eb;
+  border-radius: 14px;
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.myreports-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #f3f4f6;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  margin-bottom: 4px;
+}
+
+.myreports-empty-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.myreports-empty-desc {
+  font-size: 0.88rem;
+  color: #6b7280;
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.5;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .myreports-page-wrapper {
+    padding: 24px 16px 60px 16px;
+  }
+
+  .myreports-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .myreports-search-box {
+    width: 100%;
+  }
+
+  .myreports-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .myreports-card-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}

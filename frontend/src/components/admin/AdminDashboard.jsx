@@ -12,6 +12,7 @@ import {
   User,
   X,
   CheckCircle2,
+  SlidersHorizontal,
 } from 'lucide-react';
 import {
   fetchStats,
@@ -33,6 +34,7 @@ import BuildingsAndRooms from './BuildingsAndRooms';
 import AnalyticsView from './AnalyticsView';
 import UsersView from './UsersView';
 import AdminSettings from './AdminSettings';
+import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import './admin.css';
 
@@ -265,6 +267,15 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             <Settings size={18} />
             <span>Settings</span>
           </button>
+
+          <button
+            type="button"
+            className={`admin-nav-item ${activeTab === 'modals-gallery' ? 'active' : ''}`}
+            onClick={() => setActiveTab('modals-gallery')}
+          >
+            <SlidersHorizontal size={18} />
+            <span>Modals &amp; States (7)</span>
+          </button>
         </nav>
 
         {/* Bottom Profile Footer */}
@@ -372,6 +383,11 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
         {/* View 8: Settings */}
         {activeTab === 'settings' && <AdminSettings />}
+
+        {/* View 9: System Modals & States Gallery */}
+        {activeTab === 'modals-gallery' && (
+          <ModalsGalleryView onBackToDashboard={() => setActiveTab('dashboard')} />
+        )}
       </main>
 
       {/* --------------------------------------------------------------------

@@ -23,10 +23,12 @@ import { fetchStats, fetchReports, deleteReport } from '../../services/api';
 import ConfirmationModal, { MODAL_PRESETS } from '../common/ConfirmationModal';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
+import MyReportsView from './MyReportsView';
 import './dashboard.css';
 
 export default function DashboardPage({
   currentUser,
+  initialTab = 'home',
   onNavigate,
   onLogout,
 }) {
@@ -41,9 +43,34 @@ export default function DashboardPage({
   const [reportToDelete, setReportToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'modals-gallery'
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash === 'my-reports') return 'my-reports';
+    return initialTab || 'home';
+  });
+  const [selectedReportForDetails, setSelectedReportForDetails] = useState(null);
   const [unreadCount, setUnreadCount] = useState(3);
   const [toastMessage, setToastMessage] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'my-reports') {
+        setActiveTab('my-reports');
+      } else if (hash === 'dashboard') {
+        setActiveTab('home');
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
 
   // Initial reports - start empty until reported as requested
   const [reports, setReports] = useState([]);
@@ -114,6 +141,7 @@ export default function DashboardPage({
 
   const displayName = currentUser?.full_name || 'Mark Cerna';
   const firstName = displayName.split(' ')[0] || 'Mark';
+  const isAdmin = Boolean(currentUser && (currentUser.role_name === 'admin' || currentUser.role_id === 1));
 
   // Handle modal confirmation
   const handleModalConfirm = async () => {
@@ -222,17 +250,22 @@ export default function DashboardPage({
             <nav className="dash-nav-links" aria-label="Main Navigation">
               <button
                 type="button"
-                className="dash-nav-link active"
-                onClick={() => onNavigate('dashboard')}
+                className={`dash-nav-link ${activeTab === 'home' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('home');
+                  setSelectedReportForDetails(null);
+                  window.location.hash = 'dashboard';
+                }}
               >
                 Home
               </button>
               <button
                 type="button"
-                className="dash-nav-link"
+                className={`dash-nav-link ${activeTab === 'my-reports' ? 'active' : ''}`}
                 onClick={() => {
-                  setToastMessage('Navigating to My Reports...');
-                  setTimeout(() => setToastMessage(''), 2000);
+                  setActiveTab('my-reports');
+                  setSelectedReportForDetails(null);
+                  window.location.hash = 'my-reports';
                 }}
               >
                 My Reports
@@ -250,15 +283,17 @@ export default function DashboardPage({
 
           {/* Right Controls */}
           <div className="dash-nav-right">
-            {/* Quick Preview Toggle for Modals Collection & Empty States */}
-            <button
-              type="button"
-              className="dash-states-pill"
-              onClick={() => setActiveView('modals-gallery')}
-              title="View the Confirmation Modals Collection & Empty States Registry mockups"
-            >
-              System Modals & States (7)
-            </button>
+            {/* Quick Preview Toggle for Modals Collection & Empty States (Admin Only) */}
+            {isAdmin && (
+              <button
+                type="button"
+                className="dash-states-pill"
+                onClick={() => setActiveView('modals-gallery')}
+                title="View the Confirmation Modals Collection & Empty States Registry mockups"
+              >
+                System Modals & States (7)
+              </button>
+            )}
 
             {/* Notification Bell with Badge */}
             <button
@@ -285,6 +320,16 @@ export default function DashboardPage({
               idPrefix="dash-user-profile"
             />
 
+            <button
+              type="button"
+              className="dash-logout-quick-btn"
+              onClick={() => setActiveModalPreset('logout')}
+              title="Sign Out"
+              aria-label="Sign Out"
+            >
+              <LogOut size={18} strokeWidth={2.1} />
+            </button>
+
             {/* Mobile Hamburger Menu Toggle Button */}
             <button
               type="button"
@@ -310,28 +355,30 @@ export default function DashboardPage({
               <nav className="dash-mobile-nav-list" aria-label="Mobile Navigation">
                 <button
                   type="button"
-                  className="dash-mobile-nav-item active"
+                  className={`dash-mobile-nav-item ${activeTab === 'home' ? 'active' : ''}`}
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    onNavigate('dashboard');
+                    setActiveTab('home');
+                    window.location.hash = 'dashboard';
                   }}
                 >
                   <Home size={18} className="dash-mobile-nav-icon" />
                   <span>Home</span>
-                  <span className="dash-mobile-active-tag">Active</span>
+                  {activeTab === 'home' && <span className="dash-mobile-active-tag">Active</span>}
                 </button>
 
                 <button
                   type="button"
-                  className="dash-mobile-nav-item"
+                  className={`dash-mobile-nav-item ${activeTab === 'my-reports' ? 'active' : ''}`}
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    setToastMessage('Navigating to My Reports...');
-                    setTimeout(() => setToastMessage(''), 2000);
+                    setActiveTab('my-reports');
+                    window.location.hash = 'my-reports';
                   }}
                 >
                   <FileText size={18} className="dash-mobile-nav-icon" />
                   <span>My Reports</span>
+                  {activeTab === 'my-reports' && <span className="dash-mobile-active-tag">Active</span>}
                 </button>
 
                 <button
@@ -346,17 +393,19 @@ export default function DashboardPage({
                   <span>Report Issue</span>
                 </button>
 
-                <button
-                  type="button"
-                  className="dash-mobile-nav-item"
-                  onClick={() => {
-                    setMobileMenuOpen(false);
-                    setActiveView('modals-gallery');
-                  }}
-                >
-                  <SlidersHorizontal size={18} className="dash-mobile-nav-icon" />
-                  <span>System Modals & States (7)</span>
-                </button>
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="dash-mobile-nav-item"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setActiveView('modals-gallery');
+                    }}
+                  >
+                    <SlidersHorizontal size={18} className="dash-mobile-nav-icon" />
+                    <span>System Modals & States (7)</span>
+                  </button>
+                )}
               </nav>
 
               <div className="dash-mobile-divider" />
@@ -440,9 +489,16 @@ export default function DashboardPage({
       )}
 
       {/* --------------------------------------------------------------------
-          Main Dashboard Content
+          Main Dashboard Content OR My Reports Tab
           -------------------------------------------------------------------- */}
-      <main className="dash-content">
+      {activeTab === 'my-reports' ? (
+        <MyReportsView
+          liveReports={reports}
+          onNavigate={onNavigate}
+          initialSelectedReport={selectedReportForDetails}
+        />
+      ) : (
+        <main className="dash-content">
         {/* Welcome Section */}
         <section className="dash-welcome">
           <div className="dash-welcome-text">
@@ -565,7 +621,16 @@ export default function DashboardPage({
           ) : (
             <div className="dash-reports-grid">
               {reports.map((report) => (
-                <article key={report.id} className="dash-report-card">
+                <article
+                  key={report.id}
+                  className="dash-report-card"
+                  onClick={() => {
+                    setSelectedReportForDetails(report);
+                    setActiveTab('my-reports');
+                    window.location.hash = 'my-reports';
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
                   <div className="dash-report-image">
                     <img src={report.image} alt={report.title} loading="lazy" />
                   </div>
@@ -665,6 +730,7 @@ export default function DashboardPage({
           </div>
         </section>
       </main>
+      )}
 
       {/* --------------------------------------------------------------------
           Reusable Interactive Confirmation Modal

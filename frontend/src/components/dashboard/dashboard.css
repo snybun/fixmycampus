@@ -61,20 +61,19 @@
 .dash-logo-icon {
   width: 32px;
   height: 32px;
-  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  background: #111827;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
-  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28);
 }
 
 .dash-logo-text {
   font-size: 1.08rem;
   font-weight: 750;
   letter-spacing: -0.015em;
-  color: #064e3b;
+  color: #111827;
 }
 
 /* Navigation Links */
@@ -97,23 +96,34 @@
 }
 
 .dash-nav-link:hover {
-  color: #059669;
+  color: #111827;
 }
 
 .dash-nav-link.active {
-  color: #047857;
+  color: #111827;
   font-weight: 700;
 }
 
 .dash-nav-link.active::after {
-  content: '';
-  position: absolute;
-  bottom: -4px;
-  left: 0;
-  right: 0;
-  height: 2px;
-  background-color: #059669;
-  border-radius: 2px;
+  display: none;
+}
+
+.dash-logout-quick-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dash-logout-quick-btn:hover {
+  color: #111827;
+  background-color: #f3f4f6;
 }
 
 /* Right Controls */
