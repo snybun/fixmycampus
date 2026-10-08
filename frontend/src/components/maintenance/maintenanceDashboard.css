@@ -12,8 +12,8 @@
   --maint-text-main: #0f172a;
   --maint-text-muted: #64748b;
   --maint-text-sub: #94a3b8;
-  --maint-primary: #0f172a;
-  --maint-primary-hover: #1e293b;
+  --maint-primary: #059669;
+  --maint-primary-hover: #047857;
   --maint-success: #16a34a;
   --maint-success-hover: #15803d;
   --maint-warning: #f59e0b;
@@ -62,12 +62,13 @@
 .maint-brand-logo {
   width: 32px;
   height: 32px;
-  background-color: #0f172a;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
   color: #ffffff;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28);
   flex-shrink: 0;
 }
 
@@ -75,7 +76,7 @@
   font-size: 1.1rem;
   font-weight: 700;
   letter-spacing: -0.01em;
-  color: #0f172a;
+  color: #064e3b;
 }
 
 .maint-nav {
@@ -104,14 +105,15 @@
 }
 
 .maint-nav-item:hover {
-  background-color: #f1f5f9;
-  color: var(--maint-text-main);
+  background-color: #ecfdf5;
+  color: #047857;
 }
 
 .maint-nav-item.active {
-  background-color: #0f172a;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
 }
 
 .maint-nav-label-box {
@@ -515,8 +517,8 @@
 }
 
 .maint-btn-start {
-  background-color: #0f172a;
-  border: 1px solid #0f172a;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border: 1px solid #047857;
   color: #ffffff;
   font-size: 0.84rem;
   font-weight: 600;
@@ -524,10 +526,12 @@
   border-radius: 8px;
   cursor: pointer;
   transition: all 0.15s ease;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.2);
 }
 
 .maint-btn-start:hover {
-  background-color: #1e293b;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #059669;
 }
 
 .maint-btn-start.in-progress {
@@ -667,8 +671,8 @@
 /* Job Actions */
 .maint-btn-action-primary {
   width: 100%;
-  background-color: #0f172a;
-  border: 1px solid #0f172a;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  border: 1px solid #047857;
   color: #ffffff;
   font-size: 0.9rem;
   font-weight: 600;
@@ -680,10 +684,12 @@
   align-items: center;
   justify-content: center;
   gap: 8px;
+  box-shadow: 0 3px 10px rgba(5, 150, 105, 0.25);
 }
 
 .maint-btn-action-primary:hover {
-  background-color: #1e293b;
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  border-color: #059669;
 }
 
 .maint-btn-action-secondary {
@@ -916,7 +922,7 @@
 }
 
 .maint-step-indicator.active {
-  background-color: #0f172a;
+  background-color: #059669;
   color: #ffffff;
 }
 
@@ -975,7 +981,7 @@
   position: fixed;
   bottom: 28px;
   right: 28px;
-  background-color: #0f172a;
+  background-color: #064e3b;
   color: #ffffff;
   padding: 12px 20px;
   border-radius: 8px;

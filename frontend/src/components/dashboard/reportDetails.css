@@ -41,9 +41,9 @@
 }
 
 .rep-details-back-btn:hover {
-  background-color: #f3f4f6;
-  border-color: #d1d5db;
-  color: #111827;
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
   transform: translateX(-1px);
 }
 
@@ -306,7 +306,8 @@
 }
 
 .rep-step-circle.active {
-  background-color: #111827;
+  background-color: #059669;
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.2);
 }
 
 .rep-step-inner-dot {
@@ -333,7 +334,7 @@
 }
 
 .rep-step-line.line-active {
-  background-color: #111827;
+  background-color: #059669;
 }
 
 .rep-step-line.line-pending {
@@ -358,7 +359,7 @@
 
 .rep-step-label.step-text-active {
   font-weight: 700;
-  color: #111827;
+  color: #064e3b;
 }
 
 .rep-step-label.step-text-pending {
@@ -403,8 +404,9 @@
   width: 44px;
   height: 44px;
   border-radius: 50%;
-  background-color: #e5e7eb;
-  color: #6b7280;
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -412,7 +414,7 @@
 }
 
 .rep-worker-avatar-icon {
-  color: #6b7280;
+  color: #059669;
 }
 
 .rep-worker-meta {
