@@ -24,6 +24,7 @@ import ConfirmationModal, { MODAL_PRESETS } from '../common/ConfirmationModal';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import MyReportsView from './MyReportsView';
+import NotificationsView from '../notifications/NotificationsView';
 import './dashboard.css';
 
 export default function DashboardPage({
@@ -46,10 +47,11 @@ export default function DashboardPage({
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '');
     if (hash === 'my-reports') return 'my-reports';
+    if (hash === 'notifications') return 'notifications';
     return initialTab || 'home';
   });
   const [selectedReportForDetails, setSelectedReportForDetails] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [unreadCount, setUnreadCount] = useState(2);
   const [toastMessage, setToastMessage] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -64,6 +66,8 @@ export default function DashboardPage({
       const hash = window.location.hash.replace('#', '');
       if (hash === 'my-reports') {
         setActiveTab('my-reports');
+      } else if (hash === 'notifications') {
+        setActiveTab('notifications');
       } else if (hash === 'dashboard') {
         setActiveTab('home');
       }
@@ -298,13 +302,14 @@ export default function DashboardPage({
             {/* Notification Bell with Badge */}
             <button
               type="button"
-              className="dash-notif-btn"
+              className={`dash-notif-btn ${activeTab === 'notifications' ? 'active' : ''}`}
               onClick={() => {
-                setUnreadCount(0);
-                setToastMessage('All notifications marked as read.');
-                setTimeout(() => setToastMessage(''), 2500);
+                setActiveTab('notifications');
+                setSelectedReportForDetails(null);
+                window.location.hash = 'notifications';
               }}
               title="Notifications"
+              id="dash-navbar-notif-btn"
             >
               <Bell size={18} />
               {unreadCount > 0 && (
@@ -379,6 +384,20 @@ export default function DashboardPage({
                   <FileText size={18} className="dash-mobile-nav-icon" />
                   <span>My Reports</span>
                   {activeTab === 'my-reports' && <span className="dash-mobile-active-tag">Active</span>}
+                </button>
+
+                <button
+                  type="button"
+                  className={`dash-mobile-nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setActiveTab('notifications');
+                    window.location.hash = 'notifications';
+                  }}
+                >
+                  <Bell size={18} className="dash-mobile-nav-icon" />
+                  <span>Notifications</span>
+                  {unreadCount > 0 && <span className="dash-mobile-active-tag">{unreadCount}</span>}
                 </button>
 
                 <button
@@ -489,9 +508,19 @@ export default function DashboardPage({
       )}
 
       {/* --------------------------------------------------------------------
-          Main Dashboard Content OR My Reports Tab
+          Main Dashboard Content, Notifications View OR My Reports Tab
           -------------------------------------------------------------------- */}
-      {activeTab === 'my-reports' ? (
+      {activeTab === 'notifications' ? (
+        <NotificationsView
+          onNavigate={onNavigate}
+          onSelectReport={(ticketNumber) => {
+            setActiveTab('my-reports');
+            window.location.hash = 'my-reports';
+          }}
+          unreadCount={unreadCount}
+          setUnreadCount={setUnreadCount}
+        />
+      ) : activeTab === 'my-reports' ? (
         <MyReportsView
           liveReports={reports}
           onNavigate={onNavigate}
