@@ -19,6 +19,7 @@ import {
   X,
 } from 'lucide-react';
 import { fetchReports, updateReportStatus } from '../../services/api';
+import MaintenanceNotificationsView from './MaintenanceNotificationsView';
 import './maintenanceDashboard.css';
 
 // Initial default jobs matching the user's design screenshots
@@ -119,6 +120,7 @@ export default function MaintenanceStaffDashboard({
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'assigned', 'completed', 'notifications', 'profile'
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [priorityFilter, setPriorityFilter] = useState('all'); // 'all', 'high', 'medium', 'low'
+  const [unreadNotifCount, setUnreadNotifCount] = useState(3);
 
   // Data & jobs list state
   const [jobs, setJobs] = useState(DEFAULT_JOBS);
@@ -313,18 +315,19 @@ export default function MaintenanceStaffDashboard({
 
             <button
               type="button"
-              className={`maint-nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
+              className={`maint-nav-item ${activeTab === 'notifications' && selectedJobId === null ? 'active' : ''}`}
               onClick={() => {
                 setActiveTab('notifications');
                 setSelectedJobId(null);
-                showToast('You have 3 unread priority job alerts.');
               }}
             >
               <div className="maint-nav-label-box">
                 <Bell size={18} />
                 <span>Notifications</span>
               </div>
-              <span className="maint-badge-count">3</span>
+              {unreadNotifCount > 0 && (
+                <span className="maint-badge-count">{unreadNotifCount}</span>
+              )}
             </button>
 
             <button
@@ -656,6 +659,20 @@ export default function MaintenanceStaffDashboard({
               </div>
             </div>
           </div>
+        ) : activeTab === 'notifications' ? (
+          /* ================================================================
+             SCREEN 3: Maintenance Notifications View
+             ================================================================ */
+          <MaintenanceNotificationsView
+            onViewJob={(jobId) => {
+              setSelectedJobId(jobId);
+            }}
+            onStartRepair={handleStartRepair}
+            jobs={jobs}
+            currentUser={currentUser}
+            onUnreadChange={setUnreadNotifCount}
+            showToast={showToast}
+          />
         ) : (
           /* ================================================================
              SCREEN 1: Dashboard Overview (Assigned Jobs List & Metric Cards)

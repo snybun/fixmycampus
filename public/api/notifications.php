@@ -31,54 +31,116 @@ session_start_safe();
 $action = $_GET['action'] ?? 'list';
 $user = auth_user();
 $userId = auth_id() ?? 11; // Default to student Mark Dyvie Cerna (id: 11)
+$roleName = $user['role_name'] ?? auth_role() ?? 'student';
+$isMaintenanceUser = ($roleName === 'supervisor' || $roleName === 'technician' || in_array($userId, [2, 3], true));
 
-// Fallback seed notifications matching exact UI mockup specification
-$mockNotifications = [
-    [
-        'id'            => 1,
-        'user_id'       => $userId,
-        'ticket_number' => 'FM-2026-00153',
-        'type'          => 'verified',
-        'title'         => 'Your report FM-2026-00153 has been verified.',
-        'message'       => 'Your facility defect report has been reviewed and verified by campus operations.',
-        'time_ago'      => '2 hours ago',
-        'is_read'       => 0,
-        'created_at'    => date('Y-m-d H:i:s', strtotime('-2 hours')),
-    ],
-    [
-        'id'            => 2,
-        'user_id'       => $userId,
-        'ticket_number' => 'FM-2026-00153',
-        'type'          => 'assignment',
-        'title'         => 'Maintenance worker Mark Santos has been assigned to your report FM-2026-00153.',
-        'message'       => 'Worker Mark Santos has accepted the work order and will inspect the site.',
-        'time_ago'      => '1 day ago',
-        'is_read'       => 0,
-        'created_at'    => date('Y-m-d H:i:s', strtotime('-1 day')),
-    ],
-    [
-        'id'            => 3,
-        'user_id'       => $userId,
-        'ticket_number' => 'FM-2026-00139',
-        'type'          => 'fixed',
-        'title'         => 'Your reported air conditioner issue FM-2026-00139 is now fixed!',
-        'message'       => 'The AC condenser and refrigerant service has been completed and verified.',
-        'time_ago'      => '3 days ago',
-        'is_read'       => 1,
-        'created_at'    => date('Y-m-d H:i:s', strtotime('-3 days')),
-    ],
-    [
-        'id'            => 4,
-        'user_id'       => $userId,
-        'ticket_number' => 'FM-2026-00148',
-        'type'          => 'update',
-        'title'         => 'Your report FM-2026-00148 has been updated with new schedule information.',
-        'message'       => 'Estimated repair schedule has been scheduled for upcoming maintenance window.',
-        'time_ago'      => '5 days ago',
-        'is_read'       => 1,
-        'created_at'    => date('Y-m-d H:i:s', strtotime('-5 days')),
-    ],
-];
+// Fallback seed notifications matching exact UI specification per role
+if ($isMaintenanceUser) {
+    $mockNotifications = [
+        [
+            'id'            => 101,
+            'user_id'       => $userId,
+            'ticket_number' => 'FM-105',
+            'type'          => 'emergency',
+            'title'         => 'EMERGENCY HAZARD: Loose Staircase Handrail Reported',
+            'message'       => 'Central anchor detached on exterior flight between Ground & 1st floor. Immediate safety barricade tape and welding inspection required.',
+            'time_ago'      => '15 minutes ago',
+            'is_read'       => 0,
+            'created_at'    => date('Y-m-d H:i:s', strtotime('-15 minutes')),
+        ],
+        [
+            'id'            => 102,
+            'user_id'       => $userId,
+            'ticket_number' => 'FM-102',
+            'type'          => 'work_order',
+            'title'         => 'New Work Order Dispatched: FM-102 Broken Air Conditioner',
+            'message'       => 'Split AC unit in Rm 304 leaking water heavily and blowing warm air. Dispatched by Supervisor Robert Vance. High priority.',
+            'time_ago'      => '45 minutes ago',
+            'is_read'       => 0,
+            'created_at'    => date('Y-m-d H:i:s', strtotime('-45 minutes')),
+        ],
+        [
+            'id'            => 103,
+            'user_id'       => $userId,
+            'ticket_number' => 'FM-104',
+            'type'          => 'parts',
+            'title'         => 'Parts Ready: 35mm Ceramic Disc Cartridge & Gaskets',
+            'message'       => 'Requisition #REQ-4482 has arrived and is staged in Facilities Stockroom Cabinet C-2 for work order FM-104 (Leaking Faucet).',
+            'time_ago'      => '2 hours ago',
+            'is_read'       => 0,
+            'created_at'    => date('Y-m-d H:i:s', strtotime('-2 hours')),
+        ],
+        [
+            'id'            => 104,
+            'user_id'       => $userId,
+            'ticket_number' => 'FM-103',
+            'type'          => 'sla_warning',
+            'title'         => 'SLA Warning: FM-103 Approaching 24h Resolution Window',
+            'message'       => 'Faulty electrical outlet in Rm 201 reported 18 hours ago. 6 hours remaining before SLA target is exceeded.',
+            'time_ago'      => '4 hours ago',
+            'is_read'       => 1,
+            'created_at'    => date('Y-m-d H:i:s', strtotime('-4 hours')),
+        ],
+        [
+            'id'            => 105,
+            'user_id'       => $userId,
+            'ticket_number' => 'FM-107',
+            'type'          => 'verified',
+            'title'         => 'Sign-Off Approved: FM-107 Clogged Water Dispenser',
+            'message'       => 'Completion proof photo and filter replacement verified by Facilities Supervisor. Ticket marked closed.',
+            'time_ago'      => '1 day ago',
+            'is_read'       => 1,
+            'created_at'    => date('Y-m-d H:i:s', strtotime('-1 day')),
+        ],
+    ];
+} else {
+    $mockNotifications = [
+        [
+            'id'            => 1,
+            'user_id'       => $userId,
+            'ticket_number' => 'FM-2026-00153',
+            'type'          => 'verified',
+            'title'         => 'Your report FM-2026-00153 has been verified.',
+            'message'       => 'Your facility defect report has been reviewed and verified by campus operations.',
+            'time_ago'      => '2 hours ago',
+            'is_read'       => 0,
+            'created_at'    => date('Y-m-d H:i:s', strtotime('-2 hours')),
+        ],
+        [
+            'id'            => 2,
+            'user_id'       => $userId,
+            'ticket_number' => 'FM-2026-00153',
+            'type'          => 'assignment',
+            'title'         => 'Maintenance worker Mark Santos has been assigned to your report FM-2026-00153.',
+            'message'       => 'Worker Mark Santos has accepted the work order and will inspect the site.',
+            'time_ago'      => '1 day ago',
+            'is_read'       => 0,
+            'created_at'    => date('Y-m-d H:i:s', strtotime('-1 day')),
+        ],
+        [
+            'id'            => 3,
+            'user_id'       => $userId,
+            'ticket_number' => 'FM-2026-00139',
+            'type'          => 'fixed',
+            'title'         => 'Your reported air conditioner issue FM-2026-00139 is now fixed!',
+            'message'       => 'The AC condenser and refrigerant service has been completed and verified.',
+            'time_ago'      => '3 days ago',
+            'is_read'       => 1,
+            'created_at'    => date('Y-m-d H:i:s', strtotime('-3 days')),
+        ],
+        [
+            'id'            => 4,
+            'user_id'       => $userId,
+            'ticket_number' => 'FM-2026-00148',
+            'type'          => 'update',
+            'title'         => 'Your report FM-2026-00148 has been updated with new schedule information.',
+            'message'       => 'Estimated repair schedule has been scheduled for upcoming maintenance window.',
+            'time_ago'      => '5 days ago',
+            'is_read'       => 1,
+            'created_at'    => date('Y-m-d H:i:s', strtotime('-5 days')),
+        ],
+    ];
+}
 
 // Helper to calculate human-readable relative time
 function get_relative_time(string $datetime): string {
@@ -160,21 +222,30 @@ try {
         if (!empty($rows)) {
             foreach ($rows as $row) {
                 $statusType = 'info';
-                if (stripos($row['title'], 'fixed') !== false || stripos($row['title'], 'resolved') !== false) {
-                    $statusType = 'fixed';
-                } elseif (stripos($row['title'], 'verified') !== false) {
+                if (stripos($row['title'], 'emergency') !== false || stripos($row['title'], 'hazard') !== false) {
+                    $statusType = 'emergency';
+                } elseif (stripos($row['title'], 'parts') !== false || stripos($row['title'], 'supply') !== false || stripos($row['title'], 'cartridge') !== false) {
+                    $statusType = 'parts';
+                } elseif (stripos($row['title'], 'sla') !== false || stripos($row['title'], 'warning') !== false || stripos($row['title'], 'overdue') !== false) {
+                    $statusType = 'sla_warning';
+                } elseif (stripos($row['title'], 'fixed') !== false || stripos($row['title'], 'resolved') !== false || stripos($row['title'], 'approved') !== false || stripos($row['title'], 'sign-off') !== false) {
                     $statusType = 'verified';
-                } elseif (stripos($row['title'], 'assigned') !== false) {
-                    $statusType = 'assignment';
+                } elseif (stripos($row['title'], 'assigned') !== false || stripos($row['title'], 'work order') !== false || stripos($row['title'], 'dispatch') !== false) {
+                    $statusType = 'work_order';
                 } elseif (stripos($row['title'], 'schedule') !== false || stripos($row['title'], 'updated') !== false) {
                     $statusType = 'update';
+                }
+
+                $ticketNum = $row['ticket_number'] ?? null;
+                if (!$ticketNum && preg_match('/(FM[C]?[-_]?[0-9]{3,})/i', $row['title'] . ' ' . $row['message'], $m)) {
+                    $ticketNum = strtoupper($m[1]);
                 }
 
                 $notifications[] = [
                     'id'            => (int) $row['id'],
                     'user_id'       => (int) $row['user_id'],
                     'report_id'     => $row['report_id'] ? (int) $row['report_id'] : null,
-                    'ticket_number' => $row['ticket_number'] ?? null,
+                    'ticket_number' => $ticketNum,
                     'type'          => $statusType,
                     'title'         => $row['title'],
                     'message'       => $row['message'],
