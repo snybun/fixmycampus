@@ -20,12 +20,15 @@ ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`);
 -- -----------------------------------------------------------------------------
 -- Seed: users
 -- 1. System Administrator (admin@phinmaed.com / Admin@1234)
--- 2. Mark Dyvie Cerna (Student, CITE)
--- (Maintenance staff accounts will be registered via the Admin page)
+-- 2. Maintenance Supervisor (supervisor@phinmaed.com / Supervisor@1234)
+-- 3. Maintenance Technician (technician@phinmaed.com / Worker@1234)
+-- 4. Mark Dyvie Cerna (Student, CITE)
 -- -----------------------------------------------------------------------------
-INSERT INTO `users` (`id`, `role_id`, `user_identifier`, `full_name`, `email`, `password_hash`, `phone_number`, `department`, `status`) VALUES
-(1, 1, 'ADM-001', 'Campus Administrator', 'admin@phinmaed.com', '$2y$10$pj8PZHjsujG2W2bOmTQYyetGak6xr/.YGgf2oA22ObvWAd9Sy.uPu', '+1-555-0100', 'Facilities & Administration', 'active'),
-(11, 5, '03-01-2526-045589', 'Mark Dyvie Cerna', 'mafe.cerna.up@phinmaed.com', '$2y$10$HulORYDbVIJ5wuRet5/r4O9Uo1RMt72/72Cvz22U.VlBghlTuxwRC', NULL, 'CITE - College of Information Technology Education', 'active')
+INSERT INTO `users` (`id`, `role_id`, `user_identifier`, `first_name`, `last_name`, `full_name`, `email`, `password_hash`, `phone_number`, `department`, `status`) VALUES
+(1, 1, 'ADM-001', 'Campus', 'Administrator', 'Campus Administrator', 'admin@phinmaed.com', '$2y$10$pj8PZHjsujG2W2bOmTQYyetGak6xr/.YGgf2oA22ObvWAd9Sy.uPu', '+1-555-0100', 'Facilities & Administration', 'active'),
+(2, 2, 'MGT-001', 'Robert', 'Vance', 'Robert Vance', 'supervisor@phinmaed.com', '$2y$10$S.vnmWs27xkpJks4G1JnreMN7mJxkzBVkpxqPG1xjHBMJcdL7rCBC', '+63-912-345-6789', 'Physical Plant & Facilities', 'active'),
+(3, 3, 'TEC-001', 'John', 'Miller', 'John Miller', 'technician@phinmaed.com', '$2y$10$P5BB7SGNk.GmjUO/e5rrbuNGBff4Nwxh1MF2m0hc2tr0vvxgO33XS', '+63-912-345-6790', 'HVAC & Electrical Maintenance', 'active'),
+(11, 5, '03-01-2526-045589', 'Mark', 'Cerna', 'Mark Dyvie Cerna', 'mafe.cerna.up@phinmaed.com', '$2y$10$HulORYDbVIJ5wuRet5/r4O9Uo1RMt72/72Cvz22U.VlBghlTuxwRC', NULL, 'CITE - College of Information Technology Education', 'active')
 ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`), `department` = VALUES(`department`), `password_hash` = VALUES(`password_hash`);
 
 -- -----------------------------------------------------------------------------

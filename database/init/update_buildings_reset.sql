@@ -13,8 +13,7 @@ TRUNCATE TABLE `reports`;
 TRUNCATE TABLE `locations`;
 TRUNCATE TABLE `floors`;
 
--- 3. Modify buildings table to remove description
-ALTER TABLE `buildings` DROP COLUMN `description`;
+-- 3. Description is not in schema, skip drop
 
 -- 4. Clear and repopulate buildings
 TRUNCATE TABLE `buildings`;

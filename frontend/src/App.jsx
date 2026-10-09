@@ -40,7 +40,7 @@ export default function App() {
   // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #my-reports, #admin, #report-issue, #settings, #access-denied, #maintenance)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'admin', 'report-issue', 'settings', 'access-denied', 'maintenance'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'notifications', 'admin', 'report-issue', 'settings', 'access-denied', 'maintenance'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -71,7 +71,7 @@ export default function App() {
             setCurrentView('access-denied');
             window.location.hash = 'access-denied';
           }
-        } else if (hash === 'dashboard' || hash === 'my-reports' || hash === 'report-issue' || hash === 'settings' || hash === 'maintenance') {
+        } else if (hash === 'dashboard' || hash === 'my-reports' || hash === 'notifications' || hash === 'report-issue' || hash === 'settings' || hash === 'maintenance') {
           if (isUserAdmin(res.user) && (hash === 'dashboard' || hash === 'my-reports')) {
             setCurrentView('admin');
             window.location.hash = 'admin';
@@ -99,7 +99,7 @@ export default function App() {
       const hash = window.location.hash.replace('#', '');
       const activeUser = currentUserRef.current || currentUser;
 
-      if (['dashboard', 'my-reports', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash) && !activeUser) {
+      if (['dashboard', 'my-reports', 'notifications', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash) && !activeUser) {
         handleNavigate('login');
         return;
       }
@@ -113,7 +113,7 @@ export default function App() {
         }
       }
 
-      if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
+      if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'notifications', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -289,11 +289,11 @@ export default function App() {
         />
       )}
 
-      {/* Student / Faculty / Reporter Dashboard & My Reports */}
-      {(currentView === 'dashboard' || currentView === 'my-reports') && !isAdminView && !isMaintenanceView && (
+      {/* Student / Faculty / Reporter Dashboard, My Reports & Notifications */}
+      {(currentView === 'dashboard' || currentView === 'my-reports' || currentView === 'notifications') && !isAdminView && !isMaintenanceView && (
         <DashboardPage
           currentUser={currentUser}
-          initialTab={currentView === 'my-reports' ? 'my-reports' : 'home'}
+          initialTab={currentView === 'my-reports' ? 'my-reports' : currentView === 'notifications' ? 'notifications' : 'home'}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
         />

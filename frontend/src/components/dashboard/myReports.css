@@ -78,8 +78,8 @@
 }
 
 .myreports-search-input:focus {
-  border-color: #111827;
-  box-shadow: 0 0 0 2px rgba(17, 24, 39, 0.08);
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
 }
 
 .myreports-search-input::placeholder {
@@ -102,9 +102,9 @@
 }
 
 .myreports-filter-btn:hover {
-  background-color: #f3f4f6;
-  border-color: #d1d5db;
-  color: #111827;
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
 }
 
 /* --------------------------------------------------------------------------
@@ -136,14 +136,15 @@
 }
 
 .myreports-tab:hover {
-  color: #111827;
-  background-color: rgba(0, 0, 0, 0.04);
+  color: #047857;
+  background-color: #ecfdf5;
 }
 
 .myreports-tab.active {
-  background-color: #111827;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   font-weight: 600;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
 }
 
 .myreports-divider {
@@ -178,8 +179,8 @@
 }
 
 .myreports-card:hover {
-  border-color: #cbd5e1;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+  border-color: #a7f3d0;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.08);
   transform: translateY(-1px);
 }
 
@@ -373,8 +374,8 @@
 }
 
 .myreports-card:hover .myreports-card-arrow-btn {
-  background-color: #111827;
-  border-color: #111827;
+  background-color: #059669;
+  border-color: #059669;
   color: #ffffff;
 }
 
@@ -397,11 +398,11 @@
   width: 52px;
   height: 52px;
   border-radius: 50%;
-  background-color: #f3f4f6;
+  background-color: #ecfdf5;
   display: flex;
   align-items: center;
   justify-content: center;
-  color: #6b7280;
+  color: #059669;
   margin-bottom: 4px;
 }
 
