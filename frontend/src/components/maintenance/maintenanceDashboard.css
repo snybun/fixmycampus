@@ -483,6 +483,20 @@
   border: 1px solid #fecaca;
 }
 
+.maint-job-impact-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #065f46;
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  padding: 2px 7px;
+  border-radius: 6px;
+  letter-spacing: -0.01em;
+}
+
 .maint-job-assigned-date {
   font-size: 0.8rem;
   color: var(--maint-text-muted);
@@ -666,6 +680,21 @@
   color: #475569;
   line-height: 1.5;
   margin: 0;
+}
+
+.maint-info-impact {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: #065f46;
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  padding: 3px 10px;
+  border-radius: 6px;
+  width: fit-content;
+  margin-top: 2px;
 }
 
 /* Job Actions */

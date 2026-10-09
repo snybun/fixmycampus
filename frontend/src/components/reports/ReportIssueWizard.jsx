@@ -27,8 +27,9 @@ import {
   PlusCircle,
   User,
 } from 'lucide-react';
-import { fetchBuildings, fetchCategories, createReport } from '../../services/api';
+import { fetchBuildings, fetchCategories, createReport, checkDuplicateReport, confirmReport } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
+import DuplicateReportModal from './DuplicateReportModal';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import CampusMapPlacement from './CampusMapPlacement';
 import './reportWizard.css';
@@ -139,6 +140,13 @@ export default function ReportIssueWizard({
   const fileInputRef = useRef(null);
   const multiFileInputRef = useRef(null);
 
+  // Duplicate Detection State
+  const [duplicateReport, setDuplicateReport] = useState(null);
+  const [showDuplicateModal, setShowDuplicateModal] = useState(false);
+  const [isConfirmingDuplicate, setIsConfirmingDuplicate] = useState(false);
+  const [isCheckingDuplicate, setIsCheckingDuplicate] = useState(false);
+  const dismissedDuplicatesRef = useRef(new Set());
+
   // Fetch live buildings & categories from database on mount
   useEffect(() => {
     fetchBuildings().then((res) => {
@@ -231,7 +239,7 @@ export default function ReportIssueWizard({
   };
 
   // Step Navigators
-  const goToNextStep = () => {
+  const goToNextStep = async () => {
     setErrorMsg('');
     if (currentStep === 1) {
       if (!selectedCategory) {
@@ -252,6 +260,35 @@ export default function ReportIssueWizard({
         setErrorMsg('Please provide the room, area, or coordinate.');
         return;
       }
+
+      // Check for active duplicate defect in this room & category
+      const roomClean = roomCoordinate.trim();
+      const checkKey = `${selectedBuilding}_${roomClean}_${selectedCategory?.slug || ''}`;
+
+      if (!dismissedDuplicatesRef.current.has(checkKey)) {
+        setIsCheckingDuplicate(true);
+        try {
+          const dupRes = await checkDuplicateReport({
+            buildingId: activeBuildingObj?.id,
+            buildingName: selectedBuilding,
+            categoryId: selectedCategory?.id,
+            categorySlug: selectedCategory?.slug,
+            roomNumber: roomClean,
+          });
+
+          if (dupRes && dupRes.duplicate_found && dupRes.existing_report) {
+            setDuplicateReport(dupRes.existing_report);
+            setShowDuplicateModal(true);
+            setIsCheckingDuplicate(false);
+            return; // Pause navigation so student can choose path
+          }
+        } catch (e) {
+          console.warn('Duplicate check warning:', e);
+        } finally {
+          setIsCheckingDuplicate(false);
+        }
+      }
+
       setCurrentStep(3);
     } else if (currentStep === 3) {
       if (!issueTitle.trim()) {
@@ -264,6 +301,45 @@ export default function ReportIssueWizard({
       }
       setCurrentStep(4);
     }
+  };
+
+  const handleConfirmDuplicate = async () => {
+    if (!duplicateReport) return;
+    setIsConfirmingDuplicate(true);
+    try {
+      const res = await confirmReport(duplicateReport.id, duplicateReport.ticket_number);
+      setShowDuplicateModal(false);
+      isExitingRef.current = true;
+      if (onReportCreated) {
+        onReportCreated({
+          id: duplicateReport.id,
+          ticket_number: duplicateReport.ticket_number,
+          title: duplicateReport.title,
+          status: duplicateReport.status,
+          priority: duplicateReport.priority,
+          building_name: duplicateReport.building_name,
+          room_number: duplicateReport.room_number,
+          is_confirmed: true,
+          confirmation_count: res.confirmation_count || (duplicateReport.confirmation_count + 1),
+        });
+      }
+      onNavigate('my-reports');
+    } catch (err) {
+      console.error('Error confirming duplicate:', err);
+      setShowDuplicateModal(false);
+      onNavigate('my-reports');
+    } finally {
+      setIsConfirmingDuplicate(false);
+    }
+  };
+
+  const handleDismissDuplicate = () => {
+    if (duplicateReport) {
+      const checkKey = `${selectedBuilding}_${roomCoordinate.trim()}_${selectedCategory?.slug || ''}`;
+      dismissedDuplicatesRef.current.add(checkKey);
+    }
+    setShowDuplicateModal(false);
+    setCurrentStep(3);
   };
 
   const goToPrevStep = () => {
@@ -660,6 +736,16 @@ export default function ReportIssueWizard({
                       <h4 className="rw-upload-prompt-title">Add Primary Photo</h4>
                       <p className="rw-upload-prompt-sub">Drag & drop or browse device</p>
                       <span className="rw-upload-required-badge">Required to continue</span>
+                      <button
+                        type="button"
+                        className="rw-sample-photo-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPrimaryPhoto('/images/hero_ac_defect.jpg');
+                        }}
+                      >
+                        Use Sample Photo
+                      </button>
                     </div>
                   )}
                 </div>
@@ -1048,6 +1134,15 @@ export default function ReportIssueWizard({
         presetId="start_over"
         onClose={handleCancelExit}
         onConfirm={handleConfirmExit}
+      />
+
+      {/* Duplicate / Existing Issue Detection Modal */}
+      <DuplicateReportModal
+        isOpen={showDuplicateModal}
+        duplicate={duplicateReport}
+        onConfirmDuplicate={handleConfirmDuplicate}
+        onDismiss={handleDismissDuplicate}
+        isSubmitting={isConfirmingDuplicate}
       />
     </div>
   );

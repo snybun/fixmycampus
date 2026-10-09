@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Bell,
   User,
+  Users,
   LogOut,
   Calendar,
   ArrowLeft,
@@ -36,6 +37,7 @@ const DEFAULT_JOBS = [
     assigned_date: 'Aug 26, 2026',
     reported_date: 'August 25, 2026',
     reporter_name: 'Alex Johnson (Student)',
+    confirmation_count: 8,
     description:
       'The AC unit in Room 304 is leaking water heavily and blowing warm air instead of cooling the room.',
     image_url: '/images/hero_ac_defect.jpg',
@@ -53,6 +55,7 @@ const DEFAULT_JOBS = [
     assigned_date: 'Aug 27, 2026',
     reported_date: 'August 26, 2026',
     reporter_name: 'Prof. Robert Vance (Faculty)',
+    confirmation_count: 1,
     description:
       'Outlet sparks intermittently when plugging in laptop charger. Needs socket inspection and breaker check.',
     image_url: '/images/faulty_light_switch.jpg',
@@ -70,6 +73,7 @@ const DEFAULT_JOBS = [
     assigned_date: 'Aug 28, 2026',
     reported_date: 'August 27, 2026',
     reporter_name: 'Emily Chen (Student)',
+    confirmation_count: 3,
     description:
       'Wash basin faucet does not shut off completely, wasting water all day and creating a slip hazard near entrance.',
     image_url: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
@@ -153,6 +157,7 @@ export default function MaintenanceStaffDashboard({
           reported_date: 'August 25, 2026',
           reporter_name: `${r.reporter_name || 'Alex Johnson'} (Student)`,
           description: r.description,
+          confirmation_count: Number(r.confirmation_count || 1),
           image_url: r.primary_photo || r.image_url || '/images/hero_ac_defect.jpg',
           stepper_assigned_worker: r.worker_name ? `${r.worker_name} Assigned` : 'Mark Santos Assigned',
         }));
@@ -453,6 +458,16 @@ export default function MaintenanceStaffDashboard({
                       <span className="maint-info-label">DATE REPORTED</span>
                       <span className="maint-info-val">{selectedJob.reported_date}</span>
                     </div>
+
+                    {selectedJob.confirmation_count > 1 && (
+                      <div className="maint-info-item">
+                        <span className="maint-info-label">COMMUNITY IMPACT</span>
+                        <span className="maint-info-impact">
+                          <Users size={14} />
+                          {selectedJob.confirmation_count} Students Confirmed
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -797,6 +812,12 @@ export default function MaintenanceStaffDashboard({
                           <span className={`maint-priority-badge ${job.priority}`}>
                             {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
                           </span>
+                          {job.confirmation_count > 1 && (
+                            <span className="maint-job-impact-badge" title={`${job.confirmation_count} students reported or confirmed this defect`}>
+                              <Users size={12} />
+                              {job.confirmation_count} Confirmed
+                            </span>
+                          )}
                           <span className="maint-job-assigned-date">
                             <Calendar size={13} />
                             Assigned: {job.assigned_date}

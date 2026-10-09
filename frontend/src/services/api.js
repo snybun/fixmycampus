@@ -499,5 +499,36 @@ export async function markNotificationRead(id) {
   }
 }
 
+export async function checkDuplicateReport({ buildingId, buildingName, categoryId, categorySlug, roomNumber }) {
+  try {
+    const params = new URLSearchParams();
+    if (buildingId) params.append('building_id', buildingId);
+    if (buildingName) params.append('building_name', buildingName);
+    if (categoryId) params.append('category_id', categoryId);
+    if (categorySlug) params.append('category_slug', categorySlug);
+    if (roomNumber) params.append('room_number', roomNumber);
 
+    const res = await fetch(`${API_BASE}/reports.php?action=check_duplicate&${params.toString()}`, {
+      credentials: 'include',
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('checkDuplicateReport error:', err);
+    return { success: false, duplicate_found: false };
+  }
+}
 
+export async function confirmReport(reportId, ticketNumber = '') {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=confirm_report`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ report_id: reportId, ticket_number: ticketNumber }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('confirmReport error:', err);
+    return { success: false, message: 'Failed to confirm report' };
+  }
+}

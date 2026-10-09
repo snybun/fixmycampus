@@ -178,6 +178,15 @@ export default function ReportDetailsView({
                       (report.date ? `${report.date} at 2:14 PM` : 'August 25, 2026 at 2:14 PM')}
                   </span>
                 </div>
+
+                {(report.confirmation_count > 1 || report.is_confirmed) && (
+                  <div className="rep-desc-row">
+                    <span className="rep-desc-label">Student Impact</span>
+                    <span className="rep-desc-value" style={{ color: '#059669', fontWeight: 600 }}>
+                      👥 {report.confirmation_count || 1} student{report.confirmation_count > 1 ? 's' : ''} confirmed {report.is_confirmed ? '(including you)' : ''}
+                    </span>
+                  </div>
+                )}
               </div>
 
               <div className="rep-desc-divider" />

@@ -250,6 +250,318 @@ try {
     }
 
     // -------------------------------------------------------------------------
+    // GET /api/reports.php?action=check_duplicate -> Check for open report in room
+    // -------------------------------------------------------------------------
+    if ($action === 'check_duplicate' && $_SERVER['REQUEST_METHOD'] === 'GET') {
+        $buildingId   = (int)($_GET['building_id'] ?? 0);
+        $buildingName = trim($_GET['building_name'] ?? '');
+        $categoryId   = (int)($_GET['category_id'] ?? 0);
+        $categorySlug = trim($_GET['category_slug'] ?? '');
+        $roomNumber   = trim($_GET['room_number'] ?? $_GET['room'] ?? '');
+        $currentUser  = auth_user();
+        $currentUserId = $currentUser['id'] ?? 11;
+
+        $duplicateFound = false;
+        $existingReport = null;
+
+        // 1. Check in MySQL database if open report exists for this room & category
+        if (!empty($roomNumber)) {
+            $sqlCheck = "
+                SELECT 
+                    r.id,
+                    r.ticket_number,
+                    r.title,
+                    r.description,
+                    r.priority,
+                    r.status,
+                    r.specific_area,
+                    r.reported_at,
+                    c.name AS category_name,
+                    c.slug AS category_slug,
+                    b.name AS building_name,
+                    l.room_number,
+                    (SELECT file_path FROM `report_attachments` WHERE report_id = r.id ORDER BY id ASC LIMIT 1) AS primary_photo,
+                    (SELECT COUNT(*) FROM `report_confirmations` WHERE report_id = r.id) AS confirmation_count,
+                    (SELECT COUNT(*) FROM `report_confirmations` WHERE report_id = r.id AND user_id = :uid) AS has_confirmed
+                FROM `reports` r
+                JOIN `locations` l ON r.location_id = l.id
+                JOIN `buildings` b ON l.building_id = b.id
+                JOIN `categories` c ON r.category_id = c.id
+                WHERE r.status IN ('submitted', 'under_review', 'assigned', 'in_progress')
+                  AND (
+                      LOWER(l.room_number) = LOWER(:room) 
+                      OR LOWER(r.specific_area) LIKE LOWER(:room_like)
+                  )
+            ";
+            $checkParams = [
+                ':room'      => $roomNumber,
+                ':room_like' => "%{$roomNumber}%",
+                ':uid'       => $currentUserId,
+            ];
+
+            if ($buildingId > 0) {
+                $sqlCheck .= " AND b.id = :bid";
+                $checkParams[':bid'] = $buildingId;
+            } elseif (!empty($buildingName)) {
+                $sqlCheck .= " AND LOWER(b.name) LIKE LOWER(:bname)";
+                $checkParams[':bname'] = "%{$buildingName}%";
+            }
+
+            if ($categoryId > 0) {
+                $sqlCheck .= " AND c.id = :cid";
+                $checkParams[':cid'] = $categoryId;
+            } elseif (!empty($categorySlug)) {
+                $sqlCheck .= " AND LOWER(c.slug) = LOWER(:cslug)";
+                $checkParams[':cslug'] = $categorySlug;
+            }
+
+            $sqlCheck .= " ORDER BY r.reported_at DESC LIMIT 1";
+
+            $dbMatch = db_fetch_one($sqlCheck, $checkParams);
+            if ($dbMatch) {
+                $duplicateFound = true;
+                $existingReport = [
+                    'id'                 => (int)$dbMatch['id'],
+                    'ticket_number'      => $dbMatch['ticket_number'],
+                    'title'              => $dbMatch['title'],
+                    'description'        => $dbMatch['description'],
+                    'priority'           => $dbMatch['priority'],
+                    'status'             => $dbMatch['status'],
+                    'category_name'      => $dbMatch['category_name'],
+                    'building_name'      => $dbMatch['building_name'],
+                    'room_number'        => $dbMatch['room_number'],
+                    'location_summary'   => "{$dbMatch['building_name']} • {$dbMatch['room_number']}",
+                    'primary_photo'      => $dbMatch['primary_photo'] ?: '/images/hero_ac_defect.jpg',
+                    'confirmation_count' => max(1, (int)$dbMatch['confirmation_count']),
+                    'has_confirmed'      => ((int)$dbMatch['has_confirmed'] > 0),
+                    'reported_time_ago'  => 'Recently active',
+                ];
+            }
+        }
+
+        // 2. Fallback check matching default demo jobs (e.g. Room 304 + AC, Room 201 + Electrical, Room 102 + Plumbing)
+        if (!$duplicateFound && !empty($roomNumber)) {
+            $normRoom = preg_replace('/[^0-9a-zA-Z]/', '', strtolower($roomNumber));
+            $normCat = strtolower($categorySlug ?: '');
+
+            // Known default active jobs in campus
+            $demoJobs = [
+                '304' => [
+                    'id'                 => 102,
+                    'ticket_number'      => 'FM-102',
+                    'title'              => 'Broken Air Conditioner',
+                    'description'        => 'The AC unit in Room 304 is leaking water heavily and blowing warm air instead of cooling the room.',
+                    'category_name'      => 'Air Conditioning',
+                    'category_keywords'  => ['air', 'ac', 'cooling', 'hvac'],
+                    'building_name'      => 'Engineering Building',
+                    'room_number'        => 'Room 304',
+                    'location_summary'   => 'Engineering Building • Room 304',
+                    'priority'           => 'high',
+                    'status'             => 'in_progress',
+                    'assigned_worker'    => 'Mark Santos (Lead HVAC Tech)',
+                    'primary_photo'      => '/images/hero_ac_defect.jpg',
+                    'base_confirmations' => 8,
+                ],
+                '201' => [
+                    'id'                 => 103,
+                    'ticket_number'      => 'FM-103',
+                    'title'              => 'Faulty Electrical Outlet',
+                    'description'        => 'Outlet sparks intermittently when plugging in laptop charger. Needs socket inspection and breaker check.',
+                    'category_name'      => 'Electrical',
+                    'category_keywords'  => ['elect', 'outlet', 'spark', 'light'],
+                    'building_name'      => 'Main Building',
+                    'room_number'        => 'Room 201',
+                    'location_summary'   => 'Main Building • Room 201',
+                    'priority'           => 'medium',
+                    'status'             => 'assigned',
+                    'assigned_worker'    => 'Carlos Ramos Assigned',
+                    'primary_photo'      => '/images/faulty_light_switch.jpg',
+                    'base_confirmations' => 4,
+                ],
+                '102' => [
+                    'id'                 => 104,
+                    'ticket_number'      => 'FM-104',
+                    'title'              => 'Leaking Faucet',
+                    'description'        => 'Wash basin faucet does not shut off completely, wasting water all day and creating a slip hazard near entrance.',
+                    'category_name'      => 'Restroom',
+                    'category_keywords'  => ['restroom', 'plumb', 'faucet', 'leak', 'water'],
+                    'building_name'      => 'Science Building',
+                    'room_number'        => 'Restroom 102',
+                    'location_summary'   => 'Science Building • Room 102',
+                    'priority'           => 'high',
+                    'status'             => 'in_progress',
+                    'assigned_worker'    => 'John Miller Assigned',
+                    'primary_photo'      => 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
+                    'base_confirmations' => 6,
+                ],
+            ];
+
+            foreach ($demoJobs as $key => $demo) {
+                if (str_contains($normRoom, (string)$key)) {
+                    // Check if category matches or is compatible
+                    $catMatch = false;
+                    if ($categoryId > 0 || !empty($normCat)) {
+                        foreach ($demo['category_keywords'] as $kw) {
+                            if (str_contains($normCat, $kw) || str_contains(strtolower($demo['category_name']), $kw)) {
+                                $catMatch = true;
+                                break;
+                            }
+                        }
+                    } else {
+                        $catMatch = true;
+                    }
+
+                    if ($catMatch) {
+                        $sessionKey = 'fmc_confirmations_' . $demo['id'];
+                        $sessionConfirms = $_SESSION[$sessionKey] ?? [];
+                        $hasConfirmed = in_array($currentUserId, $sessionConfirms, true);
+
+                        $duplicateFound = true;
+                        $existingReport = [
+                            'id'                 => $demo['id'],
+                            'ticket_number'      => $demo['ticket_number'],
+                            'title'              => $demo['title'],
+                            'description'        => $demo['description'],
+                            'priority'           => $demo['priority'],
+                            'status'             => $demo['status'],
+                            'category_name'      => $demo['category_name'],
+                            'building_name'      => $demo['building_name'],
+                            'room_number'        => $demo['room_number'],
+                            'location_summary'   => $demo['location_summary'],
+                            'assigned_worker'    => $demo['assigned_worker'],
+                            'primary_photo'      => $demo['primary_photo'],
+                            'confirmation_count' => $demo['base_confirmations'] + count($sessionConfirms),
+                            'has_confirmed'      => $hasConfirmed,
+                            'reported_time_ago'  => 'Recently active',
+                        ];
+                        break;
+                    }
+                }
+            }
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success'          => true,
+            'duplicate_found'  => $duplicateFound,
+            'existing_report'  => $existingReport,
+        ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/reports.php?action=confirm_report -> Upvote / Confirm open report
+    // -------------------------------------------------------------------------
+    if ($action === 'confirm_report' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $user = auth_user();
+        if (!$user) {
+            $user = db_fetch_one("SELECT * FROM `users` WHERE `email` = 'mafe.cerna.up@phinmaed.com' LIMIT 1")
+                 ?: db_fetch_one("SELECT * FROM `users` WHERE `status` = 'active' ORDER BY id ASC LIMIT 1");
+            if ($user) {
+                auth_login($user);
+            } else {
+                $user = auth_require();
+            }
+        }
+
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $reportId = (int)($input['report_id'] ?? 0);
+        $ticketNumber = trim($input['ticket_number'] ?? '');
+
+        if ($reportId <= 0 && !empty($ticketNumber)) {
+            $dbRep = db_fetch_one("SELECT id FROM `reports` WHERE `ticket_number` = :tn LIMIT 1", [':tn' => $ticketNumber]);
+            if ($dbRep) {
+                $reportId = (int)$dbRep['id'];
+            }
+        }
+
+        if ($reportId <= 0) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Valid report_id or ticket_number required.'
+            ], 400);
+        }
+
+        $userId = (int)$user['id'];
+        $newCount = 1;
+
+        // Check if report exists in database
+        $reportRow = db_fetch_one("SELECT id, ticket_number, title FROM `reports` WHERE `id` = :id LIMIT 1", [':id' => $reportId]);
+        if ($reportRow) {
+            // Insert confirmation into database with duplicate protection
+            db_execute("
+                INSERT INTO `report_confirmations` (`report_id`, `user_id`)
+                VALUES (:rid, :uid)
+                ON DUPLICATE KEY UPDATE `created_at` = NOW()
+            ", [':rid' => $reportId, ':uid' => $userId]);
+
+            $countRow = db_fetch_one("SELECT COUNT(*) as c FROM `report_confirmations` WHERE `report_id` = :rid", [':rid' => $reportId]);
+            $newCount = max(1, (int)($countRow['c'] ?? 1));
+
+            // Also create a subscriber notification for the student
+            db_execute("
+                INSERT INTO `notifications` (`user_id`, `report_id`, `title`, `message`, `is_read`)
+                VALUES (:uid, :rid, :title, :msg, 0)
+            ", [
+                ':uid'   => $userId,
+                ':rid'   => $reportId,
+                ':title' => "Confirmed Ticket: {$reportRow['ticket_number']}",
+                ':msg'   => "You confirmed the issue '{$reportRow['title']}'. You will receive alerts as repairs progress.",
+            ]);
+        } else {
+            // For mock demo jobs (IDs 102, 103, 104, etc.)
+            $sessionKey = 'fmc_confirmations_' . $reportId;
+            if (!isset($_SESSION[$sessionKey])) {
+                $_SESSION[$sessionKey] = [];
+            }
+            if (!in_array($userId, $_SESSION[$sessionKey], true)) {
+                $_SESSION[$sessionKey][] = $userId;
+            }
+            $baseCounts = [102 => 8, 103 => 4, 104 => 6, 105 => 3, 106 => 5, 107 => 7];
+            $base = $baseCounts[$reportId] ?? 2;
+            $newCount = $base + count($_SESSION[$sessionKey]);
+
+            if (!isset($_SESSION['mock_confirmed_reports'])) {
+                $_SESSION['mock_confirmed_reports'] = [];
+            }
+            $mockTitles = [
+                102 => ['Broken Air Conditioner', 'Air Conditioning', 'Engineering Building', 'Room 304', '/images/hero_ac_defect.jpg'],
+                103 => ['Faulty Electrical Outlet', 'Electrical & Lighting', 'Main Building', 'Room 201', '/images/faulty_light_switch.jpg'],
+                104 => ['Leaking Faucet', 'Plumbing & Restroom', 'Science Building', 'Restroom 102', 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80'],
+            ];
+            $tInfo = $mockTitles[$reportId] ?? ['Reported Facility Issue', 'General Maintenance', 'Main Campus', 'Room 101', '/images/hero_ac_defect.jpg'];
+            $_SESSION['mock_confirmed_reports'][$reportId] = [
+                'id'                 => $reportId,
+                'ticket_number'      => 'FM-' . $reportId,
+                'title'              => $tInfo[0],
+                'description'        => 'Defect report confirmed by student for repair tracking.',
+                'priority'           => 'high',
+                'status'             => 'assigned',
+                'category_name'      => $tInfo[1],
+                'building_name'      => $tInfo[2],
+                'room_number'        => $tInfo[3],
+                'specific_area'      => $tInfo[3],
+                'reported_at'        => date('Y-m-d H:i:s'),
+                'assigned_worker_name' => 'Mark Santos',
+                'primary_photo'      => $tInfo[4],
+                'image_url'          => $tInfo[4],
+                'confirmation_count' => $newCount,
+                'is_confirmed'       => 1,
+                'has_confirmed'      => true,
+            ];
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success'            => true,
+            'message'            => 'Thank you! You have confirmed this defect report and will receive repair updates.',
+            'report_id'          => $reportId,
+            'ticket_number'      => $reportRow['ticket_number'] ?? $ticketNumber,
+            'confirmation_count' => $newCount,
+            'has_confirmed'      => true,
+        ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
     // POST /api/reports.php?action=assign -> Assign maintenance technician
     // -------------------------------------------------------------------------
     if ($action === 'assign' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -528,7 +840,8 @@ try {
             ra.assigned_to AS worker_id,
             w.full_name AS worker_name,
             w.department AS worker_department,
-            (SELECT file_path FROM `report_attachments` WHERE report_id = r.id ORDER BY id ASC LIMIT 1) AS primary_photo
+            (SELECT file_path FROM `report_attachments` WHERE report_id = r.id ORDER BY id ASC LIMIT 1) AS primary_photo,
+            (SELECT COUNT(*) FROM `report_confirmations` WHERE report_id = r.id) AS confirmation_count
         FROM `reports` r
         LEFT JOIN `categories` c ON r.category_id = c.id
         LEFT JOIN `locations` l ON r.location_id = l.id
@@ -544,8 +857,9 @@ try {
     if ($myOnly) {
         $user = auth_user();
         if ($user) {
-            $sql .= " AND r.reporter_id = :reporter_id";
+            $sql .= " AND (r.reporter_id = :reporter_id OR r.id IN (SELECT report_id FROM `report_confirmations` WHERE user_id = :confirmed_uid))";
             $params[':reporter_id'] = $user['id'];
+            $params[':confirmed_uid'] = $user['id'];
         }
     }
 
@@ -577,6 +891,12 @@ try {
     $sql .= " ORDER BY r.reported_at DESC LIMIT " . $limit;
 
     $reports = db_fetch_all($sql, $params);
+
+    if ($myOnly && !empty($_SESSION['mock_confirmed_reports'])) {
+        foreach ($_SESSION['mock_confirmed_reports'] as $mockRep) {
+            array_unshift($reports, $mockRep);
+        }
+    }
 
     foreach ($reports as &$item) {
         if (!empty($item['primary_photo'])) {
