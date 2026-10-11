@@ -116,6 +116,24 @@
   border-radius: 2px;
 }
 
+.dash-logout-quick-btn {
+  background: none;
+  border: none;
+  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 6px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.dash-logout-quick-btn:hover {
+  color: #111827;
+  background-color: #f3f4f6;
+}
+
 /* Right Controls */
 .dash-nav-right {
   display: flex;
@@ -140,6 +158,12 @@
 
 .dash-notif-btn:hover {
   background-color: #e5e7eb;
+}
+
+.dash-notif-btn.active {
+  background-color: #ecfdf5;
+  color: #047857;
+  box-shadow: 0 0 0 2px rgba(5, 150, 105, 0.25);
 }
 
 .dash-notif-badge {

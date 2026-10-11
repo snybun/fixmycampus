@@ -7,6 +7,7 @@ import {
   RotateCcw,
   Building2,
   X,
+  Check,
 } from 'lucide-react';
 
 /**
@@ -18,7 +19,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'ptc',
     name: 'PTC Building',
     code: 'PTC',
-    match: ['ptc', 'ptc building'],
+    match: ['ptc building', 'ptc'],
     pin: { x: 7.7, y: 40.4 },
     hotspot: { left: 2.8, top: 32.5, width: 10.5, height: 28.5 },
     label: 'PTC Building',
@@ -29,7 +30,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'cma',
     name: 'CMA Building',
     code: 'CMA',
-    match: ['cma', 'cma building', 'cma hallway'],
+    match: ['cma building', 'cma hallway', 'cma'],
     pin: { x: 32.1, y: 71.3 },
     hotspot: { left: 23.5, top: 56.0, width: 19.0, height: 28.0 },
     label: 'CMA Building',
@@ -40,7 +41,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'nh',
     name: 'NH Building',
     code: 'NH',
-    match: ['nh', 'nh building', 'north hall'],
+    match: ['nh building', 'north hall', 'nh'],
     pin: { x: 55.4, y: 89.9 },
     hotspot: { left: 45.0, top: 85.0, width: 23.0, height: 9.5 },
     label: 'North Hall (NH)',
@@ -51,7 +52,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'mba',
     name: 'MBA Building',
     code: 'MBA',
-    match: ['mba', 'mba building', 'mba hall', 'mba engineering'],
+    match: ['mba building', 'mba hall', 'mba engineering', 'mba'],
     pin: { x: 75.6, y: 35.3 },
     hotspot: { left: 70.0, top: 8.0, width: 15.0, height: 52.0 },
     label: 'MBA Building',
@@ -62,7 +63,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'rs',
     name: 'RS Building',
     code: 'RS',
-    match: ['rs', 'rs building', 'riverside', 'riverside building'],
+    match: ['rs building', 'riverside', 'riverside building', 'rs'],
     pin: { x: 93.2, y: 13.5 },
     hotspot: { left: 81.5, top: 3.0, width: 18.0, height: 16.0 },
     label: 'RS Building (Riverside)',
@@ -73,7 +74,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'be',
     name: 'BE Building',
     code: 'BE',
-    match: ['be', 'be building', 'basic ed', 'basic education'],
+    match: ['be building', 'basic education', 'basic ed', 'be'],
     pin: { x: 30.1, y: 25.4 },
     hotspot: { left: 24.5, top: 17.5, width: 12.0, height: 13.0 },
     label: 'BE Building (Basic Ed)',
@@ -84,7 +85,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'gym',
     name: 'GYM',
     code: 'GYM',
-    match: ['gym', 'gymnasium', 'sports'],
+    match: ['gym', 'campus gymnasium', 'gymnasium', 'sports complex & gymnasium'],
     pin: { x: 58.4, y: 18.5 },
     hotspot: { left: 46.5, top: 6.0, width: 28.0, height: 26.5 },
     label: 'Campus Gymnasium',
@@ -95,7 +96,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'plaza',
     name: 'SP (Student Plaza)',
     code: 'SP',
-    match: ['sp', 'student plaza', 'plaza', 'sp (student plaza)'],
+    match: ['sp (student plaza)', 'student plaza', 'plaza', 'sp'],
     pin: { x: 56.8, y: 49.9 },
     hotspot: { left: 44.5, top: 41.5, width: 26.5, height: 16.0 },
     label: 'Student Plaza (SP)',
@@ -106,7 +107,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'lib',
     name: 'Library',
     code: 'LIB',
-    match: ['library', 'lib', 'fvr', 'main library'],
+    match: ['library (fvr)', 'fvr building', 'main library', 'library', 'lib'],
     pin: { x: 25.5, y: 43.5 },
     hotspot: { left: 21.5, top: 38.0, width: 8.0, height: 10.0 },
     label: 'Library (FVR)',
@@ -117,7 +118,7 @@ export const ROUTE_MAP_BUILDINGS = [
     id: 'chs',
     name: 'CCJE Building',
     code: 'CCJE',
-    match: ['ccje', 'ccje building', 'chs', 'health sciences'],
+    match: ['ccje / chs building', 'ccje building', 'health sciences', 'ccje', 'chs'],
     pin: { x: 40.9, y: 25.4 },
     hotspot: { left: 37.0, top: 18.0, width: 8.5, height: 13.0 },
     label: 'CCJE / CHS Building',
@@ -125,6 +126,48 @@ export const ROUTE_MAP_BUILDINGS = [
     category: 'Allied Sciences',
   },
 ];
+
+/**
+ * Bulletproof building config matcher
+ */
+export const findBuildingConfig = (name) => {
+  if (!name) return null;
+  const trimmed = name.trim();
+  const lower = trimmed.toLowerCase();
+  if (lower === 'others') return null;
+
+  // 1. Direct match by ID or Code
+  const byCode = ROUTE_MAP_BUILDINGS.find(
+    (b) => b.id.toLowerCase() === lower || b.code.toLowerCase() === lower
+  );
+  if (byCode) return byCode;
+
+  // 2. Direct match by Name or Label
+  const byName = ROUTE_MAP_BUILDINGS.find(
+    (b) => b.name.toLowerCase() === lower || (b.label && b.label.toLowerCase() === lower)
+  );
+  if (byName) return byName;
+
+  // 3. Exact pattern match in `match`
+  const byExactMatch = ROUTE_MAP_BUILDINGS.find((b) =>
+    b.match.some((m) => m.toLowerCase() === lower)
+  );
+  if (byExactMatch) return byExactMatch;
+
+  // 4. Safe whole-word or substring match (preventing false matches like 'sp' in 'sports')
+  const byWordMatch = ROUTE_MAP_BUILDINGS.find((b) => {
+    return b.match.some((m) => {
+      const mLower = m.toLowerCase();
+      if (mLower.length >= 4) {
+        return lower.includes(mLower) || mLower.includes(lower);
+      }
+      const escaped = mLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+      return new RegExp(`\\b${escaped}\\b`, 'i').test(lower);
+    });
+  });
+
+  return byWordMatch || null;
+};
 
 export default function CampusMapPlacement({
   selectedBuilding,
@@ -137,36 +180,84 @@ export default function CampusMapPlacement({
   const [isFullscreen, setIsFullscreen] = useState(false);
   const [hoveredBuilding, setHoveredBuilding] = useState(null);
   const [customPin, setCustomPin] = useState(null);
+
   const mapContainerRef = useRef(null);
   const modalMapContainerRef = useRef(null);
+  const prevBuildingRef = useRef(selectedBuilding);
 
   // Check if "Others" is selected
   const isOthers = selectedBuilding?.toLowerCase().trim() === 'others';
 
-  // Helper to match active building object
-  const findBuildingConfig = (name) => {
-    if (!name || name.toLowerCase().trim() === 'others') return null;
-    const lower = name.toLowerCase().trim();
-    return (
-      ROUTE_MAP_BUILDINGS.find((b) =>
-        b.match.some((m) => lower === m || lower.includes(m))
-      ) || null
-    );
-  };
-
+  // Find active building config
   const activeConfig = findBuildingConfig(selectedBuilding);
 
-  // When "Others" is pressed, the pin point disappears completely!
+  // Synchronize pin when building is changed from external select dropdown
+  useEffect(() => {
+    if (prevBuildingRef.current !== selectedBuilding) {
+      prevBuildingRef.current = selectedBuilding;
+      if (isOthers) {
+        setCustomPin(null);
+      } else {
+        const config = findBuildingConfig(selectedBuilding);
+        if (config) {
+          setCustomPin(config.pin);
+        }
+      }
+    }
+  }, [selectedBuilding, isOthers]);
+
+  // When "Others" is selected, the pin point disappears completely
   const activePinCoords = isOthers
     ? null
     : (customPin || (activeConfig ? activeConfig.pin : null));
 
-  // Reset custom pin when building changes
-  useEffect(() => {
-    setCustomPin(null);
-  }, [selectedBuilding]);
+  // Helper to resolve the correct name from the database/props buildings array
+  const getDbBuildingName = (config) => {
+    if (!config) return '';
+    if (!buildings || buildings.length === 0) return config.name;
 
-  // Handle click on map canvas
+    // Match by code if available
+    const byCode = buildings.find(
+      (item) => item.code && item.code.toUpperCase() === config.code.toUpperCase()
+    );
+    if (byCode) return byCode.name;
+
+    // Match by exact name
+    const byExactName = buildings.find(
+      (item) => item.name.toLowerCase() === config.name.toLowerCase()
+    );
+    if (byExactName) return byExactName.name;
+
+    // Match by safe word patterns
+    const byWordMatch = buildings.find((item) => {
+      const itemLower = item.name.toLowerCase();
+      return config.match.some((m) => {
+        const mLower = m.toLowerCase();
+        if (mLower.length >= 4) {
+          return itemLower.includes(mLower);
+        }
+        const escaped = mLower.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        return new RegExp(`\\b${escaped}\\b`, 'i').test(itemLower);
+      });
+    });
+    if (byWordMatch) return byWordMatch.name;
+
+    return config.name;
+  };
+
+  // Unified building selection from map click
+  const handleSelectBuildingFromMap = (bConfig, clickCoords = null) => {
+    const targetName = getDbBuildingName(bConfig);
+    const pinCoords = clickCoords || bConfig.pin;
+    setCustomPin(pinCoords);
+    prevBuildingRef.current = targetName;
+    onSelectBuilding(targetName);
+    if (typeof onCoordinateChange === 'function') {
+      onCoordinateChange(`${bConfig.code} Area`);
+    }
+  };
+
+  // Handle click on map canvas (either small viewport or modal canvas)
   const handleMapClick = (e, containerRef) => {
     if (!containerRef.current) return;
     const rect = containerRef.current.getBoundingClientRect();
@@ -185,18 +276,21 @@ export default function CampusMapPlacement({
     });
 
     if (hit) {
-      // Find the matching name from the actual buildings list passed in props
-      const dbMatch = (buildings || []).find((b) =>
-        hit.match.some((m) => b.name.toLowerCase().includes(m))
-      );
-      const targetName = dbMatch ? dbMatch.name : hit.name;
-
-      onSelectBuilding(targetName);
-      setCustomPin({ x: parseFloat(clickX.toFixed(1)), y: parseFloat(clickY.toFixed(1)) });
+      handleSelectBuildingFromMap(hit, {
+        x: parseFloat(clickX.toFixed(1)),
+        y: parseFloat(clickY.toFixed(1)),
+      });
     } else {
-      // If clicked on open area (e.g. garden or courtyard), place custom pin only if not in 'Others'
+      // Clicked on open grounds (courtyard/garden)
       if (!isOthers) {
-        setCustomPin({ x: parseFloat(clickX.toFixed(1)), y: parseFloat(clickY.toFixed(1)) });
+        const coords = {
+          x: parseFloat(clickX.toFixed(1)),
+          y: parseFloat(clickY.toFixed(1)),
+        };
+        setCustomPin(coords);
+        if (typeof onCoordinateChange === 'function' && activeConfig) {
+          onCoordinateChange(`${activeConfig.code} (${coords.x}%, ${coords.y}%)`);
+        }
       }
     }
   };
@@ -205,7 +299,9 @@ export default function CampusMapPlacement({
   const handleZoomOut = () => setZoomLevel((prev) => Math.max(1.0, +(prev - 0.25).toFixed(2)));
   const handleResetZoom = () => {
     setZoomLevel(1);
-    setCustomPin(null);
+    if (activeConfig) {
+      setCustomPin(activeConfig.pin);
+    }
   };
 
   return (
@@ -302,11 +398,7 @@ export default function CampusMapPlacement({
                 onMouseLeave={() => setHoveredBuilding(null)}
                 onClick={(e) => {
                   e.stopPropagation();
-                  const dbMatch = (buildings || []).find((item) =>
-                    b.match.some((m) => item.name.toLowerCase().includes(m))
-                  );
-                  onSelectBuilding(dbMatch ? dbMatch.name : b.name);
-                  setCustomPin(b.pin);
+                  handleSelectBuildingFromMap(b);
                 }}
                 title={`${b.label}: Click to place location`}
               >
@@ -318,7 +410,7 @@ export default function CampusMapPlacement({
             );
           })}
 
-          {/* Active Pinpoint Marker (Disappears completely when 'Others' is selected) */}
+          {/* Active Pinpoint Marker */}
           {activePinCoords && !isOthers && (
             <div
               className="cmp-pin-marker"
@@ -336,9 +428,7 @@ export default function CampusMapPlacement({
                   {activeConfig?.label || selectedBuilding}
                 </span>
                 <span className="cmp-pin-sub">
-                  {customPin
-                    ? `Pinned (${customPin.x}%, ${customPin.y}%)`
-                    : 'Designated Placement'}
+                  {activeConfig?.desc || 'Designated Placement'}
                 </span>
               </div>
             </div>
@@ -397,7 +487,7 @@ export default function CampusMapPlacement({
               </div>
             </div>
 
-            {/* Modal Map Viewport: locked to exact 880x631 aspect-ratio frame so hotspots are 100% aligned */}
+            {/* Modal Map Viewport */}
             <div className="cmp-modal-map-viewport">
               <div
                 className="cmp-modal-canvas-frame"
@@ -437,11 +527,7 @@ export default function CampusMapPlacement({
                         onMouseLeave={() => setHoveredBuilding(null)}
                         onClick={(e) => {
                           e.stopPropagation();
-                          const dbMatch = (buildings || []).find((item) =>
-                            b.match.some((m) => item.name.toLowerCase().includes(m))
-                          );
-                          onSelectBuilding(dbMatch ? dbMatch.name : b.name);
-                          setCustomPin(b.pin);
+                          handleSelectBuildingFromMap(b);
                         }}
                         title={b.label}
                       >
@@ -482,7 +568,7 @@ export default function CampusMapPlacement({
               <div className="cmp-modal-info">
                 <span className="cmp-modal-selected-label">Selected Building:</span>
                 <span className="cmp-modal-selected-val">
-                  {isOthers ? 'Others (Unpinned)' : selectedBuilding}
+                  {isOthers ? 'Others (Unpinned)' : (activeConfig?.name || selectedBuilding)}
                 </span>
                 {activeConfig && !isOthers && (
                   <span className="cmp-modal-selected-desc">— {activeConfig.desc}</span>

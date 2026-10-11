@@ -1,0 +1,487 @@
+/* ==============================================================================
+   FixMyCampus - Report Details View Styling
+   Matches exact layout, typography, colors, and responsive design of mockup
+   ============================================================================== */
+
+.rep-details-page {
+  background-color: #fafafa;
+  min-height: calc(100vh - 72px);
+  padding: 32px 32px 80px 32px;
+  color: #111827;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.rep-details-container {
+  max-width: 1240px;
+  margin: 0 auto;
+}
+
+/* Header & Breadcrumb */
+.rep-details-header {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.rep-details-back-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid #e5e7eb;
+  background-color: #ffffff;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  margin-top: 2px;
+  flex-shrink: 0;
+}
+
+.rep-details-back-btn:hover {
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+  transform: translateX(-1px);
+}
+
+.rep-details-header-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.rep-details-breadcrumb {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 4px;
+}
+
+.rep-details-title {
+  font-size: 1.55rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.02em;
+  margin: 0;
+}
+
+/* 2-Column Grid */
+.rep-details-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 390px;
+  gap: 28px;
+  align-items: start;
+}
+
+/* Left Column */
+.rep-details-col-left {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.rep-details-photo-box {
+  width: 100%;
+  height: 410px;
+  border-radius: 14px;
+  overflow: hidden;
+  background-color: #0f172a;
+  border: 1px solid #e5e7eb;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+}
+
+.rep-details-photo-box img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* Reusable Details Card */
+.rep-details-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.rep-details-card-title {
+  font-size: 1.12rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0 0 18px 0;
+}
+
+/* Issue Description Card */
+.rep-desc-card {
+  padding: 26px 28px;
+}
+
+.rep-desc-table {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.rep-desc-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 0.92rem;
+}
+
+.rep-desc-label {
+  color: #6b7280;
+  font-weight: 500;
+  min-width: 160px;
+}
+
+.rep-desc-value {
+  color: #111827;
+  font-weight: 600;
+  text-align: right;
+}
+
+.rep-desc-divider {
+  height: 1px;
+  background-color: #f1f5f9;
+  margin: 20px 0;
+}
+
+.rep-desc-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-end;
+}
+
+.rep-desc-badge-group {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.rep-desc-badge-group.right-align {
+  align-items: flex-end;
+}
+
+.rep-desc-sublabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #9ca3af;
+  text-transform: uppercase;
+}
+
+/* Priority Badges */
+.rep-priority-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 12px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+}
+
+.rep-priority-badge.priority-high {
+  background-color: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #dc2626;
+}
+
+.rep-priority-badge.priority-urgent,
+.rep-priority-badge.priority-emergency {
+  background-color: #111827;
+  border: 1px solid #111827;
+  color: #ffffff;
+}
+
+.rep-priority-badge.priority-medium {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #d97706;
+}
+
+.rep-priority-badge.priority-low {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+}
+
+/* Status Badges */
+.rep-status-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 14px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+
+.rep-status-badge.status-assigned,
+.rep-status-badge.status-worker_assigned {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.rep-status-badge.status-in_progress,
+.rep-status-badge.status-repair_ongoing {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.rep-status-badge.status-under_review,
+.rep-status-badge.status-verified {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.rep-status-badge.status-resolved,
+.rep-status-badge.status-fixed {
+  background-color: #dcfce7;
+  color: #15803d;
+  border: 1px solid #86efac;
+}
+
+.rep-status-badge.status-submitted,
+.rep-status-badge.status-reported,
+.rep-status-badge.status-pending {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+/* Right Column */
+.rep-details-col-right {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+/* Live Repair Progress Stepper */
+.rep-progress-card {
+  padding: 24px 28px;
+}
+
+.rep-stepper {
+  display: flex;
+  flex-direction: column;
+}
+
+.rep-step-node {
+  display: flex;
+  gap: 16px;
+  position: relative;
+}
+
+.rep-step-indicator-col {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  width: 24px;
+  flex-shrink: 0;
+}
+
+.rep-step-circle {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+}
+
+.rep-step-circle.completed {
+  color: #16a34a;
+}
+
+.rep-step-circle.active {
+  background-color: #059669;
+  box-shadow: 0 0 0 4px rgba(5, 150, 105, 0.2);
+}
+
+.rep-step-inner-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: #ffffff;
+}
+
+.rep-step-circle.pending {
+  background-color: #f3f4f6;
+  border: 2px solid #e5e7eb;
+}
+
+/* Stepper Connector Lines */
+.rep-step-line {
+  width: 2px;
+  min-height: 38px;
+  margin: 3px 0;
+}
+
+.rep-step-line.line-completed {
+  background-color: #16a34a;
+}
+
+.rep-step-line.line-active {
+  background-color: #059669;
+}
+
+.rep-step-line.line-pending {
+  background-color: #e5e7eb;
+}
+
+/* Step Content */
+.rep-step-content {
+  display: flex;
+  flex-direction: column;
+  padding-bottom: 24px;
+}
+
+.rep-step-node:last-child .rep-step-content {
+  padding-bottom: 0;
+}
+
+.rep-step-label {
+  font-size: 0.95rem;
+  line-height: 1.25;
+}
+
+.rep-step-label.step-text-active {
+  font-weight: 700;
+  color: #064e3b;
+}
+
+.rep-step-label.step-text-pending {
+  font-weight: 500;
+  color: #9ca3af;
+}
+
+.rep-step-date {
+  font-size: 0.8rem;
+  margin-top: 3px;
+}
+
+.rep-step-date.step-date-active {
+  color: #6b7280;
+}
+
+.rep-step-date.step-date-pending {
+  color: #9ca3af;
+}
+
+/* Assigned Worker Card */
+.rep-worker-card {
+  padding: 20px 24px;
+}
+
+.rep-worker-sublabel {
+  font-size: 0.72rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #6b7280;
+  text-transform: uppercase;
+  margin-bottom: 14px;
+}
+
+.rep-worker-row {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.rep-worker-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rep-worker-avatar-icon {
+  color: #059669;
+}
+
+.rep-worker-meta {
+  display: flex;
+  flex-direction: column;
+}
+
+.rep-worker-name {
+  font-size: 0.98rem;
+  font-weight: 700;
+  color: #111827;
+}
+
+.rep-worker-role {
+  font-size: 0.82rem;
+  color: #6b7280;
+  margin-top: 2px;
+}
+
+/* Maintenance Updates Log Card */
+.rep-logs-card {
+  padding: 24px 28px;
+}
+
+.rep-logs-list {
+  display: flex;
+  flex-direction: column;
+}
+
+.rep-log-entry {
+  padding: 14px 0;
+  border-top: 1px solid #f3f4f6;
+}
+
+.rep-log-entry:first-child {
+  border-top: none;
+  padding-top: 0;
+}
+
+.rep-log-entry:last-child {
+  padding-bottom: 0;
+}
+
+.rep-log-date {
+  font-size: 0.88rem;
+  font-weight: 700;
+  color: #111827;
+  margin-bottom: 4px;
+}
+
+.rep-log-message {
+  font-size: 0.86rem;
+  color: #4b5563;
+  line-height: 1.45;
+}
+
+/* Responsive adjustments */
+@media (max-width: 960px) {
+  .rep-details-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .rep-details-photo-box {
+    height: 320px;
+  }
+
+  .rep-details-page {
+    padding: 20px 16px 60px 16px;
+  }
+}

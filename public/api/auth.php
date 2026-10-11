@@ -782,6 +782,7 @@ try {
 } catch (\Throwable $e) {
     \FixMyCampus\Core\Response::json([
         'success' => false,
+        'message' => $e->getMessage(),
         'error'   => $e->getMessage(),
     ], 500);
 }
