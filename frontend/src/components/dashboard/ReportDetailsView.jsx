@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   ArrowLeft,
   CheckCircle2,
@@ -8,6 +8,7 @@ import {
   MapPin,
   Calendar,
 } from 'lucide-react';
+import { fetchReportDetail } from '../../services/api';
 import './reportDetails.css';
 
 export default function ReportDetailsView({
@@ -15,6 +16,102 @@ export default function ReportDetailsView({
   onBack,
 }) {
   if (!report) return null;
+
+  const [detailedReport, setDetailedReport] = useState(report);
+
+  // Sync prop changes
+  useEffect(() => {
+    setDetailedReport(report);
+  }, [report]);
+
+  // Fetch full database details including live status history and worker info
+  useEffect(() => {
+    let isMounted = true;
+    if (report?.id) {
+      fetchReportDetail(report.id)
+        .then((res) => {
+          if (isMounted && res && res.success && res.data) {
+            const d = res.data;
+            const bldg = d.building_name || report.building || 'Campus';
+            const rm = d.room_number || d.specific_area || report.room || 'Facility Area';
+            const loc = `${bldg} • ${rm}`;
+
+            const rawStatus = (d.status || report.status || 'submitted').toLowerCase();
+            let statusLabel = 'Reported';
+            let stepIdx = 0;
+            if (rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed') {
+              statusLabel = 'Fixed';
+              stepIdx = 4;
+            } else if (rawStatus === 'in_progress') {
+              statusLabel = 'Repair Ongoing';
+              stepIdx = 3;
+            } else if (rawStatus === 'assigned') {
+              statusLabel = 'Worker Assigned';
+              stepIdx = 2;
+            } else if (rawStatus === 'under_review') {
+              statusLabel = 'Verified';
+              stepIdx = 1;
+            }
+
+            const rawPriority = String(d.priority || report.priority || 'medium').toLowerCase();
+            let priorityLabel = 'Medium';
+            if (rawPriority === 'emergency' || rawPriority === 'urgent') priorityLabel = 'Urgent';
+            else if (rawPriority === 'high') priorityLabel = 'High';
+            else if (rawPriority === 'low') priorityLabel = 'Low';
+
+            const repDate = d.reported_at
+              ? new Date(d.reported_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : (report.date || 'Recently');
+
+            const formattedDate = d.reported_at
+              ? new Date(d.reported_at).toLocaleString('en-US', {
+                  month: 'long',
+                  day: 'numeric',
+                  year: 'numeric',
+                  hour: 'numeric',
+                  minute: '2-digit',
+                })
+              : report.formattedDateReported;
+
+            setDetailedReport((prev) => ({
+              ...prev,
+              ...d,
+              title: d.title || prev.title,
+              description: d.description || prev.description,
+              category: d.category_name || prev.category,
+              building: bldg,
+              room: rm,
+              location: loc,
+              priority: priorityLabel,
+              status: rawStatus,
+              statusLabel,
+              stepIndex: stepIdx,
+              date: repDate,
+              formattedDateReported: formattedDate,
+              image: d.image_url || d.primary_photo || prev.image,
+              assignedWorker: d.worker_name
+                ? {
+                    name: d.worker_name,
+                    role: d.worker_department ? `${d.worker_department} Staff` : 'Assigned Technician',
+                  }
+                : prev.assignedWorker,
+              status_history: d.status_history || [],
+            }));
+          }
+        })
+        .catch((err) => {
+          console.error('Failed to fetch detailed report data:', err);
+        });
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [report?.id]);
 
   // Derive step index based on status
   // 0: Reported, 1: Verified, 2: Worker Assigned, 3: Repair Ongoing, 4: Fixed
@@ -27,85 +124,123 @@ export default function ReportDetailsView({
     return 0; // reported / pending / submitted
   };
 
-  const currentStep = report.stepIndex !== undefined ? report.stepIndex : getStepStatus(report.status);
+  const currentStep = detailedReport.stepIndex !== undefined
+    ? detailedReport.stepIndex
+    : getStepStatus(detailedReport.status);
 
-  // Stepper definition matching user mockup
+  // Worker information from database
+  const worker = detailedReport.assignedWorker || (detailedReport.worker_name ? {
+    name: detailedReport.worker_name,
+    role: detailedReport.worker_department ? `${detailedReport.worker_department} Staff` : 'Assigned Maintenance Staff',
+  } : {
+    name: 'Pending Assignment',
+    role: 'Facilities Maintenance Department',
+  });
+
+  const repDateFormatted = detailedReport.reported_at
+    ? new Date(detailedReport.reported_at).toLocaleDateString('en-US', {
+        month: 'short',
+        day: 'numeric',
+      })
+    : (detailedReport.date || 'Recent');
+
+  // Map database status history if available
+  const historyTimestamps = useMemo(() => {
+    const map = {};
+    if (detailedReport.status_history && Array.isArray(detailedReport.status_history)) {
+      detailedReport.status_history.forEach((h) => {
+        if (h.new_status && h.created_at) {
+          map[h.new_status] = new Date(h.created_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+          });
+        }
+      });
+    }
+    return map;
+  }, [detailedReport.status_history]);
+
+  // Dynamic Stepper definition
   const steps = [
     {
       key: 'reported',
       label: 'Reported',
-      date: report.reportedDate || report.date || 'Aug 25',
+      date: historyTimestamps['submitted'] || repDateFormatted,
     },
     {
       key: 'verified',
       label: 'Verified',
-      date: report.verifiedDate || (currentStep >= 1 ? 'Aug 26' : 'Pending'),
+      date: historyTimestamps['under_review'] || (currentStep >= 1 ? repDateFormatted : 'Pending'),
     },
     {
       key: 'assigned',
       label: 'Worker Assigned',
-      date: report.assignedDate || (currentStep >= 2 ? 'Aug 26' : 'Pending'),
+      date: historyTimestamps['assigned'] || (currentStep >= 2 ? repDateFormatted : 'Pending'),
     },
     {
       key: 'in_progress',
       label: 'Repair Ongoing',
-      date: report.progressDate || (currentStep >= 3 ? 'Aug 27' : 'Pending'),
+      date: historyTimestamps['in_progress'] || (currentStep >= 3 ? repDateFormatted : 'Pending'),
     },
     {
       key: 'fixed',
       label: 'Fixed',
-      date: report.fixedDate || (currentStep >= 4 ? 'Aug 28' : 'Pending'),
+      date: historyTimestamps['resolved'] || historyTimestamps['closed'] || (currentStep >= 4 ? repDateFormatted : 'Pending'),
     },
   ];
 
-  // Worker information
-  const worker = report.assignedWorker || {
-    name: report.workerName || (currentStep >= 2 ? 'Mark Santos' : 'Pending Assignment'),
-    role: report.workerRole || (currentStep >= 2 ? 'Lead HVAC Technician' : 'Facilities Maintenance Department'),
-  };
+  // Dynamic updates log built directly from database history
+  const updatesLog = useMemo(() => {
+    if (detailedReport.status_history && detailedReport.status_history.length > 0) {
+      return detailedReport.status_history
+        .slice()
+        .reverse()
+        .map((h) => {
+          const dStr = h.created_at
+            ? new Date(h.created_at).toLocaleDateString('en-US', {
+                month: 'short',
+                day: 'numeric',
+                year: 'numeric',
+              })
+            : 'Recent';
 
-  // Maintenance updates log
-  const updatesLog = report.updatesLog || [
-    ...(currentStep >= 3
-      ? [
-          {
-            date: 'Aug 27, 2026',
-            message: 'Repair scheduled for August 28',
-          },
-        ]
-      : currentStep === 2
-      ? [
-          {
-            date: 'Aug 27, 2026',
-            message: 'Repair scheduled for August 28',
-          },
-        ]
-      : []),
-    ...(currentStep >= 2
-      ? [
-          {
-            date: 'Aug 26, 2026',
-            message: `Worker assigned: ${worker.name}`,
-          },
-        ]
-      : []),
-    ...(currentStep >= 1
-      ? [
-          {
-            date: 'Aug 26, 2026',
-            message: 'Report verified by admin',
-          },
-        ]
-      : []),
-    {
-      date: report.date || 'Aug 25, 2026',
+          let msg = h.remarks;
+          if (!msg || !msg.trim()) {
+            if (h.new_status === 'resolved') msg = 'Repair completed and verified on site';
+            else if (h.new_status === 'in_progress') msg = 'Work started by technician';
+            else if (h.new_status === 'assigned') msg = `Assigned to ${worker.name}`;
+            else if (h.new_status === 'under_review') msg = 'Report verified by campus facilities';
+            else msg = 'Report submitted and registered in queue';
+          }
+
+          return {
+            date: dStr,
+            message: msg,
+          };
+        });
+    }
+
+    const repLongDate = detailedReport.date || 'Recently';
+    const logs = [];
+    if (currentStep >= 3) {
+      logs.push({ date: repLongDate, message: 'Technician dispatched and repair ongoing' });
+    }
+    if (currentStep >= 2 && worker.name !== 'Pending Assignment') {
+      logs.push({ date: repLongDate, message: `Worker assigned: ${worker.name}` });
+    }
+    if (currentStep >= 1) {
+      logs.push({ date: repLongDate, message: 'Report verified by campus facilities inspector' });
+    }
+    logs.push({
+      date: repLongDate,
       message: 'Defect report received and registered in campus queue',
-    },
-  ];
+    });
+    return logs;
+  }, [detailedReport.status_history, currentStep, worker.name, detailedReport.date]);
 
   // Priority color styling
-  const priorityClass = `priority-${(report.priority || 'medium').toLowerCase()}`;
-  const statusClass = `status-${(report.status || 'reported').toLowerCase()}`;
+  const priorityClass = `priority-${(detailedReport.priority || 'medium').toLowerCase()}`;
+  const statusClass = `status-${(detailedReport.status || 'reported').toLowerCase()}`;
 
   return (
     <main className="rep-details-page">
@@ -124,10 +259,10 @@ export default function ReportDetailsView({
 
           <div className="rep-details-header-meta">
             <div className="rep-details-breadcrumb">
-              MY REPORTS &nbsp;/&nbsp; {report.ticket_number}
+              MY REPORTS &nbsp;/&nbsp; {detailedReport.ticket_number}
             </div>
             <h1 className="rep-details-title">
-              Report Details - {report.ticket_number}
+              Report Details - {detailedReport.ticket_number}
             </h1>
           </div>
         </div>
@@ -139,8 +274,8 @@ export default function ReportDetailsView({
             {/* Defect Photo Banner */}
             <div className="rep-details-photo-box">
               <img
-                src={report.image || '/images/hero_ac_defect.jpg'}
-                alt={report.title}
+                src={detailedReport.image || detailedReport.primary_photo || '/images/hero_ac_defect.jpg'}
+                alt={detailedReport.title}
                 onError={(e) => {
                   e.target.src = '/images/hero_ac_defect.jpg';
                 }}
@@ -154,31 +289,41 @@ export default function ReportDetailsView({
               <div className="rep-desc-table">
                 <div className="rep-desc-row">
                   <span className="rep-desc-label">Issue Title</span>
-                  <span className="rep-desc-value">{report.title}</span>
+                  <span className="rep-desc-value">{detailedReport.title}</span>
                 </div>
 
                 <div className="rep-desc-row">
                   <span className="rep-desc-label">Category</span>
                   <span className="rep-desc-value">
-                    {report.category || 'Air Conditioning & Ventilation'}
+                    {detailedReport.category || 'General Facility Defect'}
                   </span>
                 </div>
 
                 <div className="rep-desc-row">
                   <span className="rep-desc-label">Location</span>
                   <span className="rep-desc-value">
-                    {report.location || `${report.building || 'PTC Building'} • ${report.room || 'Room 307'}`}
+                    {detailedReport.location}
                   </span>
                 </div>
 
                 <div className="rep-desc-row">
                   <span className="rep-desc-label">Date Reported</span>
                   <span className="rep-desc-value">
-                    {report.formattedDateReported ||
-                      (report.date ? `${report.date} at 2:14 PM` : 'August 25, 2026 at 2:14 PM')}
+                    {detailedReport.formattedDateReported || detailedReport.date || 'Recently'}
                   </span>
                 </div>
               </div>
+
+              {detailedReport.description && (
+                <div style={{ marginTop: 14, paddingTop: 14, borderTop: '1px solid #f3f4f6' }}>
+                  <span className="rep-desc-label" style={{ display: 'block', marginBottom: 6 }}>
+                    Notes / Description
+                  </span>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#374151', lineHeight: 1.5 }}>
+                    {detailedReport.description}
+                  </p>
+                </div>
+              )}
 
               <div className="rep-desc-divider" />
 
@@ -186,14 +331,14 @@ export default function ReportDetailsView({
                 <div className="rep-desc-badge-group">
                   <span className="rep-desc-sublabel">PRIORITY</span>
                   <span className={`rep-priority-badge ${priorityClass}`}>
-                    {report.priority || 'Medium'}
+                    {detailedReport.priority || 'Medium'}
                   </span>
                 </div>
 
                 <div className="rep-desc-badge-group right-align">
                   <span className="rep-desc-sublabel">REPORTED STATUS</span>
                   <span className={`rep-status-badge ${statusClass}`}>
-                    {report.statusLabel || 'Worker Assigned'}
+                    {detailedReport.statusLabel || 'Worker Assigned'}
                   </span>
                 </div>
               </div>
@@ -212,7 +357,6 @@ export default function ReportDetailsView({
                   const isActive = currentStep === idx;
                   const isPending = currentStep < idx;
 
-                  // Determine connector line status for line below this step
                   const lineCompleted = currentStep > idx;
                   const lineActive = currentStep === idx;
 

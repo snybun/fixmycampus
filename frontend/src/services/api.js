@@ -88,6 +88,48 @@ export async function deleteReport(reportId) {
   }
 }
 
+export async function fetchNotifications() {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching notifications:', err);
+    return { success: false, unread_count: 0, count: 0, data: [] };
+  }
+}
+
+export async function markNotificationRead(id) {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error marking notification as read:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function markAllNotificationsRead() {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php?action=mark_all_read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error marking all notifications as read:', err);
+    return { success: false, message: err.message };
+  }
+}
+
 export async function fetchCategories() {
   try {
     const res = await fetch(`${API_BASE}/categories.php`);
@@ -431,83 +473,6 @@ export async function createReport(reportData) {
   }
 }
 
-export async function fetchNotifications() {
-  try {
-    const res = await fetch(`${API_BASE}/notifications.php`, {
-      credentials: 'include',
-    });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-    return await res.json();
-  } catch (err) {
-    console.error('fetchNotifications error:', err);
-    return {
-      success: true,
-      unread_count: 2,
-      data: [
-        {
-          id: 1,
-          ticket_number: 'FM-2026-00153',
-          type: 'verified',
-          title: 'Your report FM-2026-00153 has been verified.',
-          time_ago: '2 hours ago',
-          is_read: 0,
-        },
-        {
-          id: 2,
-          ticket_number: 'FM-2026-00153',
-          type: 'assignment',
-          title: 'Maintenance worker Mark Santos has been assigned to your report FM-2026-00153.',
-          time_ago: '1 day ago',
-          is_read: 0,
-        },
-        {
-          id: 3,
-          ticket_number: 'FM-2026-00139',
-          type: 'fixed',
-          title: 'Your reported air conditioner issue FM-2026-00139 is now fixed!',
-          time_ago: '3 days ago',
-          is_read: 1,
-        },
-        {
-          id: 4,
-          ticket_number: 'FM-2026-00148',
-          type: 'update',
-          title: 'Your report FM-2026-00148 has been updated with new schedule information.',
-          time_ago: '5 days ago',
-          is_read: 1,
-        },
-      ],
-    };
-  }
-}
-
-export async function markAllNotificationsRead() {
-  try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=mark_all_read`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    return await res.json();
-  } catch (err) {
-    console.error('markAllNotificationsRead error:', err);
-    return { success: true, unread_count: 0 };
-  }
-}
-
-export async function markNotificationRead(id) {
-  try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ id }),
-    });
-    return await res.json();
-  } catch (err) {
-    console.error('markNotificationRead error:', err);
-    return { success: true };
-  }
-}
 
 
 

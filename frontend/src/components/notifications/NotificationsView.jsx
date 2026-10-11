@@ -7,6 +7,9 @@ import {
   CheckCircle2,
   Clock,
   ArrowRight,
+  Wrench,
+  AlertOctagon,
+  RefreshCw,
 } from 'lucide-react';
 import {
   fetchNotifications,
@@ -21,58 +24,36 @@ export default function NotificationsView({
   unreadCount,
   setUnreadCount,
 }) {
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      ticket_number: 'FM-2026-00153',
-      type: 'verified',
-      title: 'Your report FM-2026-00153 has been verified.',
-      time_ago: '2 hours ago',
-      is_read: 0,
-    },
-    {
-      id: 2,
-      ticket_number: 'FM-2026-00153',
-      type: 'assignment',
-      title: 'Maintenance worker Mark Santos has been assigned to your report FM-2026-00153.',
-      time_ago: '1 day ago',
-      is_read: 0,
-    },
-    {
-      id: 3,
-      ticket_number: 'FM-2026-00139',
-      type: 'fixed',
-      title: 'Your reported air conditioner issue FM-2026-00139 is now fixed!',
-      time_ago: '3 days ago',
-      is_read: 1,
-    },
-    {
-      id: 4,
-      ticket_number: 'FM-2026-00148',
-      type: 'update',
-      title: 'Your report FM-2026-00148 has been updated with new schedule information.',
-      time_ago: '5 days ago',
-      is_read: 1,
-    },
-  ]);
-  const [loading, setLoading] = useState(false);
+  const [notifications, setNotifications] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
 
-  // Fetch real notifications on mount
-  useEffect(() => {
-    let isMounted = true;
-    fetchNotifications().then((res) => {
-      if (isMounted && res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+  const loadNotifications = async () => {
+    setLoading(true);
+    try {
+      const res = await fetchNotifications();
+      if (res && res.success && Array.isArray(res.data)) {
         setNotifications(res.data);
         if (typeof setUnreadCount === 'function' && typeof res.unread_count === 'number') {
           setUnreadCount(res.unread_count);
         }
+      } else {
+        setNotifications([]);
+        if (typeof setUnreadCount === 'function') {
+          setUnreadCount(0);
+        }
       }
-    });
+    } catch (err) {
+      console.error('Error fetching notifications:', err);
+      setNotifications([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return () => {
-      isMounted = false;
-    };
+  // Fetch real notifications on mount
+  useEffect(() => {
+    loadNotifications();
   }, [setUnreadCount]);
 
   // Mark all as read
@@ -122,8 +103,22 @@ export default function NotificationsView({
   // Render icon based on notification type
   const renderIconBadge = (type) => {
     switch (type) {
+      case 'emergency':
+        return (
+          <div className="notif-icon-badge" style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', color: '#dc2626' }} title="Emergency Hazard">
+            <AlertOctagon size={20} strokeWidth={2.4} />
+          </div>
+        );
+      case 'work_order':
+      case 'assignment':
+        return (
+          <div className="notif-icon-badge notif-badge-assignment" title="Work Assignment">
+            <Wrench size={20} strokeWidth={2.2} />
+          </div>
+        );
       case 'fixed':
       case 'resolved':
+      case 'verified':
         return (
           <div className="notif-icon-badge notif-badge-fixed" title="Resolved Issue">
             <Check size={20} strokeWidth={2.6} />
@@ -136,8 +131,8 @@ export default function NotificationsView({
             <AlertTriangle size={20} strokeWidth={2.4} />
           </div>
         );
-      case 'verified':
-      case 'assignment':
+      case 'new_report':
+      case 'submitted':
       case 'info':
       default:
         return (
@@ -156,25 +151,62 @@ export default function NotificationsView({
         {/* Header Row */}
         <div className="notif-header-row">
           <div className="notif-header-text">
-            <h1 className="notif-title">Notifications</h1>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+              <h1 className="notif-title">Notifications</h1>
+              {unreadCount > 0 && (
+                <span
+                  style={{
+                    backgroundColor: '#ecfdf5',
+                    color: '#059669',
+                    border: '1px solid #a7f3d0',
+                    fontSize: '0.8rem',
+                    fontWeight: 700,
+                    padding: '3px 10px',
+                    borderRadius: 9999,
+                  }}
+                >
+                  {unreadCount} Unread
+                </span>
+              )}
+            </div>
             <p className="notif-subtitle">
               Stay up to date with activity and progress on facility requests.
             </p>
           </div>
 
-          <button
-            type="button"
-            className="notif-mark-read-btn"
-            onClick={handleMarkAllRead}
-            disabled={!hasUnread || isMarkingAll}
-            id="notif-mark-all-read-btn"
-          >
-            <span>{isMarkingAll ? 'Marking...' : 'Mark all as read'}</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <button
+              type="button"
+              className="notif-mark-read-btn"
+              onClick={loadNotifications}
+              disabled={loading}
+              title="Refresh notifications"
+              style={{ color: '#4b5563' }}
+            >
+              <RefreshCw size={14} className={loading ? 'maint-spin' : ''} />
+              <span>Refresh</span>
+            </button>
+
+            <button
+              type="button"
+              className="notif-mark-read-btn"
+              onClick={handleMarkAllRead}
+              disabled={!hasUnread || isMarkingAll}
+              id="notif-mark-all-read-btn"
+            >
+              <span>{isMarkingAll ? 'Marking...' : 'Mark all as read'}</span>
+            </button>
+          </div>
         </div>
 
         {/* Notifications List */}
-        {notifications.length > 0 ? (
+        {loading && notifications.length === 0 ? (
+          <div className="notif-empty-state" style={{ padding: '48px 20px' }}>
+            <RefreshCw size={26} className="maint-spin" style={{ color: '#059669' }} />
+            <h3 className="notif-empty-title" style={{ marginTop: 8 }}>Loading Notifications...</h3>
+            <p className="notif-empty-desc">Fetching latest campus updates from system.</p>
+          </div>
+        ) : notifications.length > 0 ? (
           <div className="notif-list">
             {notifications.map((item) => {
               const isUnread = !item.is_read;
@@ -197,7 +229,26 @@ export default function NotificationsView({
                     {renderIconBadge(item.type)}
                     <div className="notif-card-content">
                       <p className="notif-card-title">{item.title}</p>
-                      <span className="notif-card-time">{item.time_ago}</span>
+                      {item.message && <p className="notif-card-desc">{item.message}</p>}
+                      <div className="notif-card-meta">
+                        <span className="notif-card-time">{item.time_ago}</span>
+                        {item.location && <span className="notif-card-location">• {item.location}</span>}
+                        {item.ticket_number && (
+                          <span
+                            style={{
+                              fontSize: '0.75rem',
+                              fontFamily: 'monospace',
+                              fontWeight: 600,
+                              color: '#059669',
+                              backgroundColor: '#ecfdf5',
+                              padding: '1px 6px',
+                              borderRadius: 4,
+                            }}
+                          >
+                            {item.ticket_number}
+                          </span>
+                        )}
+                      </div>
                     </div>
                   </div>
 
@@ -228,3 +279,4 @@ export default function NotificationsView({
     </div>
   );
 }
+

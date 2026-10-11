@@ -193,11 +193,31 @@
   color: #374151;
 }
 
+.notif-card-desc {
+  font-size: 0.88rem;
+  color: #64748b;
+  margin: 3px 0 0 0;
+  line-height: 1.45;
+}
+
+.notif-card-meta {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 4px;
+}
+
 .notif-card-time {
   font-size: 0.8125rem;
   color: #9ca3af;
   margin: 0;
   font-weight: 450;
+}
+
+.notif-card-location {
+  font-size: 0.8125rem;
+  color: #6b7280;
 }
 
 /* -----------------------------------------------------------------------------

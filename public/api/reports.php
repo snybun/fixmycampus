@@ -14,6 +14,7 @@ require_once SRC_PATH . '/Core/Response.php';
 require_once SRC_PATH . '/helpers/session.php';
 require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
+require_once SRC_PATH . '/helpers/notifications.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -241,6 +242,22 @@ try {
             'remarks'         => 'Report submitted by ' . $user['full_name'],
         ]);
 
+        // Dispatch notifications to reporter and campus facility personnel
+        create_notification(
+            (int)$user['id'],
+            $reportId,
+            'submitted',
+            "Report {$ticketNumber} Submitted Successfully",
+            "Your report for '{$title}' has been logged and queued for facility review."
+        );
+
+        notify_admins_and_supervisors(
+            $reportId,
+            in_array($priority, ['high', 'emergency'], true) ? 'emergency' : 'new_report',
+            "New Defect Report: {$ticketNumber} - {$title}",
+            "Reported by {$user['full_name']} with " . ucfirst($priority) . " priority."
+        );
+
         \FixMyCampus\Core\Response::json([
             'success'       => true,
             'message'       => 'Defect report submitted successfully.',
@@ -275,7 +292,7 @@ try {
             ], 404);
         }
 
-        $report = db_fetch_one("SELECT id, status, ticket_number FROM `reports` WHERE id = :id", [':id' => $reportId]);
+        $report = db_fetch_one("SELECT id, status, ticket_number, title, reporter_id, priority FROM `reports` WHERE id = :id", [':id' => $reportId]);
         if (!$report) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
@@ -329,6 +346,25 @@ try {
 
             $pdo->commit();
 
+            // Dispatch notification to technician and student reporter
+            create_notification(
+                (int)$technicianId,
+                $reportId,
+                'work_order',
+                "New Work Order Dispatched: {$report['ticket_number']} - {$report['title']}",
+                "Work order assigned by {$actorUser['full_name']}. Notes: {$notes}."
+            );
+
+            if (!empty($report['reporter_id'])) {
+                create_notification(
+                    (int)$report['reporter_id'],
+                    $reportId,
+                    'assignment',
+                    "Maintenance Staff Assigned to {$report['ticket_number']}",
+                    "Worker {$tech['full_name']} ({$tech['department']}) has been assigned to your report."
+                );
+            }
+
             \FixMyCampus\Core\Response::json([
                 'success' => true,
                 'message' => "Worker {$tech['full_name']} assigned successfully.",
@@ -360,7 +396,7 @@ try {
             ], 400);
         }
 
-        $report = db_fetch_one("SELECT id, status, ticket_number FROM `reports` WHERE id = :id", [':id' => $reportId]);
+        $report = db_fetch_one("SELECT id, status, ticket_number, title, reporter_id FROM `reports` WHERE id = :id", [':id' => $reportId]);
         if (!$report) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
@@ -389,6 +425,27 @@ try {
             ]);
 
             $pdo->commit();
+
+            // Notify reporter and management on status changes
+            $tNum = $report['ticket_number'] ?? "FMC-{$reportId}";
+            $repTitle = $report['title'] ?? 'Defect Report';
+            $repId = (int)($report['reporter_id'] ?? 0);
+
+            if ($newStatus === 'in_progress') {
+                if ($repId > 0) {
+                    create_notification($repId, $reportId, 'in_progress', "Repair In Progress: {$tNum}", "Maintenance personnel started repair work on '{$repTitle}'.");
+                }
+                notify_admins_and_supervisors($reportId, 'update', "Work In Progress: {$tNum}", "'{$repTitle}' marked in progress by {$actorUser['full_name']}.");
+            } elseif ($newStatus === 'resolved') {
+                if ($repId > 0) {
+                    create_notification($repId, $reportId, 'verified', "Issue Fixed: {$tNum} - {$repTitle}", "Your reported issue has been repaired. Remarks: {$remarks}");
+                }
+                notify_admins_and_supervisors($reportId, 'verified', "Repair Completed: {$tNum}", "'{$repTitle}' was marked resolved by {$actorUser['full_name']}.");
+            } elseif ($newStatus === 'under_review') {
+                if ($repId > 0) {
+                    create_notification($repId, $reportId, 'update', "Report Under Review: {$tNum}", "Campus facilities is reviewing your defect report for '{$repTitle}'.");
+                }
+            }
 
             \FixMyCampus\Core\Response::json([
                 'success' => true,
@@ -485,6 +542,15 @@ try {
         } else {
             $report['image_url'] = '/images/campus_courtyard.jpg';
         }
+
+        $history = db_fetch_all("
+            SELECT rsh.*, u.full_name AS changed_by_name
+            FROM `report_status_history` rsh
+            LEFT JOIN `users` u ON rsh.changed_by = u.id
+            WHERE rsh.report_id = :id
+            ORDER BY rsh.created_at ASC
+        ", [':id' => $id]);
+        $report['status_history'] = $history;
 
         \FixMyCampus\Core\Response::json(['success' => true, 'data' => $report]);
     }

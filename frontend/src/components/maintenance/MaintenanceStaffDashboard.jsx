@@ -18,7 +18,7 @@ import {
   X,
   RefreshCw,
 } from 'lucide-react';
-import { fetchReports, updateReportStatus, assignReport } from '../../services/api';
+import { fetchReports, updateReportStatus, assignReport, fetchNotifications } from '../../services/api';
 import MaintenanceNotificationsView from './MaintenanceNotificationsView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import './maintenanceDashboard.css';
@@ -149,6 +149,16 @@ export default function MaintenanceStaffDashboard({
       .finally(() => {
         if (isMounted) setLoading(false);
       });
+
+    // Fetch unread notifications count from database
+    fetchNotifications()
+      .then((notifRes) => {
+        if (!isMounted) return;
+        if (notifRes && notifRes.success && typeof notifRes.unread_count === 'number') {
+          setUnreadNotifCount(notifRes.unread_count);
+        }
+      })
+      .catch(() => {});
 
     return () => {
       isMounted = false;

@@ -27,105 +27,6 @@ import {
   markNotificationRead,
 } from '../../services/api';
 
-// Realistic fallback notifications tailored specifically for campus maintenance operations
-const DEFAULT_MAINTENANCE_NOTIFICATIONS = [
-  {
-    id: 101,
-    ticket_number: 'FM-105',
-    job_id: 105,
-    type: 'emergency',
-    priority: 'emergency',
-    category: 'Safety & Grounds',
-    title: 'EMERGENCY HAZARD: Loose Staircase Handrail Reported',
-    message:
-      'Central anchor detached on exterior flight between Ground and 1st floor. Immediate safety barricade tape and welding inspection required before class change.',
-    location: 'Main Building • Exterior Staircase East • Ground Floor',
-    time_ago: '15 minutes ago',
-    is_read: 0,
-    created_at: new Date(Date.now() - 15 * 60 * 1000).toISOString(),
-    badge_label: 'Safety Emergency',
-  },
-  {
-    id: 102,
-    ticket_number: 'FM-102',
-    job_id: 102,
-    type: 'work_order',
-    priority: 'high',
-    category: 'Air Conditioning',
-    title: 'New Work Order Dispatched: FM-102 Broken Air Conditioner',
-    message:
-      'Split AC unit in Room 304 leaking water heavily onto floor and blowing warm air. Assigned by Supervisor Robert Vance with High priority.',
-    location: 'Engineering Bldg • 3rd Flr • Rm 304',
-    time_ago: '45 minutes ago',
-    is_read: 0,
-    created_at: new Date(Date.now() - 45 * 60 * 1000).toISOString(),
-    badge_label: 'Work Order Dispatch',
-  },
-  {
-    id: 103,
-    ticket_number: 'FM-104',
-    job_id: 104,
-    type: 'parts',
-    priority: 'medium',
-    category: 'Plumbing & Restroom',
-    title: 'Parts Ready: 35mm Ceramic Disc Cartridge & Gaskets',
-    message:
-      'Requisition #REQ-4482 has arrived and is staged in Facilities Stockroom Cabinet C-2 for work order FM-104 (Leaking Faucet in Science Bldg).',
-    location: 'Facilities Central Supply • Bay 2',
-    time_ago: '2 hours ago',
-    is_read: 0,
-    created_at: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-    badge_label: 'Requisition Ready',
-  },
-  {
-    id: 104,
-    ticket_number: 'FM-103',
-    job_id: 103,
-    type: 'sla_warning',
-    priority: 'high',
-    category: 'Electrical & Lighting',
-    title: 'SLA Warning: FM-103 Approaching 24h Resolution Window',
-    message:
-      'Intermittent sparking outlet in Room 201 reported 18 hours ago. Target completion threshold expires in 6 hours.',
-    location: 'Main Bldg • 2nd Flr • Rm 201',
-    time_ago: '4 hours ago',
-    is_read: 1,
-    created_at: new Date(Date.now() - 4 * 3600 * 1000).toISOString(),
-    badge_label: 'SLA Notice',
-  },
-  {
-    id: 105,
-    ticket_number: 'FM-107',
-    job_id: 107,
-    type: 'verified',
-    priority: 'low',
-    category: 'General Facility',
-    title: 'Sign-Off Approved: FM-107 Clogged Water Dispenser',
-    message:
-      'Completion proof photo and filter replacement verified by Facilities Supervisor. Work order successfully closed and rated 5 stars.',
-    location: 'Admin Center • 1st Flr • Hallway',
-    time_ago: '1 day ago',
-    is_read: 1,
-    created_at: new Date(Date.now() - 24 * 3600 * 1000).toISOString(),
-    badge_label: 'Supervisor Verified',
-  },
-  {
-    id: 106,
-    ticket_number: null,
-    job_id: null,
-    type: 'schedule',
-    priority: 'medium',
-    category: 'Campus Operations',
-    title: 'Scheduled Preventative Power Inspection: Substation B',
-    message:
-      'Thermal scan and capacitor bank inspection across PTC and CMA Buildings scheduled for Saturday 8:00 AM - 12:00 PM.',
-    location: 'Campus Sub-Station B • PTC & CMA Buildings',
-    time_ago: '2 days ago',
-    is_read: 1,
-    created_at: new Date(Date.now() - 48 * 3600 * 1000).toISOString(),
-    badge_label: 'Preventative Maint',
-  },
-];
 
 export default function MaintenanceNotificationsView({
   onViewJob,
@@ -135,10 +36,10 @@ export default function MaintenanceNotificationsView({
   onUnreadChange = null,
   showToast = null,
 }) {
-  const [notifications, setNotifications] = useState(DEFAULT_MAINTENANCE_NOTIFICATIONS);
+  const [notifications, setNotifications] = useState([]);
   const [filterType, setFilterType] = useState('all'); // 'all', 'unread', 'emergency', 'work_order', 'parts', 'verified'
   const [searchQuery, setSearchQuery] = useState('');
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
 
   // Sync notifications from API if available
@@ -146,44 +47,44 @@ export default function MaintenanceNotificationsView({
     setLoading(true);
     try {
       const res = await fetchNotifications();
-      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
+      if (res && res.success && Array.isArray(res.data)) {
         // Map API notifications and merge with linked job details
         const mapped = res.data.map((item) => {
-          // Attempt to link to a local job if ticket_number matches
+          // Attempt to link to a local job if ticket_number or report_id matches
           const matchedJob = jobs.find(
             (j) =>
               (item.ticket_number && j.ticket_number && j.ticket_number.toUpperCase() === item.ticket_number.toUpperCase()) ||
-              (item.ticket_number && String(j.id) === String(item.ticket_number.replace(/\D/g, '')))
+              (item.ticket_number && String(j.id) === String(item.ticket_number.replace(/\D/g, ''))) ||
+              (item.report_id && j.id === item.report_id)
           );
 
-          let badgeLabel = 'Notification';
+          let badgeLabel = item.badge_label || 'Notification';
           const type = item.type || 'info';
-          if (type === 'emergency') badgeLabel = 'Safety Emergency';
-          else if (type === 'work_order' || type === 'assignment') badgeLabel = 'Work Order Dispatch';
-          else if (type === 'parts') badgeLabel = 'Requisition Ready';
-          else if (type === 'sla_warning') badgeLabel = 'SLA Notice';
-          else if (type === 'verified' || type === 'fixed') badgeLabel = 'Supervisor Verified';
-          else if (type === 'schedule') badgeLabel = 'Maintenance Schedule';
+          if (!item.badge_label) {
+            if (type === 'emergency') badgeLabel = 'Safety Emergency';
+            else if (type === 'work_order' || type === 'assignment') badgeLabel = 'Work Order Dispatch';
+            else if (type === 'parts') badgeLabel = 'Requisition Ready';
+            else if (type === 'sla_warning') badgeLabel = 'SLA Notice';
+            else if (type === 'verified' || type === 'fixed') badgeLabel = 'Supervisor Verified';
+            else if (type === 'schedule') badgeLabel = 'Maintenance Schedule';
+          }
 
           return {
             ...item,
-            job_id: matchedJob ? matchedJob.id : null,
+            job_id: matchedJob ? matchedJob.id : (item.report_id || null),
             location: matchedJob ? matchedJob.location_summary : (item.location || 'Campus Facilities'),
-            priority: matchedJob ? matchedJob.priority : (type === 'emergency' ? 'emergency' : type === 'work_order' ? 'high' : 'medium'),
+            priority: matchedJob ? matchedJob.priority : (item.priority || (type === 'emergency' ? 'emergency' : type === 'work_order' ? 'high' : 'medium')),
             badge_label: badgeLabel,
           };
         });
 
-        // Ensure we preserve the rich default items if API returns only 1 or 2
-        const existingTicketMap = new Set(mapped.map((m) => m.ticket_number).filter(Boolean));
-        const extraDefaults = DEFAULT_MAINTENANCE_NOTIFICATIONS.filter(
-          (d) => !existingTicketMap.has(d.ticket_number)
-        );
-
-        setNotifications([...mapped, ...extraDefaults]);
+        setNotifications(mapped);
+      } else {
+        setNotifications([]);
       }
     } catch (err) {
-      console.warn('Could not load remote notifications, using maintenance defaults:', err);
+      console.warn('Could not load remote notifications:', err);
+      setNotifications([]);
     } finally {
       setLoading(false);
     }

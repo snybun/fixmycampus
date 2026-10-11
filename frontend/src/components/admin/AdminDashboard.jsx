@@ -14,6 +14,7 @@ import {
   X,
   CheckCircle2,
   SlidersHorizontal,
+  Bell,
 } from 'lucide-react';
 import {
   fetchStats,
@@ -21,6 +22,7 @@ import {
   fetchStaff,
   fetchBuildings,
   fetchCategories,
+  fetchNotifications,
   assignReport,
   updateReportStatus,
   addStaffMember,
@@ -35,6 +37,7 @@ import BuildingsAndRooms from './BuildingsAndRooms';
 import AnalyticsView from './AnalyticsView';
 import UsersView from './UsersView';
 import AdminSettings from './AdminSettings';
+import AdminNotificationsView from './AdminNotificationsView';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import './admin.css';
@@ -51,6 +54,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [buildings, setBuildings] = useState([]);
   const [locations, setLocations] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
 
   // Quick modals for table actions
@@ -62,12 +66,13 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   // Load all real data on mount
   const refreshData = async () => {
     try {
-      const [statsRes, reportsRes, staffRes, buildingsRes, catRes] = await Promise.all([
+      const [statsRes, reportsRes, staffRes, buildingsRes, catRes, notifRes] = await Promise.all([
         fetchStats(),
         fetchReports({ limit: 100 }),
         fetchStaff(),
         fetchBuildings(),
         fetchCategories(),
+        fetchNotifications(),
       ]);
 
       if (statsRes?.success && statsRes.data) {
@@ -85,6 +90,9 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       }
       if (catRes?.success && catRes.data) {
         setCategories(catRes.data);
+      }
+      if (notifRes?.success && typeof notifRes.unread_count === 'number') {
+        setUnreadNotifCount(notifRes.unread_count);
       }
     } catch (err) {
       console.error('Error refreshing admin dashboard data:', err);
@@ -240,6 +248,35 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         </div>
 
         <div className="admin-mobile-actions">
+          <button
+            type="button"
+            className="admin-header-bell-btn"
+            onClick={() => handleNavTabClick('notifications')}
+            title="Notifications"
+            aria-label="View notifications"
+            id="admin-mobile-notif-btn"
+          >
+            <Bell size={18} />
+            {unreadNotifCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: 9999,
+                  lineHeight: 1.2,
+                }}
+              >
+                {unreadNotifCount}
+              </span>
+            )}
+          </button>
+
           <UserProfileDropdown
             currentUser={currentUser}
             onNavigate={onNavigate}
@@ -304,6 +341,18 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           >
             <LayoutDashboard size={18} />
             <span>Dashboard</span>
+          </button>
+
+          <button
+            type="button"
+            className={`admin-nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
+            onClick={() => handleNavTabClick('notifications')}
+          >
+            <Bell size={18} />
+            <span>Notifications</span>
+            {unreadNotifCount > 0 && (
+              <span className="admin-nav-badge">{unreadNotifCount}</span>
+            )}
           </button>
 
           <button
@@ -422,6 +471,16 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             recentReports={reports}
             onViewReport={handleViewReport}
             onAssignReport={handleOpenAssign}
+          />
+        )}
+
+        {/* View 1.5: System Notifications */}
+        {activeTab === 'notifications' && (
+          <AdminNotificationsView
+            reports={reports}
+            onViewReport={handleViewReport}
+            showToast={showToast}
+            onUnreadChange={setUnreadNotifCount}
           />
         )}
 
