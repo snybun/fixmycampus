@@ -6,7 +6,6 @@ import {
   CheckCircle2,
   Bell,
   User,
-  LogOut,
   Calendar,
   ArrowLeft,
   Camera,
@@ -17,99 +16,87 @@ import {
   Check,
   CheckCircle,
   X,
+  RefreshCw,
 } from 'lucide-react';
-import { fetchReports, updateReportStatus } from '../../services/api';
+import { fetchReports, updateReportStatus, assignReport } from '../../services/api';
 import MaintenanceNotificationsView from './MaintenanceNotificationsView';
+import UserProfileDropdown from '../common/UserProfileDropdown';
 import './maintenanceDashboard.css';
 
-// Initial default jobs matching the user's design screenshots
-const DEFAULT_JOBS = [
-  {
-    id: 102,
-    ticket_number: 'FM-102',
-    title: 'Broken Air Conditioner',
-    category_name: 'Air Conditioning',
-    location_name: 'Engineering Bldg • 3rd Flr • Rm 304',
-    location_summary: 'Engineering Building • Room 304',
-    priority: 'high',
-    status: 'assigned',
-    assigned_date: 'Aug 26, 2026',
-    reported_date: 'August 25, 2026',
-    reporter_name: 'Alex Johnson (Student)',
-    description:
-      'The AC unit in Room 304 is leaking water heavily and blowing warm air instead of cooling the room.',
-    image_url: '/images/hero_ac_defect.jpg',
-    stepper_assigned_worker: 'Mark Santos Assigned',
-  },
-  {
-    id: 103,
-    ticket_number: 'FM-103',
-    title: 'Faulty Electrical Outlet',
-    category_name: 'Electrical & Lighting',
-    location_name: 'Main Bldg • 2nd Flr • Rm 201',
-    location_summary: 'Main Building • Room 201',
-    priority: 'medium',
-    status: 'assigned',
-    assigned_date: 'Aug 27, 2026',
-    reported_date: 'August 26, 2026',
-    reporter_name: 'Prof. Robert Vance (Faculty)',
-    description:
-      'Outlet sparks intermittently when plugging in laptop charger. Needs socket inspection and breaker check.',
-    image_url: '/images/faulty_light_switch.jpg',
-    stepper_assigned_worker: 'Carlos Ramos Assigned',
-  },
-  {
-    id: 104,
-    ticket_number: 'FM-104',
-    title: 'Leaking Faucet',
-    category_name: 'Plumbing & Restroom',
-    location_name: 'Science Bldg • 1st Flr • Restroom 102',
-    location_summary: 'Science Building • Room 102',
-    priority: 'high',
-    status: 'in_progress',
-    assigned_date: 'Aug 28, 2026',
-    reported_date: 'August 27, 2026',
-    reporter_name: 'Emily Chen (Student)',
-    description:
-      'Wash basin faucet does not shut off completely, wasting water all day and creating a slip hazard near entrance.',
-    image_url: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?auto=format&fit=crop&w=600&q=80',
-    stepper_assigned_worker: 'John Miller Assigned',
-  },
-  {
-    id: 105,
-    ticket_number: 'FM-105',
-    title: 'Broken Window Lock',
-    category_name: 'Carpentry & Hardware',
-    location_name: 'Library • 3rd Flr • Rm 305',
-    location_summary: 'Library • Room 305',
-    priority: 'low',
-    status: 'assigned',
-    assigned_date: 'Aug 29, 2026',
-    reported_date: 'August 28, 2026',
-    reporter_name: 'Dr. Sarah Smith (Faculty)',
-    description:
-      'Sliding window lock on north wall is loose and slips out of track, leaving the room open during windy days.',
-    image_url: 'https://images.unsplash.com/photo-1513694203232-719a280e022f?auto=format&fit=crop&w=600&q=80',
-    stepper_assigned_worker: 'Carlos Ramos Assigned',
-  },
-  {
-    id: 106,
-    ticket_number: 'FM-106',
-    title: 'Malfunctioning Projector',
-    category_name: 'AV & Classroom Equipment',
-    location_name: 'Student Center • 4th Flr • Rm 401',
-    location_summary: 'Student Center • Room 401',
-    priority: 'urgent',
-    status: 'assigned',
-    assigned_date: 'Aug 30, 2026',
-    reported_date: 'August 29, 2026',
-    reporter_name: 'Carlos Reyes (Student)',
-    description:
-      'Ceiling mounted projector bulb flashes red and shuts down after 5 minutes of operation. Audio passes through normally.',
-    image_url: 'https://images.unsplash.com/photo-1517245386807-bb43f82c33c4?auto=format&fit=crop&w=600&q=80',
-    stepper_assigned_worker: 'John Miller Assigned',
-  },
-];
+// Format date helper for database timestamps
+const formatDate = (dateStr) => {
+  if (!dateStr) return 'Recently';
+  const d = new Date(String(dateStr).replace(' ', 'T'));
+  if (isNaN(d.getTime())) return String(dateStr);
+  return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+};
+
+// Format date and time helper
+const formatDateTime = (dateStr) => {
+  if (!dateStr) return 'Recently';
+  const d = new Date(String(dateStr).replace(' ', 'T'));
+  if (isNaN(d.getTime())) return String(dateStr);
+  return d.toLocaleDateString('en-US', {
+    month: 'short',
+    day: 'numeric',
+    hour: 'numeric',
+    minute: '2-digit',
+  });
+};
+
+// Compute overdue status based on ticket SLA hours and reported_at timestamp
+const isReportOverdue = (job) => {
+  if (!job) return false;
+  if (['resolved', 'closed', 'rejected'].includes(job.status)) return false;
+  const reportedTime = job.reported_at
+    ? new Date(String(job.reported_at).replace(' ', 'T')).getTime()
+    : null;
+  if (!reportedTime) return false;
+  const slaHours = Number(job.sla_hours) || 24;
+  const deadlineTime = reportedTime + slaHours * 3600 * 1000;
+  return Date.now() > deadlineTime;
+};
+
+// Transform database report row into maintenance job object
+const mapApiReportToJob = (r, defaultWorkerName = 'Maintenance Staff') => {
+  const buildingName = r.building_name || 'Campus Building';
+  const roomOrArea = r.room_number || r.specific_area || 'Facility';
+  const locationSummary = `${buildingName} • ${roomOrArea}`;
+  const locationDetail = `${buildingName}${r.floor_name ? ` • ${r.floor_name}` : ''} • ${roomOrArea}`;
+
+  const assignedDate = r.assigned_at
+    ? formatDate(r.assigned_at)
+    : r.updated_at
+    ? formatDate(r.updated_at)
+    : formatDate(r.reported_at);
+
+  const assignedWorkerName = r.worker_name || defaultWorkerName;
+
+  return {
+    id: r.id,
+    ticket_number: r.ticket_number || `FMC-${r.id}`,
+    title: r.title,
+    category_name: r.category_name || 'General Maintenance',
+    location_name: locationDetail,
+    location_summary: locationSummary,
+    priority: (r.priority || 'medium').toLowerCase(),
+    status: r.status || 'assigned',
+    assigned_date: assignedDate,
+    reported_date: formatDate(r.reported_at),
+    reported_time_str: formatDateTime(r.reported_at),
+    reporter_name: r.reporter_name
+      ? `${r.reporter_name} (${r.reporter_department || 'Student'})`
+      : 'Alex Johnson (Student)',
+    description: r.description || 'No description provided.',
+    image_url: r.primary_photo || r.image_url || '/images/hero_ac_defect.jpg',
+    stepper_assigned_worker: `${assignedWorkerName} Assigned`,
+    worker_id: r.worker_id,
+    worker_name: r.worker_name,
+    sla_hours: r.sla_hours || 24,
+    reported_at: r.reported_at,
+    updated_at: r.updated_at,
+  };
+};
 
 export default function MaintenanceStaffDashboard({
   currentUser,
@@ -120,50 +107,53 @@ export default function MaintenanceStaffDashboard({
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'assigned', 'completed', 'notifications', 'profile'
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [priorityFilter, setPriorityFilter] = useState('all'); // 'all', 'high', 'medium', 'low'
-  const [unreadNotifCount, setUnreadNotifCount] = useState(3);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
 
-  // Data & jobs list state
-  const [jobs, setJobs] = useState(DEFAULT_JOBS);
+  // Live Database Reports state
+  const [jobs, setJobs] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [toastMessage, setToastMessage] = useState('');
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Job Details completion form state
   const [completionNotes, setCompletionNotes] = useState('');
   const [proofPhotoPreview, setProofPhotoPreview] = useState(null);
   const [isDragging, setIsDragging] = useState(false);
 
-  const displayName = currentUser?.full_name || 'Rendil Robosa';
-  const firstName = displayName.split(' ')[0] || 'Mark';
-  const displayRole = 'Maintenance Staff';
+  const displayName = currentUser?.full_name || 'Juan Dela Cruz';
+  const firstName = displayName.split(' ')[0] || 'Staff';
+  const displayRole = currentUser?.department
+    ? `${currentUser.department} • Staff`
+    : 'Maintenance Staff';
 
-  // Merge live API reports if available
+  // Load real tickets from database via API
   useEffect(() => {
-    fetchReports().then((res) => {
-      if (res && res.success && Array.isArray(res.data) && res.data.length > 0) {
-        // Map any API tickets that are assigned or in progress
-        const mappedApi = res.data.map((r) => ({
-          id: r.id,
-          ticket_number: r.ticket_number || `FM-${r.id}`,
-          title: r.title,
-          category_name: r.category_name || 'General Maintenance',
-          location_name: `${r.building_name || 'Main Bldg'} • ${r.room_number || r.specific_area || 'Room 101'}`,
-          location_summary: `${r.building_name?.split(' ')[0] || 'Main'} Building • ${r.room_number || 'Room 101'}`,
-          priority: (r.priority || 'medium').toLowerCase(),
-          status: r.status || 'assigned',
-          assigned_date: 'Aug 26, 2026',
-          reported_date: 'August 25, 2026',
-          reporter_name: `${r.reporter_name || 'Alex Johnson'} (Student)`,
-          description: r.description,
-          image_url: r.primary_photo || r.image_url || '/images/hero_ac_defect.jpg',
-          stepper_assigned_worker: r.worker_name ? `${r.worker_name} Assigned` : 'Mark Santos Assigned',
-        }));
+    let isMounted = true;
+    setLoading(true);
 
-        // Merge keeping DEFAULT_JOBS priority for visual consistency with screenshot
-        const existingIds = new Set(DEFAULT_JOBS.map((j) => j.id));
-        const filteredNew = mappedApi.filter((m) => !existingIds.has(m.id));
-        setJobs([...DEFAULT_JOBS, ...filteredNew]);
-      }
-    });
-  }, []);
+    fetchReports({ limit: 100 })
+      .then((res) => {
+        if (!isMounted) return;
+        if (res && res.success && Array.isArray(res.data)) {
+          const mappedApi = res.data.map((r) => mapApiReportToJob(r, displayName));
+          setJobs(mappedApi);
+        } else {
+          setJobs([]);
+        }
+      })
+      .catch((err) => {
+        if (!isMounted) return;
+        console.error('Error fetching maintenance reports from database:', err);
+        setJobs([]);
+      })
+      .finally(() => {
+        if (isMounted) setLoading(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [displayName, refreshKey]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -172,7 +162,7 @@ export default function MaintenanceStaffDashboard({
     }, 3200);
   };
 
-  const handleStartRepair = (jobId, e) => {
+  const handleStartRepair = async (jobId, e) => {
     if (e) e.stopPropagation();
     setJobs((prev) =>
       prev.map((job) =>
@@ -186,10 +176,30 @@ export default function MaintenanceStaffDashboard({
       )
     );
     showToast('Repair marked as In Progress!');
-    updateReportStatus({ report_id: jobId, status: 'in_progress', remarks: 'Work started by Maintenance Staff' }).catch(() => {});
+
+    try {
+      await updateReportStatus({
+        report_id: jobId,
+        status: 'in_progress',
+        remarks: `Work started by ${displayName}`,
+        changed_by: currentUser?.id || 1,
+      });
+
+      if (currentUser?.id) {
+        assignReport({
+          report_id: jobId,
+          assigned_to: currentUser.id,
+          assigned_by: currentUser.id,
+          notes: `Assigned upon repair start by ${displayName}`,
+        }).catch(() => {});
+      }
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      console.error('Failed to update status on server:', err);
+    }
   };
 
-  const handleConfirmCompletion = (jobId) => {
+  const handleConfirmCompletion = async (jobId) => {
     setJobs((prev) =>
       prev.map((job) =>
         job.id === jobId
@@ -204,9 +214,21 @@ export default function MaintenanceStaffDashboard({
       )
     );
     showToast('Job marked as Fixed and Completed!');
+    const notes = completionNotes;
     setCompletionNotes('');
     setProofPhotoPreview(null);
-    updateReportStatus({ report_id: jobId, status: 'resolved', remarks: completionNotes || 'Repair signed off by Maintenance Staff' }).catch(() => {});
+
+    try {
+      await updateReportStatus({
+        report_id: jobId,
+        status: 'resolved',
+        remarks: notes || `Repair verified and signed off by ${displayName}`,
+        changed_by: currentUser?.id || 1,
+      });
+      setRefreshKey((k) => k + 1);
+    } catch (err) {
+      console.error('Failed to complete report on server:', err);
+    }
   };
 
   const handleFileUpload = (e) => {
@@ -217,21 +239,24 @@ export default function MaintenanceStaffDashboard({
     }
   };
 
-  // Selected job for detail view
-  const selectedJob = jobs.find((j) => j.id === selectedJobId) || jobs[0];
-
-  // Dynamic Metrics Calculation
-  const assignedJobsCount = jobs.filter((j) => j.status !== 'resolved' && j.status !== 'closed').length;
+  // Dynamic Metrics Calculation directly from database reports
+  const assignedJobsCount = jobs.filter((j) => j.status === 'assigned').length;
   const inProgressCount = jobs.filter((j) => j.status === 'in_progress').length;
-  const completedCount = 38 + jobs.filter((j) => j.status === 'resolved' || j.status === 'closed').length;
-  const overdueCount = 1;
+  const completedCount = jobs.filter(
+    (j) => j.status === 'resolved' || j.status === 'closed'
+  ).length;
+  const overdueCount = jobs.filter(isReportOverdue).length;
 
   // Filtered Jobs based on tab and priority
   let displayedJobs = jobs;
   if (activeTab === 'completed') {
     displayedJobs = jobs.filter((j) => j.status === 'resolved' || j.status === 'closed');
   } else if (activeTab === 'assigned') {
-    displayedJobs = jobs.filter((j) => j.status !== 'resolved' && j.status !== 'closed');
+    displayedJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
+  } else {
+    // Dashboard overview: show active assigned and in-progress jobs by default, or all if none
+    const activeJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
+    displayedJobs = activeJobs.length > 0 ? activeJobs : jobs;
   }
 
   if (priorityFilter !== 'all') {
@@ -239,6 +264,10 @@ export default function MaintenanceStaffDashboard({
       (j) => j.priority.toLowerCase() === priorityFilter.toLowerCase()
     );
   }
+
+  // Selected job for detail view
+  const selectedJob =
+    jobs.find((j) => j.id === selectedJobId) || displayedJobs[0] || jobs[0] || null;
 
   return (
     <div className="maint-container">
@@ -334,8 +363,12 @@ export default function MaintenanceStaffDashboard({
               type="button"
               className={`maint-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
               onClick={() => {
-                setActiveTab('profile');
-                setSelectedJobId(null);
+                if (onNavigate) {
+                  onNavigate('settings');
+                } else {
+                  setActiveTab('profile');
+                  setSelectedJobId(null);
+                }
               }}
             >
               <div className="maint-nav-label-box">
@@ -348,23 +381,16 @@ export default function MaintenanceStaffDashboard({
 
         {/* User Profile Footer */}
         <div className="maint-user-footer">
-          <div className="maint-user-link">
-            <div className="maint-avatar">
-              <User size={20} />
-            </div>
-            <div className="maint-user-meta">
-              <span className="maint-user-name">{displayName}</span>
-              <span className="maint-user-role">{displayRole}</span>
-            </div>
-          </div>
-          <button
-            type="button"
-            className="maint-logout-btn"
-            title="Log Out"
-            onClick={onLogout}
-          >
-            <LogOut size={16} />
-          </button>
+          <UserProfileDropdown
+            currentUser={currentUser}
+            onNavigate={onNavigate}
+            onLogout={onLogout}
+            direction="up"
+            showSubInButton={true}
+            subTitle={currentUser?.department ? `${currentUser.department} • Staff` : displayRole}
+            fullWidth={true}
+            idPrefix="maint-user"
+          />
         </div>
       </aside>
 
@@ -373,24 +399,36 @@ export default function MaintenanceStaffDashboard({
           ==================================================================== */}
       <main className="maint-main">
         {selectedJobId !== null ? (
-          /* ================================================================
-             SCREEN 2: Job Details View (FM-102)
-             ================================================================ */
-          <div className="maint-details-view">
-            {/* Header: Back Button & Title */}
-            <div className="maint-details-header">
+          !selectedJob ? (
+            <div className="maint-empty-state">
+              <ClipboardList size={40} className="maint-empty-icon" />
+              <h4 className="maint-empty-title">Job Record Not Found</h4>
+              <p className="maint-empty-desc">The selected maintenance job could not be loaded or has been removed.</p>
               <button
                 type="button"
-                className="maint-back-btn"
-                title="Back to Assigned Jobs"
+                className="maint-btn-details"
+                style={{ marginTop: 16 }}
                 onClick={() => setSelectedJobId(null)}
               >
-                <ArrowLeft size={18} />
+                Return to Job List
               </button>
-              <h2 className="maint-details-title">
-                Job Details - {selectedJob.ticket_number || `FM-${selectedJob.id}`}
-              </h2>
             </div>
+          ) : (
+            <div className="maint-details-view">
+              {/* Header: Back Button & Title */}
+              <div className="maint-details-header">
+                <button
+                  type="button"
+                  className="maint-back-btn"
+                  title="Back to Assigned Jobs"
+                  onClick={() => setSelectedJobId(null)}
+                >
+                  <ArrowLeft size={18} />
+                </button>
+                <h2 className="maint-details-title">
+                  Job Details - {selectedJob.ticket_number || `FM-${selectedJob.id}`}
+                </h2>
+              </div>
 
             {/* Two-Column Grid: Left (Photo + Info) | Right (Actions + Completion) */}
             <div className="maint-details-grid">
@@ -581,7 +619,7 @@ export default function MaintenanceStaffDashboard({
                   </div>
                   <div className="maint-step-content">
                     <span className="maint-step-title">Reported</span>
-                    <span className="maint-step-sub">Aug 25, 2:30 PM</span>
+                    <span className="maint-step-sub">{selectedJob.reported_time_str || selectedJob.reported_date}</span>
                   </div>
                 </div>
 
@@ -594,7 +632,11 @@ export default function MaintenanceStaffDashboard({
                   </div>
                   <div className="maint-step-content">
                     <span className="maint-step-title">Verified</span>
-                    <span className="maint-step-sub">Aug 25, 4:15 PM</span>
+                    <span className="maint-step-sub">
+                      {['assigned', 'in_progress', 'resolved'].includes(selectedJob.status)
+                        ? 'Verified by Operations'
+                        : 'Under Review'}
+                    </span>
                   </div>
                 </div>
 
@@ -608,7 +650,7 @@ export default function MaintenanceStaffDashboard({
                   <div className="maint-step-content">
                     <span className="maint-step-title">Worker Assigned</span>
                     <span className="maint-step-sub">
-                      {selectedJob.stepper_assigned_worker || 'Mark Santos Assigned'}
+                      {selectedJob.stepper_assigned_worker || `${displayName} Assigned`}
                     </span>
                   </div>
                 </div>
@@ -659,6 +701,7 @@ export default function MaintenanceStaffDashboard({
               </div>
             </div>
           </div>
+          )
         ) : activeTab === 'notifications' ? (
           /* ================================================================
              SCREEN 3: Maintenance Notifications View
@@ -770,66 +813,92 @@ export default function MaintenanceStaffDashboard({
             </div>
 
             {/* Job Cards List */}
-            <div className="maint-jobs-list">
-              {displayedJobs.map((job) => {
-                const isOngoing = job.status === 'in_progress';
-                const isFixed = job.status === 'resolved' || job.status === 'closed';
+            {loading ? (
+              <div className="maint-empty-state">
+                <div className="maint-loading-spinner" />
+                <h4 className="maint-empty-title">Loading maintenance jobs...</h4>
+                <p className="maint-empty-desc">Fetching assigned tasks and defect records from the database.</p>
+              </div>
+            ) : displayedJobs.length === 0 ? (
+              <div className="maint-empty-state">
+                <ClipboardList size={40} className="maint-empty-icon" />
+                <h4 className="maint-empty-title">
+                  {priorityFilter !== 'all'
+                    ? `No ${priorityFilter.toUpperCase()} priority tasks`
+                    : activeTab === 'completed'
+                    ? 'No completed tasks yet'
+                    : 'No assigned maintenance tasks'}
+                </h4>
+                <p className="maint-empty-desc">
+                  {priorityFilter !== 'all'
+                    ? `There are no maintenance tasks with ${priorityFilter} priority in this queue.`
+                    : activeTab === 'completed'
+                    ? 'Completed repair tickets will show up here.'
+                    : 'All campus defect reports have been resolved or are awaiting assignment.'}
+                </p>
+              </div>
+            ) : (
+              <div className="maint-jobs-list">
+                {displayedJobs.map((job) => {
+                  const isOngoing = job.status === 'in_progress';
+                  const isFixed = job.status === 'resolved' || job.status === 'closed';
 
-                return (
-                  <div
-                    key={job.id}
-                    className={`maint-job-card priority-${job.priority}`}
-                  >
-                    {/* Left: Thumbnail & Details */}
-                    <div className="maint-job-left">
-                      <img
-                        src={job.image_url}
-                        alt={job.title}
-                        className="maint-job-thumb"
-                        onError={(e) => {
-                          e.target.src = '/images/hero_ac_defect.jpg';
-                        }}
-                      />
-                      <div className="maint-job-info">
-                        <h4 className="maint-job-title">{job.title}</h4>
-                        <div className="maint-job-location">{job.location_summary}</div>
-                        <div className="maint-job-meta-row">
-                          <span className={`maint-priority-badge ${job.priority}`}>
-                            {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
-                          </span>
-                          <span className="maint-job-assigned-date">
-                            <Calendar size={13} />
-                            Assigned: {job.assigned_date}
-                          </span>
+                  return (
+                    <div
+                      key={job.id}
+                      className={`maint-job-card priority-${job.priority}`}
+                    >
+                      {/* Left: Thumbnail & Details */}
+                      <div className="maint-job-left">
+                        <img
+                          src={job.image_url}
+                          alt={job.title}
+                          className="maint-job-thumb"
+                          onError={(e) => {
+                            e.target.src = '/images/hero_ac_defect.jpg';
+                          }}
+                        />
+                        <div className="maint-job-info">
+                          <h4 className="maint-job-title">{job.title}</h4>
+                          <div className="maint-job-location">{job.location_summary}</div>
+                          <div className="maint-job-meta-row">
+                            <span className={`maint-priority-badge ${job.priority}`}>
+                              {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
+                            </span>
+                            <span className="maint-job-assigned-date">
+                              <Calendar size={13} />
+                              Assigned: {job.assigned_date}
+                            </span>
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    {/* Right: Actions */}
-                    <div className="maint-job-actions">
-                      <button
-                        type="button"
-                        className="maint-btn-details"
-                        onClick={() => setSelectedJobId(job.id)}
-                      >
-                        View Details
-                      </button>
-                      <button
-                        type="button"
-                        className={`maint-btn-start ${isFixed ? 'completed' : isOngoing ? 'in-progress' : ''}`}
-                        onClick={(e) => {
-                          if (!isFixed) {
-                            handleStartRepair(job.id, e);
-                          }
-                        }}
-                      >
-                        {isFixed ? 'Completed' : isOngoing ? 'In Progress' : 'Start Repair'}
-                      </button>
+                      {/* Right: Actions */}
+                      <div className="maint-job-actions">
+                        <button
+                          type="button"
+                          className="maint-btn-details"
+                          onClick={() => setSelectedJobId(job.id)}
+                        >
+                          View Details
+                        </button>
+                        <button
+                          type="button"
+                          className={`maint-btn-start ${isFixed ? 'completed' : isOngoing ? 'in-progress' : ''}`}
+                          onClick={(e) => {
+                            if (!isFixed) {
+                              handleStartRepair(job.id, e);
+                            }
+                          }}
+                        >
+                          {isFixed ? 'Completed' : isOngoing ? 'In Progress' : 'Start Repair'}
+                        </button>
+                      </div>
                     </div>
-                  </div>
-                );
-              })}
-            </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
       </main>

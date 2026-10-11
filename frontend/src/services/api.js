@@ -19,7 +19,9 @@ export async function fetchStats() {
 export async function fetchReports(filters = {}) {
   try {
     const query = new URLSearchParams(filters).toString();
-    const res = await fetch(`${API_BASE}/reports.php?${query}`);
+    const res = await fetch(`${API_BASE}/reports.php?${query}`, {
+      credentials: 'include',
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -30,7 +32,9 @@ export async function fetchReports(filters = {}) {
 
 export async function fetchReportDetail(id) {
   try {
-    const res = await fetch(`${API_BASE}/reports.php?action=detail&id=${id}`);
+    const res = await fetch(`${API_BASE}/reports.php?action=detail&id=${id}`, {
+      credentials: 'include',
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -44,6 +48,7 @@ export async function assignReport({ report_id, assigned_to, assigned_by = 1, no
     const res = await fetch(`${API_BASE}/reports.php?action=assign`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ report_id, assigned_to, assigned_by, notes }),
     });
     return await res.json();
@@ -58,6 +63,7 @@ export async function updateReportStatus({ report_id, status, remarks = '', chan
     const res = await fetch(`${API_BASE}/reports.php?action=update_status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ report_id, status, remarks, changed_by }),
     });
     return await res.json();
@@ -109,6 +115,7 @@ export async function addBuilding(data) {
     const res = await fetch(`${API_BASE}/buildings.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     });
     return await res.json();
@@ -120,7 +127,9 @@ export async function addBuilding(data) {
 
 export async function fetchStaff() {
   try {
-    const res = await fetch(`${API_BASE}/staff.php`);
+    const res = await fetch(`${API_BASE}/staff.php`, {
+      credentials: 'include',
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -134,6 +143,7 @@ export async function addStaffMember(data) {
     const res = await fetch(`${API_BASE}/staff.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     });
     return await res.json();

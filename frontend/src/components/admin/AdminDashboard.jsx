@@ -208,7 +208,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       showToast(res.message || 'Personnel added successfully.');
       await refreshData();
     } else {
-      alert(res?.message || 'Failed to add staff member.');
+      alert(res?.message || res?.error || 'Failed to add staff member.');
     }
   };
 
@@ -219,7 +219,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       showToast(res.message || 'Campus building added successfully.');
       await refreshData();
     } else {
-      alert(res?.message || 'Failed to register building.');
+      alert(res?.message || res?.error || 'Failed to register building.');
     }
   };
 

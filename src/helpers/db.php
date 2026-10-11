@@ -160,6 +160,18 @@ if (!function_exists('db_last_id')) {
     }
 }
 
+if (!function_exists('db_last_insert_id')) {
+    /**
+     * Get the last inserted auto-increment ID as integer.
+     *
+     * @return int
+     */
+    function db_last_insert_id(): int
+    {
+        return (int) db()->lastInsertId();
+    }
+}
+
 if (!function_exists('db_transaction')) {
     /**
      * Execute a callable within a database transaction.

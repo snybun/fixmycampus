@@ -521,17 +521,23 @@ try {
             l.id AS location_id,
             l.name AS location_name,
             l.room_number,
+            f.floor_name,
             u.id AS reporter_id,
             u.full_name AS reporter_name,
             u.email AS reporter_email,
             u.user_identifier AS reporter_identifier,
             ra.assigned_to AS worker_id,
+            ra.assigned_at,
+            ra.target_completion_date,
+            ra.assignment_notes,
+            ra.status AS assignment_status,
             w.full_name AS worker_name,
             w.department AS worker_department,
             (SELECT file_path FROM `report_attachments` WHERE report_id = r.id ORDER BY id ASC LIMIT 1) AS primary_photo
         FROM `reports` r
         LEFT JOIN `categories` c ON r.category_id = c.id
         LEFT JOIN `locations` l ON r.location_id = l.id
+        LEFT JOIN `floors` f ON l.floor_id = f.id
         LEFT JOIN `buildings` b ON l.building_id = b.id
         LEFT JOIN `users` u ON r.reporter_id = u.id
         LEFT JOIN `report_assignments` ra ON r.id = ra.report_id
@@ -567,6 +573,12 @@ try {
     if (!empty($categoryFilter) && $categoryFilter !== 'all') {
         $sql .= " AND c.id = :category_id";
         $params[':category_id'] = (int)$categoryFilter;
+    }
+
+    $workerFilter = $_GET['worker_id'] ?? $_GET['assigned_to'] ?? null;
+    if (!empty($workerFilter) && $workerFilter !== 'all') {
+        $sql .= " AND ra.assigned_to = :worker_id";
+        $params[':worker_id'] = (int)$workerFilter;
     }
 
     if (!empty($search)) {
