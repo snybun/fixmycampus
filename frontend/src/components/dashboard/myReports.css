@@ -421,6 +421,26 @@
   line-height: 1.5;
 }
 
+.myreports-report-btn-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #059669;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.myreports-report-btn-empty:hover {
+  background-color: #047857;
+}
+
 /* Responsive adjustments */
 @media (max-width: 768px) {
   .myreports-page-wrapper {

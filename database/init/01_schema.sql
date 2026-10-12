@@ -274,6 +274,7 @@ CREATE TABLE `notifications` (
     `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
     `user_id` INT UNSIGNED NOT NULL,
     `report_id` INT UNSIGNED NULL,
+    `type` VARCHAR(50) NOT NULL DEFAULT 'info',
     `title` VARCHAR(150) NOT NULL,
     `message` TEXT NOT NULL,
     `is_read` TINYINT(1) NOT NULL DEFAULT 0,

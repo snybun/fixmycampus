@@ -4,167 +4,11 @@ import {
   SlidersHorizontal,
   ChevronRight,
   FileQuestion,
+  Plus,
 } from 'lucide-react';
+import { fetchReports } from '../../services/api';
 import ReportDetailsView from './ReportDetailsView';
 import './myReports.css';
-
-// Default mock reports matching user mockup screenshot
-export const DEFAULT_MY_REPORTS = [
-  {
-    id: 153,
-    ticket_number: 'FM-2026-00153',
-    date: 'Aug 25, 2026',
-    formattedDateReported: 'August 25, 2026 at 2:14 PM',
-    title: 'Broken Air Conditioner',
-    location: 'PTC Building • Room 307',
-    building: 'PTC Building',
-    room: 'Room 307',
-    priority: 'High',
-    status: 'assigned',
-    statusLabel: 'Worker Assigned',
-    category: 'Air Conditioning & Ventilation',
-    description: 'The wall-mounted AC unit in Room 307 is blowing warm air and making a vibrating noise during lectures. Needs compressor inspection and refrigerant check.',
-    image: '/images/hero_ac_defect.jpg',
-    stepIndex: 2,
-    reportedDate: 'Aug 25',
-    verifiedDate: 'Aug 26',
-    assignedDate: 'Aug 26',
-    progressDate: 'Pending',
-    fixedDate: 'Pending',
-    assignedWorker: {
-      name: 'Mark Santos',
-      role: 'Lead HVAC Technician',
-    },
-    updatesLog: [
-      { date: 'Aug 27, 2026', message: 'Repair scheduled for August 28' },
-      { date: 'Aug 26, 2026', message: 'Worker assigned: Mark Santos' },
-      { date: 'Aug 26, 2026', message: 'Report verified by admin' },
-    ],
-  },
-  {
-    id: 148,
-    ticket_number: 'FM-2026-00148',
-    date: 'Aug 23, 2026',
-    formattedDateReported: 'August 23, 2026 at 10:45 AM',
-    title: 'Leaking Pipe in Washroom',
-    location: 'CMA Building • Ground Floor',
-    building: 'CMA Building',
-    room: 'Ground Floor Restroom',
-    priority: 'Urgent',
-    status: 'in_progress',
-    statusLabel: 'Repair Ongoing',
-    category: 'Plumbing & Restroom',
-    description: 'Water is pooling on the ground floor washroom tiles from a leaking under-sink supply pipe. Creates a major slip hazard for passing students.',
-    image: '/images/faulty_light_switch.jpg',
-    stepIndex: 3,
-    reportedDate: 'Aug 23',
-    verifiedDate: 'Aug 23',
-    assignedDate: 'Aug 24',
-    progressDate: 'Aug 24',
-    fixedDate: 'Pending',
-    assignedWorker: {
-      name: 'Danilo Reyes',
-      role: 'Senior Campus Plumber',
-    },
-    updatesLog: [
-      { date: 'Aug 24, 2026', message: 'Water shutoff valve closed, pipe replacement underway' },
-      { date: 'Aug 24, 2026', message: 'Technician dispatched to CMA Building Ground Floor' },
-      { date: 'Aug 23, 2026', message: 'Hazard flagged as urgent and verified by facilities supervisor' },
-    ],
-  },
-  {
-    id: 145,
-    ticket_number: 'FM-2026-00145',
-    date: 'Aug 20, 2026',
-    formattedDateReported: 'August 20, 2026 at 3:30 PM',
-    title: 'Flickering Lecture Hall Lights',
-    location: 'NH Building • Hall B',
-    building: 'NH Building',
-    room: 'Hall B',
-    priority: 'Medium',
-    status: 'under_review',
-    statusLabel: 'Verified',
-    category: 'Electrical & Lighting',
-    description: 'Overhead LED ballast in the front row of Hall B is flickering constantly, causing eye strain during presentations. Needs ballast replacement.',
-    image: '/images/damaged_whiteboard.jpg',
-    stepIndex: 1,
-    reportedDate: 'Aug 20',
-    verifiedDate: 'Aug 21',
-    assignedDate: 'Pending',
-    progressDate: 'Pending',
-    fixedDate: 'Pending',
-    assignedWorker: {
-      name: 'Pending Assignment',
-      role: 'Electrical Maintenance Team',
-    },
-    updatesLog: [
-      { date: 'Aug 21, 2026', message: 'Issue verified on-site by facilities inspector' },
-      { date: 'Aug 20, 2026', message: 'Defect ticket registered in campus queue' },
-    ],
-  },
-  {
-    id: 139,
-    ticket_number: 'FM-2026-00139',
-    date: 'Aug 15, 2026',
-    formattedDateReported: 'August 15, 2026 at 9:15 AM',
-    title: 'Loose Staircase Handrail',
-    location: 'NH Building • Center Stairs',
-    building: 'NH Building',
-    room: 'Center Stairs',
-    priority: 'High',
-    status: 'resolved',
-    statusLabel: 'Fixed',
-    category: 'Safety & Hardware',
-    description: 'Wall anchors for the stainless steel handrail on the 2nd floor landing have come loose from the drywall. Re-anchored with concrete sleeve fasteners.',
-    image: '/images/hero_ac_defect.jpg',
-    stepIndex: 4,
-    reportedDate: 'Aug 15',
-    verifiedDate: 'Aug 15',
-    assignedDate: 'Aug 16',
-    progressDate: 'Aug 17',
-    fixedDate: 'Aug 18',
-    assignedWorker: {
-      name: 'Ronaldo Cruz',
-      role: 'Structural Maintenance Specialist',
-    },
-    updatesLog: [
-      { date: 'Aug 18, 2026', message: 'Anchors replaced, load testing passed, job marked fixed' },
-      { date: 'Aug 17, 2026', message: 'Repair started on 2nd floor staircase landing' },
-      { date: 'Aug 16, 2026', message: 'Worker assigned: Ronaldo Cruz' },
-    ],
-  },
-  {
-    id: 132,
-    ticket_number: 'FM-2026-00132',
-    date: 'Aug 10, 2026',
-    formattedDateReported: 'August 10, 2026 at 11:00 AM',
-    title: 'Graffiti on Exterior Wall',
-    location: 'Gymnasium • Near CAS Office',
-    building: 'Gymnasium',
-    room: 'Near CAS Office',
-    priority: 'Low',
-    status: 'resolved',
-    statusLabel: 'Fixed',
-    category: 'Cleaning & Aesthetics',
-    description: 'Spray paint tagging removed from brick exterior near the east side exit of the Gymnasium. Surface scrubbed and repainted.',
-    image: '/images/faulty_light_switch.jpg',
-    stepIndex: 4,
-    reportedDate: 'Aug 10',
-    verifiedDate: 'Aug 10',
-    assignedDate: 'Aug 11',
-    progressDate: 'Aug 11',
-    fixedDate: 'Aug 12',
-    assignedWorker: {
-      name: 'Elena Bautista',
-      role: 'Grounds & Sanitation Crew',
-    },
-    updatesLog: [
-      { date: 'Aug 12, 2026', message: 'Wall repainted and site inspection passed' },
-      { date: 'Aug 11, 2026', message: 'Sanitization and chemical scrub completed' },
-      { date: 'Aug 11, 2026', message: 'Worker assigned: Elena Bautista' },
-    ],
-  },
-];
 
 export default function MyReportsView({
   liveReports = [],
@@ -174,6 +18,8 @@ export default function MyReportsView({
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'reported', 'verified', 'worker_assigned', 'in_progress', 'resolved'
   const [selectedReport, setSelectedReport] = useState(initialSelectedReport);
+  const [localReports, setLocalReports] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   useEffect(() => {
     if (initialSelectedReport) {
@@ -181,98 +27,115 @@ export default function MyReportsView({
     }
   }, [initialSelectedReport]);
 
-  // Combine live reports with fallback demo reports if live user has no reported items yet
-  const allReports = useMemo(() => {
+  // Load reports from API if liveReports wasn't passed or is empty
+  useEffect(() => {
+    let isMounted = true;
     if (liveReports && liveReports.length > 0) {
-      // Map API reports to MyReports card format
-      const mapped = liveReports.map((r) => {
-        const rawStatus = (r.status || 'submitted').toLowerCase();
-        let statusLabel = 'Reported';
-        let stepIdx = 0;
-        if (rawStatus === 'resolved' || rawStatus === 'closed') {
-          statusLabel = 'Fixed';
-          stepIdx = 4;
-        } else if (rawStatus === 'in_progress') {
-          statusLabel = 'Repair Ongoing';
-          stepIdx = 3;
-        } else if (rawStatus === 'assigned') {
-          statusLabel = 'Worker Assigned';
-          stepIdx = 2;
-        } else if (rawStatus === 'under_review') {
-          statusLabel = 'Verified';
-          stepIdx = 1;
-        }
+setLocalReports(liveReports);
+    } else {
+      setLoading(true);
+      fetchReports({ limit: 100 })
+        .then((res) => {
+          if (isMounted && res && res.success && Array.isArray(res.data)) {
+            setLocalReports(res.data);
+          }
+        })
+        .catch((err) => {
+          console.error('Error fetching student reports:', err);
+        })
+        .finally(() => {
+          if (isMounted) setLoading(false);
+        });
 
-        const rawPriority = (r.priority || 'medium').toLowerCase();
-        let priorityLabel = 'Medium';
-        if (rawPriority === 'emergency') priorityLabel = 'Urgent';
-        else if (rawPriority === 'high') priorityLabel = 'High';
-        else if (rawPriority === 'low') priorityLabel = 'Low';
-
-        const repDate = r.reported_at
-          ? new Date(r.reported_at).toLocaleDateString('en-US', {
-              month: 'short',
-              day: 'numeric',
-              year: 'numeric',
-            })
-          : 'Recently';
-
-        return {
-          id: r.id,
-          ticket_number: r.ticket_number || `FM-2026-00${r.id}`,
-          date: repDate,
-          formattedDateReported: r.reported_at
-            ? new Date(r.reported_at).toLocaleString('en-US', {
-                month: 'long',
-                day: 'numeric',
-                year: 'numeric',
-                hour: 'numeric',
-                minute: '2-digit',
-              })
-            : `${repDate} at 2:14 PM`,
-          title: r.title,
-          location: `${r.building_name || 'Campus'} • ${r.room_number || r.specific_area || 'Facility Area'}`,
-          building: r.building_name || 'Campus',
-          room: r.room_number || r.specific_area || 'Facility Area',
-          priority: priorityLabel,
-          status: rawStatus,
-          statusLabel,
-          is_confirmed: Boolean(r.is_confirmed || r.has_confirmed),
-          confirmation_count: Number(r.confirmation_count || 1),
-          category: r.category_name || 'General Facility Defect',
-          description: r.description || 'Facility maintenance defect ticket.',
-          image: r.primary_photo || r.image || '/images/hero_ac_defect.jpg',
-          stepIndex: stepIdx,
-          assignedWorker: r.assigned_worker_name
-            ? {
-                name: r.assigned_worker_name,
-                role: r.assigned_worker_role || 'Facilities Maintenance Team',
-              }
-            : null,
-          updatesLog: [
-            ...(stepIdx >= 1
-              ? [
-                  {
-                    date: repDate,
-                    message: `Report status updated to ${statusLabel}`,
-                  },
-                ]
-              : []),
-            {
-              date: repDate,
-              message: 'Defect report received and registered in campus queue',
-            },
-          ],
-        };
-      });
-
-      // Merge defaults if needed so user has rich examples
-      const existingIds = new Set(mapped.map((m) => m.id));
-      const fallbackItems = DEFAULT_MY_REPORTS.filter((d) => !existingIds.has(d.id));
-      return [...mapped, ...fallbackItems];
     }
-    return DEFAULT_MY_REPORTS;
+
+    return () => {
+      isMounted = false;
+    };
   }, [liveReports]);
+
+  // Derive reports directly from the database without any mock fallback
+  const allReports = useMemo(() => {
+    const source = (liveReports && liveReports.length > 0) ? liveReports : localReports;
+    if (!source || !Array.isArray(source)) return [];
+
+    return source.map((r) => {
+      const rawStatus = (r.status || 'submitted').toLowerCase();
+      let statusLabel = 'Reported';
+      let stepIdx = 0;
+      if (rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed') {
+        statusLabel = 'Fixed';
+        stepIdx = 4;
+      } else if (rawStatus === 'in_progress') {
+        statusLabel = 'Repair Ongoing';
+        stepIdx = 3;
+      } else if (rawStatus === 'assigned') {
+        statusLabel = 'Worker Assigned';
+        stepIdx = 2;
+      } else if (rawStatus === 'under_review') {
+        statusLabel = 'Verified';
+        stepIdx = 1;
+      }
+
+      const rawPriority = String(r.priority || 'medium').toLowerCase();
+      let priorityLabel = 'Medium';
+      if (rawPriority === 'emergency' || rawPriority === 'urgent') priorityLabel = 'Urgent';
+      else if (rawPriority === 'high') priorityLabel = 'High';
+      else if (rawPriority === 'low') priorityLabel = 'Low';
+
+      const repDate = r.reported_at
+        ? new Date(r.reported_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })
+        : (r.date || 'Recently');
+
+      const formattedDateReported = r.reported_at
+        ? new Date(r.reported_at).toLocaleString('en-US', {
+            month: 'long',
+            day: 'numeric',
+            year: 'numeric',
+            hour: 'numeric',
+            minute: '2-digit',
+          })
+        : (r.formattedDateReported || `${repDate} at 2:14 PM`);
+
+      const building = r.building_name || r.building || 'Campus';
+      const room = r.room_number || r.specific_area || r.room || 'Facility Area';
+      const location = r.location || `${building} • ${room}`;
+
+      const assignedWorker = r.assignedWorker || (r.worker_name
+        ? {
+            name: r.worker_name,
+            role: r.worker_department ? `${r.worker_department} Staff` : 'Assigned Technician',
+          }
+        : null);
+
+      return {
+        ...r,
+        id: r.id,
+        ticket_number: r.ticket_number || `FMC-${r.id}`,
+        date: repDate,
+        reportedDate: repDate,
+        formattedDateReported,
+        title: r.title || 'Campus Facility Defect',
+        location,
+        building,
+        room,
+        priority: priorityLabel,
+        status: rawStatus,
+        statusLabel,
+        is_confirmed: Boolean(r.is_confirmed || r.has_confirmed),
+        confirmation_count: Number(r.confirmation_count || 1),
+        category: r.category_name || r.category || 'General Facility Defect',
+        description: r.description || 'Facility maintenance defect ticket.',
+        image: r.primary_photo || r.image_url || r.image || '/images/hero_ac_defect.jpg',
+        stepIndex: stepIdx,
+        assignedWorker,
+      };
+    });
+  }, [liveReports, localReports]);
 
   // Filter reports by search and status tab
   const filteredReports = useMemo(() => {
@@ -440,13 +303,29 @@ export default function MyReportsView({
             <div className="myreports-empty-icon">
               <FileQuestion size={32} strokeWidth={1.8} />
             </div>
-            <h3 className="myreports-empty-title">No reports found</h3>
+            <h3 className="myreports-empty-title">
+              {loading ? 'Loading reports...' : 'No reports found'}
+            </h3>
             <p className="myreports-empty-desc">
-              {searchQuery
+              {loading
+                ? 'Retrieving your campus facility reports from the database...'
+                : searchQuery
                 ? `No facility issues match your query "${searchQuery}".`
-                : 'You have not submitted any facility issue reports matching this status filter.'}
+                : statusFilter !== 'all'
+                ? `No facility issues found matching status filter "${statusFilter.replace('_', ' ')}".`
+                : 'You have not submitted any facility issue reports yet.'}
             </p>
-            {searchQuery && (
+            {onNavigate && statusFilter === 'all' && !searchQuery && !loading && (
+              <button
+                type="button"
+                className="myreports-report-btn-empty"
+                onClick={() => onNavigate('report-issue')}
+              >
+                <Plus size={16} />
+                <span>Report a Facility Issue</span>
+              </button>
+            )}
+            {(searchQuery || statusFilter !== 'all') && (
               <button
                 type="button"
                 className="myreports-tab active"
@@ -456,7 +335,7 @@ export default function MyReportsView({
                   setStatusFilter('all');
                 }}
               >
-                Clear Search
+                Clear Filters
               </button>
             )}
           </div>

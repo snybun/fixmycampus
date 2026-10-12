@@ -10,9 +10,11 @@ import {
   Wrench,
   LogOut,
   User,
+  Menu,
   X,
   CheckCircle2,
   SlidersHorizontal,
+  Bell,
 } from 'lucide-react';
 import {
   fetchStats,
@@ -20,6 +22,7 @@ import {
   fetchStaff,
   fetchBuildings,
   fetchCategories,
+  fetchNotifications,
   assignReport,
   updateReportStatus,
   addStaffMember,
@@ -34,6 +37,7 @@ import BuildingsAndRooms from './BuildingsAndRooms';
 import AnalyticsView from './AnalyticsView';
 import UsersView from './UsersView';
 import AdminSettings from './AdminSettings';
+import AdminNotificationsView from './AdminNotificationsView';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import './admin.css';
@@ -41,6 +45,7 @@ import './admin.css';
 export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'reports' | 'report-details' | 'staff' | 'buildings' | 'analytics' | 'users' | 'settings'
   const [selectedReport, setSelectedReport] = useState(null);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   // Real Database Entities
   const [stats, setStats] = useState(null);
@@ -49,6 +54,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [buildings, setBuildings] = useState([]);
   const [locations, setLocations] = useState([]);
   const [categories, setCategories] = useState([]);
+  const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
 
   // Quick modals for table actions
@@ -60,12 +66,13 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   // Load all real data on mount
   const refreshData = async () => {
     try {
-      const [statsRes, reportsRes, staffRes, buildingsRes, catRes] = await Promise.all([
+      const [statsRes, reportsRes, staffRes, buildingsRes, catRes, notifRes] = await Promise.all([
         fetchStats(),
         fetchReports({ limit: 100 }),
         fetchStaff(),
         fetchBuildings(),
         fetchCategories(),
+        fetchNotifications(),
       ]);
 
       if (statsRes?.success && statsRes.data) {
@@ -84,6 +91,9 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       if (catRes?.success && catRes.data) {
         setCategories(catRes.data);
       }
+      if (notifRes?.success && typeof notifRes.unread_count === 'number') {
+        setUnreadNotifCount(notifRes.unread_count);
+      }
     } catch (err) {
       console.error('Error refreshing admin dashboard data:', err);
     }
@@ -93,15 +103,50 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
     refreshData();
   }, []);
 
+  // Close mobile drawer on Escape key or desktop resize
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setMobileMenuOpen(false);
+    };
+    const handleResize = () => {
+      if (window.innerWidth > 900) setMobileMenuOpen(false);
+    };
+    window.addEventListener('keydown', handleKeyDown);
+    window.addEventListener('resize', handleResize);
+    return () => {
+      window.removeEventListener('keydown', handleKeyDown);
+      window.removeEventListener('resize', handleResize);
+    };
+  }, []);
+
+  // Prevent background scroll when mobile drawer is open
+  useEffect(() => {
+    if (mobileMenuOpen) {
+      document.body.style.overflow = 'hidden';
+    } else {
+      document.body.style.overflow = '';
+    }
+    return () => {
+      document.body.style.overflow = '';
+    };
+  }, [mobileMenuOpen]);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3500);
+  };
+
+  const handleNavTabClick = (tab) => {
+    setActiveTab(tab);
+    setMobileMenuOpen(false);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   // View Report in Details View
   const handleViewReport = (report) => {
     setSelectedReport(report);
     setActiveTab('report-details');
+    setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
@@ -171,7 +216,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       showToast(res.message || 'Personnel added successfully.');
       await refreshData();
     } else {
-      alert(res?.message || 'Failed to add staff member.');
+      alert(res?.message || res?.error || 'Failed to add staff member.');
     }
   };
 
@@ -182,7 +227,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       showToast(res.message || 'Campus building added successfully.');
       await refreshData();
     } else {
-      alert(res?.message || 'Failed to register building.');
+      alert(res?.message || res?.error || 'Failed to register building.');
     }
   };
 
@@ -192,15 +237,99 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   return (
     <div className="admin-layout">
       {/* --------------------------------------------------------------------
-          Sidebar Navigation (Matches Image 1-5 Left Nav)
+          Mobile Header Bar (Visible on mobile <= 900px)
           -------------------------------------------------------------------- */}
-      <aside className="admin-sidebar" aria-label="Super Administrator Navigation">
+      <header className="admin-mobile-header" aria-label="Mobile Navigation Bar">
+        <div className="admin-mobile-brand">
+          <div className="admin-brand-icon">
+            <Wrench size={18} strokeWidth={2.4} />
+          </div>
+          <span className="admin-brand-name">FixMyCampus</span>
+        </div>
+
+        <div className="admin-mobile-actions">
+          <button
+            type="button"
+            className="admin-header-bell-btn"
+            onClick={() => handleNavTabClick('notifications')}
+            title="Notifications"
+            aria-label="View notifications"
+            id="admin-mobile-notif-btn"
+          >
+            <Bell size={18} />
+            {unreadNotifCount > 0 && (
+              <span
+                style={{
+                  position: 'absolute',
+                  top: -4,
+                  right: -4,
+                  backgroundColor: '#ef4444',
+                  color: '#ffffff',
+                  fontSize: '0.68rem',
+                  fontWeight: 700,
+                  padding: '1px 5px',
+                  borderRadius: 9999,
+                  lineHeight: 1.2,
+                }}
+              >
+                {unreadNotifCount}
+              </span>
+            )}
+          </button>
+
+          <UserProfileDropdown
+            currentUser={currentUser}
+            onNavigate={onNavigate}
+            onSettingsClick={() => handleNavTabClick('settings')}
+            onLogout={onLogout}
+            idPrefix="admin-mobile-profile"
+          />
+
+          <button
+            type="button"
+            className="admin-mobile-toggle"
+            onClick={() => setMobileMenuOpen((prev) => !prev)}
+            aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+            aria-expanded={mobileMenuOpen}
+            id="admin-mobile-menu-toggle"
+          >
+            {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
+          </button>
+        </div>
+      </header>
+
+      {/* Mobile Drawer Backdrop */}
+      {mobileMenuOpen && (
+        <div
+          className="admin-mobile-backdrop"
+          onClick={() => setMobileMenuOpen(false)}
+          aria-hidden="true"
+        />
+      )}
+
+      {/* --------------------------------------------------------------------
+          Sidebar Navigation (Desktop Sidebar & Mobile Drawer)
+          -------------------------------------------------------------------- */}
+      <aside
+        className={`admin-sidebar ${mobileMenuOpen ? 'mobile-open' : ''}`}
+        aria-label="Super Administrator Navigation"
+      >
         {/* Brand */}
         <div className="admin-sidebar-brand">
           <div className="admin-brand-icon">
             <Wrench size={18} strokeWidth={2.4} />
           </div>
           <span className="admin-brand-name">FixMyCampus</span>
+
+          {/* Close button inside mobile drawer */}
+          <button
+            type="button"
+            className="admin-mobile-close-btn"
+            onClick={() => setMobileMenuOpen(false)}
+            aria-label="Close navigation menu"
+          >
+            <X size={18} />
+          </button>
         </div>
 
         {/* Nav Items */}
@@ -208,7 +337,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <button
             type="button"
             className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => setActiveTab('dashboard')}
+            onClick={() => handleNavTabClick('dashboard')}
           >
             <LayoutDashboard size={18} />
             <span>Dashboard</span>
@@ -216,8 +345,20 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
           <button
             type="button"
+            className={`admin-nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
+            onClick={() => handleNavTabClick('notifications')}
+          >
+            <Bell size={18} />
+            <span>Notifications</span>
+            {unreadNotifCount > 0 && (
+              <span className="admin-nav-badge">{unreadNotifCount}</span>
+            )}
+          </button>
+
+          <button
+            type="button"
             className={`admin-nav-item ${['reports', 'report-details'].includes(activeTab) ? 'active' : ''}`}
-            onClick={() => setActiveTab('reports')}
+            onClick={() => handleNavTabClick('reports')}
           >
             <FileText size={18} />
             <span>Reports</span>
@@ -226,7 +367,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <button
             type="button"
             className={`admin-nav-item ${activeTab === 'staff' ? 'active' : ''}`}
-            onClick={() => setActiveTab('staff')}
+            onClick={() => handleNavTabClick('staff')}
           >
             <Users size={18} />
             <span>Maintenance Staff</span>
@@ -235,7 +376,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <button
             type="button"
             className={`admin-nav-item ${activeTab === 'buildings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('buildings')}
+            onClick={() => handleNavTabClick('buildings')}
           >
             <Building2 size={18} />
             <span>Buildings &amp; Rooms</span>
@@ -244,7 +385,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <button
             type="button"
             className={`admin-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-            onClick={() => setActiveTab('analytics')}
+            onClick={() => handleNavTabClick('analytics')}
           >
             <BarChart2 size={18} />
             <span>Analytics</span>
@@ -253,7 +394,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <button
             type="button"
             className={`admin-nav-item ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => setActiveTab('users')}
+            onClick={() => handleNavTabClick('users')}
           >
             <UserCheck size={18} />
             <span>Users</span>
@@ -262,7 +403,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <button
             type="button"
             className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => setActiveTab('settings')}
+            onClick={() => handleNavTabClick('settings')}
           >
             <Settings size={18} />
             <span>Settings</span>
@@ -283,7 +424,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <UserProfileDropdown
             currentUser={currentUser}
             onNavigate={onNavigate}
-            onSettingsClick={() => setActiveTab('settings')}
+            onSettingsClick={() => handleNavTabClick('settings')}
             onLogout={onLogout}
             direction="up"
             fullWidth={true}
@@ -330,6 +471,16 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             recentReports={reports}
             onViewReport={handleViewReport}
             onAssignReport={handleOpenAssign}
+          />
+        )}
+
+        {/* View 1.5: System Notifications */}
+        {activeTab === 'notifications' && (
+          <AdminNotificationsView
+            reports={reports}
+            onViewReport={handleViewReport}
+            showToast={showToast}
+            onUnreadChange={setUnreadNotifCount}
           />
         )}
 

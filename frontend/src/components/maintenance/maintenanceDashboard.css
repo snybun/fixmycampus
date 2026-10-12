@@ -1627,3 +1627,60 @@
   }
 }
 
+/* Empty & Loading States */
+.maint-empty-state {
+  background-color: var(--maint-card-bg);
+  border: 1px dashed var(--maint-border);
+  border-radius: 14px;
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  margin: 16px 0;
+}
+
+.maint-empty-icon {
+  color: var(--maint-text-sub);
+  margin-bottom: 14px;
+  opacity: 0.8;
+}
+
+.maint-empty-title {
+  margin: 0 0 6px 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: var(--maint-text-main);
+}
+
+.maint-empty-desc {
+  margin: 0;
+  font-size: 0.88rem;
+  color: var(--maint-text-muted);
+  max-width: 420px;
+  line-height: 1.5;
+}
+
+.maint-loading-spinner {
+  width: 32px;
+  height: 32px;
+  border: 3px solid #e2e8f0;
+  border-top-color: #059669;
+  border-radius: 50%;
+  animation: maintSpin 0.8s linear infinite;
+  margin-bottom: 14px;
+}
+
+@keyframes maintSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* User footer container for UserProfileDropdown */
+.maint-sidebar .fmc-profile-menu-container {
+  width: 100%;
+}
+
+

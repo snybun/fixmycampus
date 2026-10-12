@@ -19,7 +19,9 @@ export async function fetchStats() {
 export async function fetchReports(filters = {}) {
   try {
     const query = new URLSearchParams(filters).toString();
-    const res = await fetch(`${API_BASE}/reports.php?${query}`);
+    const res = await fetch(`${API_BASE}/reports.php?${query}`, {
+      credentials: 'include',
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -30,7 +32,9 @@ export async function fetchReports(filters = {}) {
 
 export async function fetchReportDetail(id) {
   try {
-    const res = await fetch(`${API_BASE}/reports.php?action=detail&id=${id}`);
+    const res = await fetch(`${API_BASE}/reports.php?action=detail&id=${id}`, {
+      credentials: 'include',
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -44,6 +48,7 @@ export async function assignReport({ report_id, assigned_to, assigned_by = 1, no
     const res = await fetch(`${API_BASE}/reports.php?action=assign`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ report_id, assigned_to, assigned_by, notes }),
     });
     return await res.json();
@@ -58,6 +63,7 @@ export async function updateReportStatus({ report_id, status, remarks = '', chan
     const res = await fetch(`${API_BASE}/reports.php?action=update_status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify({ report_id, status, remarks, changed_by }),
     });
     return await res.json();
@@ -79,6 +85,48 @@ export async function deleteReport(reportId) {
   } catch (err) {
     console.error('Error deleting report:', err);
     return { success: false, message: 'Connection error while deleting report.' };
+  }
+}
+
+export async function fetchNotifications() {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching notifications:', err);
+    return { success: false, unread_count: 0, count: 0, data: [] };
+  }
+}
+
+export async function markNotificationRead(id) {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error marking notification as read:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function markAllNotificationsRead() {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php?action=mark_all_read`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error marking all notifications as read:', err);
+    return { success: false, message: err.message };
   }
 }
 
@@ -109,6 +157,7 @@ export async function addBuilding(data) {
     const res = await fetch(`${API_BASE}/buildings.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     });
     return await res.json();
@@ -120,7 +169,9 @@ export async function addBuilding(data) {
 
 export async function fetchStaff() {
   try {
-    const res = await fetch(`${API_BASE}/staff.php`);
+    const res = await fetch(`${API_BASE}/staff.php`, {
+      credentials: 'include',
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -134,6 +185,7 @@ export async function addStaffMember(data) {
     const res = await fetch(`${API_BASE}/staff.php`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
       body: JSON.stringify(data),
     });
     return await res.json();
@@ -421,83 +473,6 @@ export async function createReport(reportData) {
   }
 }
 
-export async function fetchNotifications() {
-  try {
-    const res = await fetch(`${API_BASE}/notifications.php`, {
-      credentials: 'include',
-    });
-    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
-    return await res.json();
-  } catch (err) {
-    console.error('fetchNotifications error:', err);
-    return {
-      success: true,
-      unread_count: 2,
-      data: [
-        {
-          id: 1,
-          ticket_number: 'FM-2026-00153',
-          type: 'verified',
-          title: 'Your report FM-2026-00153 has been verified.',
-          time_ago: '2 hours ago',
-          is_read: 0,
-        },
-        {
-          id: 2,
-          ticket_number: 'FM-2026-00153',
-          type: 'assignment',
-          title: 'Maintenance worker Mark Santos has been assigned to your report FM-2026-00153.',
-          time_ago: '1 day ago',
-          is_read: 0,
-        },
-        {
-          id: 3,
-          ticket_number: 'FM-2026-00139',
-          type: 'fixed',
-          title: 'Your reported air conditioner issue FM-2026-00139 is now fixed!',
-          time_ago: '3 days ago',
-          is_read: 1,
-        },
-        {
-          id: 4,
-          ticket_number: 'FM-2026-00148',
-          type: 'update',
-          title: 'Your report FM-2026-00148 has been updated with new schedule information.',
-          time_ago: '5 days ago',
-          is_read: 1,
-        },
-      ],
-    };
-  }
-}
-
-export async function markAllNotificationsRead() {
-  try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=mark_all_read`, {
-      method: 'POST',
-      credentials: 'include',
-    });
-    return await res.json();
-  } catch (err) {
-    console.error('markAllNotificationsRead error:', err);
-    return { success: true, unread_count: 0 };
-  }
-}
-
-export async function markNotificationRead(id) {
-  try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({ id }),
-    });
-    return await res.json();
-  } catch (err) {
-    console.error('markNotificationRead error:', err);
-    return { success: true };
-  }
-}
 
 export async function checkDuplicateReport({ buildingId, buildingName, categoryId, categorySlug, roomNumber }) {
   try {
