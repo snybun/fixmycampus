@@ -122,6 +122,43 @@
   color: #ffffff;
 }
 
+.admin-nav-badge {
+  margin-left: auto;
+  background-color: #ef4444;
+  color: #ffffff;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 7px;
+  border-radius: 9999px;
+  line-height: 1.2;
+}
+
+.admin-nav-item.active .admin-nav-badge {
+  background-color: rgba(255, 255, 255, 0.28);
+  color: #ffffff;
+}
+
+.admin-header-bell-btn {
+  position: relative;
+  width: 38px;
+  height: 38px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border);
+  background-color: #ffffff;
+  color: var(--admin-text-muted);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-header-bell-btn:hover {
+  background-color: #ecfdf5;
+  color: #047857;
+  border-color: #a7f3d0;
+}
+
 .admin-sidebar-footer {
   padding: 12px 12px 16px 12px;
   border-top: 1px solid var(--admin-border);
@@ -1389,6 +1426,90 @@
 }
 
 /* --------------------------------------------------------------------------
+   Mobile Top Header Bar & Hamburger Drawer Styles
+   -------------------------------------------------------------------------- */
+.admin-mobile-header {
+  display: none;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 18px;
+  background-color: var(--admin-sidebar-bg);
+  border-bottom: 1px solid var(--admin-border);
+  position: sticky;
+  top: 0;
+  z-index: 45;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.admin-mobile-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-mobile-actions {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.admin-mobile-toggle {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  border: 1.5px solid var(--admin-border);
+  background-color: #ffffff;
+  color: #334155;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  padding: 0;
+  flex-shrink: 0;
+}
+
+.admin-mobile-toggle:hover {
+  background-color: #f1f5f9;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.admin-mobile-close-btn {
+  display: none;
+  background: transparent;
+  border: 1px solid var(--admin-border);
+  border-radius: 8px;
+  color: var(--admin-text-muted);
+  width: 32px;
+  height: 32px;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  margin-left: auto;
+  transition: all 0.15s ease;
+}
+
+.admin-mobile-close-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.admin-mobile-backdrop {
+  position: fixed;
+  inset: 0;
+  background-color: rgba(15, 23, 42, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 90;
+  animation: adminFadeIn 0.2s ease-out;
+}
+
+@keyframes adminFadeIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+/* --------------------------------------------------------------------------
    Responsive Breakpoints
    -------------------------------------------------------------------------- */
 @media (max-width: 1100px) {
@@ -1407,21 +1528,75 @@
   }
 }
 
-@media (max-width: 768px) {
+@media (max-width: 900px) {
   .admin-layout {
     flex-direction: column;
+    min-height: 100vh;
   }
+
+  .admin-mobile-header {
+    display: flex;
+  }
+
+  .admin-mobile-close-btn {
+    display: flex;
+  }
+
   .admin-sidebar {
-    width: 100%;
-    height: auto;
-    position: static;
+    position: fixed;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    width: 280px;
+    max-width: 85vw;
+    height: 100vh;
+    height: 100dvh;
+    z-index: 100;
+    transform: translateX(-100%);
+    transition: transform 0.28s cubic-bezier(0.16, 1, 0.3, 1), box-shadow 0.28s ease;
+    box-shadow: none;
+    border-right: 1px solid var(--admin-border);
+    overflow-y: auto;
   }
+
+  .admin-sidebar.mobile-open {
+    transform: translateX(0);
+    box-shadow: 0 20px 45px rgba(15, 23, 42, 0.25);
+  }
+
   .admin-stat-grid,
   .admin-staff-grid,
   .admin-buildings-grid {
     grid-template-columns: 1fr;
   }
+
+  .admin-widgets-grid {
+    grid-template-columns: 1fr;
+  }
+
   .admin-main {
-    padding: 20px 16px;
+    padding: 20px 16px 40px 16px;
+    width: 100%;
+  }
+
+  .admin-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .admin-header-title {
+    font-size: 1.45rem;
+  }
+
+  .admin-btn-black {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .admin-modal-dialog {
+    width: 95% !important;
+    max-width: 95% !important;
+    margin: 16px auto;
   }
 }

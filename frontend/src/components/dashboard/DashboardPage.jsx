@@ -19,7 +19,7 @@ import {
   Home,
   PlusCircle,
 } from 'lucide-react';
-import { fetchStats, fetchReports, deleteReport } from '../../services/api';
+import { fetchStats, fetchReports, deleteReport, fetchNotifications } from '../../services/api';
 import ConfirmationModal, { MODAL_PRESETS } from '../common/ConfirmationModal';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
@@ -51,7 +51,7 @@ export default function DashboardPage({
     return initialTab || 'home';
   });
   const [selectedReportForDetails, setSelectedReportForDetails] = useState(null);
-  const [unreadCount, setUnreadCount] = useState(2);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -79,7 +79,7 @@ export default function DashboardPage({
   // Initial reports - start empty until reported as requested
   const [reports, setReports] = useState([]);
 
-  // Load stats and real reports from backend
+  // Load stats, real reports, and notifications from backend
   useEffect(() => {
     let isMounted = true;
     fetchStats().then((res) => {
@@ -94,39 +94,95 @@ export default function DashboardPage({
       }
     });
 
-    fetchReports().then((res) => {
+    fetchNotifications().then((res) => {
+      if (isMounted && res && res.success && typeof res.unread_count === 'number') {
+        setUnreadCount(res.unread_count);
+      }
+    }).catch(() => {});
+
+    fetchReports({ limit: 100 }).then((res) => {
       if (isMounted && res.success && Array.isArray(res.data)) {
         setReports(
-          res.data.map((r) => ({
-            id: r.id,
-            title: r.title,
-            location: `${r.building_name || 'Campus'} • ${r.specific_area || r.location_name || 'Facility Area'}`,
-            date: r.reported_at
+          res.data.map((r) => {
+            const rawStatus = (r.status || 'submitted').toLowerCase();
+            let statusLabel = 'Reported';
+            let stepIdx = 0;
+            if (rawStatus === 'resolved' || rawStatus === 'closed') {
+              statusLabel = 'Fixed';
+              stepIdx = 4;
+            } else if (rawStatus === 'in_progress') {
+              statusLabel = 'Repair Ongoing';
+              stepIdx = 3;
+            } else if (rawStatus === 'assigned') {
+              statusLabel = 'Worker Assigned';
+              stepIdx = 2;
+            } else if (rawStatus === 'under_review') {
+              statusLabel = 'Verified';
+              stepIdx = 1;
+            }
+
+            const rawPriority = (r.priority || 'medium').toLowerCase();
+            let priorityLabel = 'Medium';
+            if (rawPriority === 'emergency') priorityLabel = 'Urgent';
+            else if (rawPriority === 'high') priorityLabel = 'High';
+            else if (rawPriority === 'low') priorityLabel = 'Low';
+
+            const repDate = r.reported_at
               ? new Date(r.reported_at).toLocaleDateString('en-US', {
                   month: 'short',
                   day: 'numeric',
                   year: 'numeric',
                 })
-              : 'Recently',
-            image: r.primary_photo || '/images/hero_ac_defect.jpg',
-            status: r.status,
-            statusLabel:
-              r.status === 'resolved'
-                ? 'Fixed'
-                : r.status === 'assigned'
-                ? 'Worker Assigned'
-                : r.status === 'in_progress'
-                ? 'Repair Ongoing'
-                : 'Pending',
-            badgeClass:
-              r.status === 'resolved'
-                ? 'badge-fixed'
-                : r.status === 'assigned'
-                ? 'badge-worker'
-                : 'badge-pending',
-            modalTrigger: 'update_status',
-          }))
+              : 'Recently';
+
+            const building = r.building_name || 'Campus';
+            const room = r.room_number || r.specific_area || r.location_name || 'Facility Area';
+            const location = `${building} • ${room}`;
+
+            return {
+              ...r,
+              id: r.id,
+              ticket_number: r.ticket_number || `FMC-${r.id}`,
+              title: r.title,
+              description: r.description || '',
+              location,
+              building,
+              room,
+              date: repDate,
+              reportedDate: repDate,
+              formattedDateReported: r.reported_at
+                ? new Date(r.reported_at).toLocaleString('en-US', {
+                    month: 'long',
+                    day: 'numeric',
+                    year: 'numeric',
+                    hour: 'numeric',
+                    minute: '2-digit',
+                  })
+                : `${repDate} at 2:14 PM`,
+              image: r.primary_photo || r.image_url || '/images/hero_ac_defect.jpg',
+              priority: priorityLabel,
+              status: rawStatus,
+              statusLabel,
+              category: r.category_name || 'General Facility Defect',
+              stepIndex: stepIdx,
+              assignedWorker: r.worker_name
+                ? {
+                    name: r.worker_name,
+                    role: r.worker_department ? `${r.worker_department} Staff` : 'Assigned Technician',
+                  }
+                : null,
+              badgeClass:
+                rawStatus === 'resolved' || rawStatus === 'closed'
+                  ? 'badge-fixed'
+                  : rawStatus === 'assigned'
+                  ? 'badge-worker'
+                  : 'badge-pending',
+              modalTrigger: 'update_status',
+            };
+          })
         );
+      } else {
+        setReports([]);
       }
     });
 

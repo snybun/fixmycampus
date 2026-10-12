@@ -63,6 +63,7 @@
     opacity: 0;
     transform: translateY(12px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
@@ -304,6 +305,7 @@
     opacity: 0;
     transform: scale(0.96);
   }
+
   to {
     opacity: 1;
     transform: scale(1);
@@ -403,6 +405,7 @@
 }
 
 @media (max-width: 540px) {
+
   .settings-form-row-2col,
   .settings-form-row-3col {
     grid-template-columns: 1fr;
@@ -434,6 +437,7 @@
     opacity: 0;
     transform: translate(-50%, 10px);
   }
+
   to {
     opacity: 1;
     transform: translate(-50%, 0);
