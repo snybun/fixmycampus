@@ -20,8 +20,32 @@
 .rep-details-header {
   display: flex;
   align-items: flex-start;
+  justify-content: space-between;
   gap: 16px;
   margin-bottom: 24px;
+}
+
+.rep-details-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #fee2e2;
+  color: #dc2626;
+  border: 1px solid #fca5a5;
+  border-radius: 8px;
+  padding: 8px 14px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.rep-details-delete-btn:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
 }
 
 .rep-details-back-btn {
@@ -442,6 +466,29 @@
 .rep-logs-list {
   display: flex;
   flex-direction: column;
+  max-height: 250px;
+  overflow-y: auto;
+  padding-right: 8px;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: #d1d5db transparent;
+}
+
+.rep-logs-list::-webkit-scrollbar {
+  width: 5px;
+}
+
+.rep-logs-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.rep-logs-list::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 9999px;
+}
+
+.rep-logs-list::-webkit-scrollbar-thumb:hover {
+  background-color: #9ca3af;
 }
 
 .rep-log-entry {

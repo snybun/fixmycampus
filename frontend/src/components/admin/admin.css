@@ -788,6 +788,27 @@
   background-color: #e2e8f0;
 }
 
+.admin-btn-action-delete {
+  background: var(--admin-red-bg);
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 6px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  transition: all 0.15s ease;
+}
+
+.admin-btn-action-delete:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
 /* --------------------------------------------------------------------------
    Filter & Search Bar (Report Management Screen)
    -------------------------------------------------------------------------- */
@@ -927,8 +948,37 @@
 .admin-details-header {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 14px;
   margin-bottom: 28px;
+  flex-wrap: wrap;
+}
+
+.admin-btn-delete-report {
+  background: #fef2f2;
+  border: 1px solid #fecaca;
+  color: #dc2626;
+  padding: 8px 16px;
+  border-radius: 8px;
+  font-size: 0.86rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+
+.admin-btn-delete-report:hover {
+  background-color: #fee2e2;
+  border-color: #f87171;
+  color: #b91c1c;
+}
+
+.admin-action-card-delete {
+  border-color: #fecaca;
+  background-color: #fffafb;
+  margin-top: 20px;
 }
 
 .admin-ticket-badge-lg {

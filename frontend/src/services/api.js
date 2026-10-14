@@ -130,6 +130,35 @@ export async function markAllNotificationsRead() {
   }
 }
 
+export async function deleteNotification(id) {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php?action=delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting notification:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function deleteAllNotifications() {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php?action=delete_all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting all notifications:', err);
+    return { success: false, message: err.message };
+  }
+}
+
 export async function fetchCategories() {
   try {
     const res = await fetch(`${API_BASE}/categories.php`);

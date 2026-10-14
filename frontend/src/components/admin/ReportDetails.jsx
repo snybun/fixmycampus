@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { ArrowLeft, UploadCloud, CheckCircle2 } from 'lucide-react';
+import { ArrowLeft, UploadCloud, CheckCircle2, Trash2 } from 'lucide-react';
+import ConfirmationModal from '../common/ConfirmationModal';
 
 export default function ReportDetails({
   report,
@@ -7,6 +8,7 @@ export default function ReportDetails({
   onBack,
   onAssignSubmit,
   onStatusSubmit,
+  onDelete,
 }) {
   const [selectedStaffId, setSelectedStaffId] = useState(
     report?.worker_id ? String(report.worker_id) : (staff[0] ? String(staff[0].id) : '')
@@ -16,6 +18,7 @@ export default function ReportDetails({
   const [isAssigning, setIsAssigning] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
   const [uploadProofDone, setUploadProofDone] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   if (!report) {
     return (
@@ -41,6 +44,10 @@ export default function ReportDetails({
 
   const handleUpdate = async (e) => {
     e.preventDefault();
+    if (selectedStatus === 'resolved') {
+      setShowConfirmModal(true);
+      return;
+    }
     setIsUpdating(true);
     await onStatusSubmit({
       report_id: report.id,
@@ -48,6 +55,17 @@ export default function ReportDetails({
       remarks,
     });
     setIsUpdating(false);
+  };
+
+  const handleConfirmSubmit = async () => {
+    setIsUpdating(true);
+    await onStatusSubmit({
+      report_id: report.id,
+      status: selectedStatus,
+      remarks,
+    });
+    setIsUpdating(false);
+    setShowConfirmModal(false);
   };
 
   const dateFormatted = report.reported_at
@@ -75,12 +93,26 @@ export default function ReportDetails({
 
       {/* Title & Ticket Badge */}
       <div className="admin-details-header">
-        <h1 className="admin-header-title" style={{ marginBottom: 0 }}>
-          Report Details
-        </h1>
-        <span className="admin-ticket-badge-lg">
-          {report.ticket_number || `FM-${report.id}`}
-        </span>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <h1 className="admin-header-title" style={{ marginBottom: 0 }}>
+            Report Details
+          </h1>
+          <span className="admin-ticket-badge-lg">
+            {report.ticket_number || `FM-${report.id}`}
+          </span>
+        </div>
+
+        {(report.status === 'resolved' || report.status === 'closed') && onDelete && (
+          <button
+            type="button"
+            className="admin-btn-delete-report"
+            onClick={() => onDelete(report)}
+            title="Delete fixed report from database"
+          >
+            <Trash2 size={16} />
+            <span>Delete Fixed Report</span>
+          </button>
+        )}
       </div>
 
       {/* 2-Column Grid */}
@@ -221,8 +253,43 @@ export default function ReportDetails({
               </button>
             </form>
           </div>
+
+          {/* Card 3: Delete Fixed Report (Database Clean Up) */}
+          {(report.status === 'resolved' || report.status === 'closed') && onDelete && (
+            <div className="admin-action-card admin-action-card-delete">
+              <h3 className="admin-action-card-title">Clean Up Database</h3>
+              <p style={{ fontSize: '0.84rem', color: '#64748b', marginBottom: 14 }}>
+                This report is marked as fixed. You can delete it from the database to keep reports organized and avoid clutter.
+              </p>
+              <button
+                type="button"
+                className="admin-btn-delete-report"
+                style={{ width: '100%', justifyContent: 'center' }}
+                onClick={() => onDelete(report)}
+              >
+                <Trash2 size={16} />
+                <span>Delete Fixed Report</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
+
+      {showConfirmModal && (
+        <ConfirmationModal
+          isOpen={showConfirmModal}
+          presetId="mark_fixed"
+          title="Ready to Submit Report?"
+          message={`Are you sure you are ready to submit this report? This will mark ticket #${report.ticket_number || `FM-${report.id}`} (${report.title}) as Fixed / Resolved.`}
+          confirmText="Yes, Submit Report"
+          cancelText="Cancel"
+          loading={isUpdating}
+          onClose={() => {
+            if (!isUpdating) setShowConfirmModal(false);
+          }}
+          onConfirm={handleConfirmSubmit}
+        />
+      )}
     </div>
   );
 }

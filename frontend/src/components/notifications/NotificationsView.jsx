@@ -10,12 +10,16 @@ import {
   Wrench,
   AlertOctagon,
   RefreshCw,
+  Trash2,
 } from 'lucide-react';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  deleteNotification,
+  deleteAllNotifications,
 } from '../../services/api';
+import ConfirmationModal from '../common/ConfirmationModal';
 import './notifications.css';
 
 export default function NotificationsView({
@@ -27,6 +31,8 @@ export default function NotificationsView({
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -97,6 +103,42 @@ export default function NotificationsView({
     // If report click handler provided, can navigate to reports
     if (typeof onSelectReport === 'function' && notif.ticket_number) {
       onSelectReport(notif.ticket_number);
+    }
+  };
+
+  // Delete individual notification
+  const handleDeleteSingle = async (item, e) => {
+    if (e) e.stopPropagation();
+    const targetId = item.id;
+    const wasUnread = !item.is_read;
+
+    // Optimistic UI removal
+    setNotifications((prev) => prev.filter((n) => n.id !== targetId));
+    if (wasUnread && typeof setUnreadCount === 'function') {
+      setUnreadCount((prev) => Math.max(0, prev - 1));
+    }
+
+    try {
+      await deleteNotification(targetId);
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
+
+  // Delete all notifications
+  const handleConfirmDeleteAll = async () => {
+    setIsDeletingAll(true);
+    try {
+      await deleteAllNotifications();
+      setNotifications([]);
+      if (typeof setUnreadCount === 'function') {
+        setUnreadCount(0);
+      }
+    } catch (err) {
+      console.error('Error deleting all notifications:', err);
+    } finally {
+      setIsDeletingAll(false);
+      setShowDeleteAllModal(false);
     }
   };
 
@@ -196,6 +238,18 @@ export default function NotificationsView({
             >
               <span>{isMarkingAll ? 'Marking...' : 'Mark all as read'}</span>
             </button>
+
+            <button
+              type="button"
+              className="notif-delete-all-btn"
+              onClick={() => setShowDeleteAllModal(true)}
+              disabled={notifications.length === 0 || isDeletingAll}
+              id="notif-delete-all-btn"
+              title="Delete all notifications"
+            >
+              <Trash2 size={14} />
+              <span>Delete all</span>
+            </button>
           </div>
         </div>
 
@@ -252,13 +306,22 @@ export default function NotificationsView({
                     </div>
                   </div>
 
-                  <div className="notif-card-right">
+                  <div className="notif-card-right" onClick={(e) => e.stopPropagation()}>
                     {isUnread && (
                       <span
                         className="notif-unread-dot"
                         aria-label="Unread notification indicator"
                       />
                     )}
+                    <button
+                      type="button"
+                      className="notif-card-delete-btn"
+                      onClick={(e) => handleDeleteSingle(item, e)}
+                      title="Delete notification"
+                      aria-label="Delete this notification"
+                    >
+                      <Trash2 size={15} />
+                    </button>
                   </div>
                 </div>
               );
@@ -274,6 +337,19 @@ export default function NotificationsView({
               You do not have any new facility updates or notifications right now.
             </p>
           </div>
+        )}
+
+        {/* Delete All Confirmation Modal */}
+        {showDeleteAllModal && (
+          <ConfirmationModal
+            isOpen={showDeleteAllModal}
+            presetId="delete_notifications"
+            loading={isDeletingAll}
+            onClose={() => {
+              if (!isDeletingAll) setShowDeleteAllModal(false);
+            }}
+            onConfirm={handleConfirmDeleteAll}
+          />
         )}
       </div>
     </div>

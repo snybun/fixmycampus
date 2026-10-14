@@ -20,13 +20,16 @@ import {
   Sparkles,
   Inbox,
   Eye,
+  Trash2,
 } from 'lucide-react';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  deleteNotification,
+  deleteAllNotifications,
 } from '../../services/api';
-
+import ConfirmationModal from '../common/ConfirmationModal';
 
 export default function MaintenanceNotificationsView({
   onViewJob,
@@ -41,6 +44,8 @@ export default function MaintenanceNotificationsView({
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // Sync notifications from API if available
   const loadNotifications = async () => {
@@ -152,6 +157,42 @@ export default function MaintenanceNotificationsView({
       } catch (err) {
         console.error('Error marking notification read:', err);
       }
+    }
+  };
+
+  // Delete individual notification
+  const handleDeleteSingle = async (notif, e) => {
+    if (e) e.stopPropagation();
+    const targetId = notif.id;
+
+    // Optimistically remove from state
+    setNotifications((prev) => prev.filter((n) => n.id !== targetId));
+
+    if (typeof showToast === 'function') {
+      showToast('Notification deleted.');
+    }
+
+    try {
+      await deleteNotification(targetId);
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
+
+  // Delete all notifications
+  const handleConfirmDeleteAll = async () => {
+    setIsDeletingAll(true);
+    try {
+      await deleteAllNotifications();
+      setNotifications([]);
+      if (typeof showToast === 'function') {
+        showToast('All notifications deleted.');
+      }
+    } catch (err) {
+      console.error('Error deleting all notifications:', err);
+    } finally {
+      setIsDeletingAll(false);
+      setShowDeleteAllModal(false);
     }
   };
 
@@ -295,6 +336,18 @@ export default function MaintenanceNotificationsView({
           >
             <CheckCheck size={16} />
             <span>Mark All as Read</span>
+          </button>
+
+          <button
+            type="button"
+            id="maint-notif-delete-all-btn"
+            className="maint-notif-btn-delete-all"
+            onClick={() => setShowDeleteAllModal(true)}
+            disabled={notifications.length === 0}
+            title={notifications.length === 0 ? 'No notifications to delete' : 'Delete all notifications'}
+          >
+            <Trash2 size={15} />
+            <span>Delete All</span>
           </button>
         </div>
       </div>
@@ -528,6 +581,16 @@ export default function MaintenanceNotificationsView({
                     <Check size={14} />
                     <span>{isUnread ? 'Mark Read' : 'Read'}</span>
                   </button>
+
+                  {/* Delete Single Notification */}
+                  <button
+                    type="button"
+                    className="maint-notif-btn-delete"
+                    onClick={(e) => handleDeleteSingle(item, e)}
+                    title="Delete notification"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             );
@@ -562,6 +625,15 @@ export default function MaintenanceNotificationsView({
           </div>
         )}
       </div>
+
+      {/* Delete All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteAllModal}
+        presetId="delete_notifications"
+        onConfirm={handleConfirmDeleteAll}
+        onCancel={() => setShowDeleteAllModal(false)}
+        isLoading={isDeletingAll}
+      />
     </div>
   );
 }

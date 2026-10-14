@@ -15,12 +15,16 @@ import {
   Layers,
   Inbox,
   ShieldAlert,
+  Trash2,
 } from 'lucide-react';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  deleteNotification,
+  deleteAllNotifications,
 } from '../../services/api';
+import ConfirmationModal from '../common/ConfirmationModal';
 
 export default function AdminNotificationsView({
   reports = [],
@@ -33,6 +37,8 @@ export default function AdminNotificationsView({
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -113,6 +119,41 @@ export default function AdminNotificationsView({
       } catch (err) {
         console.error('Error marking notification read:', err);
       }
+    }
+  };
+
+  // Delete individual notification
+  const handleDeleteSingle = async (notif, e) => {
+    if (e) e.stopPropagation();
+    const targetId = notif.id;
+
+    // Optimistic removal
+    setNotifications((prev) => prev.filter((n) => n.id !== targetId));
+    if (typeof showToast === 'function') {
+      showToast('Notification deleted.');
+    }
+
+    try {
+      await deleteNotification(targetId);
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
+
+  // Delete all notifications
+  const handleConfirmDeleteAll = async () => {
+    setIsDeletingAll(true);
+    try {
+      await deleteAllNotifications();
+      setNotifications([]);
+      if (typeof showToast === 'function') {
+        showToast('All notifications deleted.');
+      }
+    } catch (err) {
+      console.error('Error deleting all notifications:', err);
+    } finally {
+      setIsDeletingAll(false);
+      setShowDeleteAllModal(false);
     }
   };
 
@@ -306,6 +347,31 @@ export default function AdminNotificationsView({
           >
             <CheckCheck size={16} />
             <span>Mark All as Read</span>
+          </button>
+
+          <button
+            type="button"
+            id="admin-notif-delete-all-btn"
+            onClick={() => setShowDeleteAllModal(true)}
+            disabled={notifications.length === 0}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: '1px solid #fee2e2',
+              backgroundColor: notifications.length === 0 ? '#f8fafc' : '#fef2f2',
+              color: notifications.length === 0 ? '#cbd5e1' : '#dc2626',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: notifications.length === 0 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title={notifications.length === 0 ? 'No notifications to delete' : 'Delete all notifications'}
+          >
+            <Trash2 size={15} />
+            <span>Delete All</span>
           </button>
         </div>
       </div>
@@ -729,6 +795,29 @@ export default function AdminNotificationsView({
                     <Check size={13} />
                     <span>{isUnread ? 'Mark Read' : 'Read'}</span>
                   </button>
+
+                  <button
+                    type="button"
+                    className="admin-notif-card-delete-btn"
+                    onClick={(e) => handleDeleteSingle(item, e)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      border: '1px solid #fee2e2',
+                      backgroundColor: '#fef2f2',
+                      color: '#dc2626',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      flexShrink: 0,
+                    }}
+                    title="Delete notification"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             );
@@ -793,6 +882,15 @@ export default function AdminNotificationsView({
           </div>
         )}
       </div>
+
+      {/* Delete All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteAllModal}
+        presetId="delete_notifications"
+        onConfirm={handleConfirmDeleteAll}
+        onCancel={() => setShowDeleteAllModal(false)}
+        isLoading={isDeletingAll}
+      />
     </div>
   );
 }

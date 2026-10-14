@@ -106,10 +106,62 @@ try {
     }
 
     // -------------------------------------------------------------------------
+    // POST /api/notifications.php?action=delete -> Delete single notification
+    // -------------------------------------------------------------------------
+    if ($action === 'delete' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE')) {
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $notifId = (int) ($input['id'] ?? $_GET['id'] ?? 0);
+
+        if ($notifId > 0) {
+            if ($isAdmin) {
+                db_execute("DELETE FROM `notifications` WHERE `id` = :id", [':id' => $notifId]);
+            } else {
+                db_execute("DELETE FROM `notifications` WHERE `id` = :id AND `user_id` = :uid", [
+                    ':id'  => $notifId,
+                    ':uid' => $userId,
+                ]);
+            }
+
+            $remaining = (int)db_fetch_column("SELECT COUNT(*) FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
+            if ($remaining === 0) {
+                $_SESSION['notifs_cleared_' . $userId] = true;
+            }
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => 'Notification deleted.',
+            'id'      => $notifId,
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/notifications.php?action=delete_all -> Delete all notifications
+    // -------------------------------------------------------------------------
+    if ($action === 'delete_all' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE')) {
+        $_SESSION['notifs_cleared_' . $userId] = true;
+
+        if ($isAdmin) {
+            db_execute("DELETE FROM `notifications` WHERE `user_id` = :uid OR `user_id` = 1", [':uid' => $userId]);
+        } else {
+            db_execute("DELETE FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success'      => true,
+            'message'      => 'All notifications deleted.',
+            'unread_count' => 0,
+            'count'        => 0,
+            'data'         => [],
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
     // Auto-seed real notification records for existing database tickets if table empty
     // -------------------------------------------------------------------------
-    $existingCount = (int)db_fetch_column("SELECT COUNT(*) FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
-    if ($existingCount === 0) {
+    if (empty($_SESSION['notifs_cleared_' . $userId])) {
+        $existingCount = (int)db_fetch_column("SELECT COUNT(*) FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
+        if ($existingCount === 0) {
         $realReports = db_fetch_all("
             SELECT r.*, b.name AS building_name, l.room_number, u.full_name AS reporter_name
             FROM `reports` r

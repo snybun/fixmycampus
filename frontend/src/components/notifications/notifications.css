@@ -78,6 +78,36 @@
   opacity: 0.7;
 }
 
+.notif-delete-all-btn {
+  background: transparent;
+  border: 1px solid #fee2e2;
+  color: #dc2626;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notif-delete-all-btn:hover:not(:disabled) {
+  background-color: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.notif-delete-all-btn:disabled {
+  color: #d1d5db;
+  border-color: #f3f4f6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* -----------------------------------------------------------------------------
    Notifications List & Cards
    ----------------------------------------------------------------------------- */
@@ -227,6 +257,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 12px;
   flex-shrink: 0;
   min-width: 16px;
 }
@@ -237,6 +268,31 @@
   border-radius: 50%;
   background-color: #059669;
   box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.22);
+}
+
+.notif-card-delete-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  opacity: 0.6;
+}
+
+.notif-card:hover .notif-card-delete-btn {
+  opacity: 1;
+}
+
+.notif-card-delete-btn:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
 }
 
 /* -----------------------------------------------------------------------------

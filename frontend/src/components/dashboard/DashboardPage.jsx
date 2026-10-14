@@ -203,6 +203,27 @@ export default function DashboardPage({
   const firstName = displayName.split(' ')[0] || 'Mark';
   const isAdmin = Boolean(currentUser && (currentUser.role_name === 'admin' || currentUser.role_id === 1));
 
+  // Determine if a report is eligible for deletion
+  // Admins can delete any report; students can delete only if a worker has NOT been assigned yet
+  const isReportDeletable = (report) => {
+    if (!report) return false;
+    if (isAdmin) return true;
+    const rawStatus = (report.status || '').toLowerCase();
+    const hasWorker = Boolean(
+      report.worker_name ||
+      report.worker_id ||
+      report.assignedWorker ||
+      rawStatus === 'assigned' ||
+      rawStatus === 'in_progress' ||
+      rawStatus === 'resolved' ||
+      rawStatus === 'closed' ||
+      report.statusLabel === 'Worker Assigned' ||
+      report.statusLabel === 'Repair Ongoing' ||
+      report.statusLabel === 'Fixed'
+    );
+    return !hasWorker;
+  };
+
   // Handle modal confirmation
   const handleModalConfirm = async () => {
     const currentPreset = activeModalPreset;
@@ -217,6 +238,14 @@ export default function DashboardPage({
     } else if (currentPreset === 'delete_report') {
       if (!reportToDelete) {
         setActiveModalPreset(null);
+        return;
+      }
+
+      if (!isReportDeletable(reportToDelete)) {
+        setActiveModalPreset(null);
+        setReportToDelete(null);
+        setToastMessage('This report cannot be deleted because a maintenance worker has already been assigned.');
+        setTimeout(() => setToastMessage(''), 4000);
         return;
       }
 
@@ -380,16 +409,6 @@ export default function DashboardPage({
               onLogout={() => setActiveModalPreset('logout')}
               idPrefix="dash-user-profile"
             />
-
-            <button
-              type="button"
-              className="dash-logout-quick-btn"
-              onClick={() => setActiveModalPreset('logout')}
-              title="Sign Out"
-              aria-label="Sign Out"
-            >
-              <LogOut size={18} strokeWidth={2.1} />
-            </button>
 
             {/* Mobile Hamburger Menu Toggle Button */}
             <button
@@ -581,6 +600,11 @@ export default function DashboardPage({
           liveReports={reports}
           onNavigate={onNavigate}
           initialSelectedReport={selectedReportForDetails}
+          onDeleteReport={(r) => {
+            setReportToDelete(r);
+            setActiveModalPreset('delete_report');
+          }}
+          isAdmin={isAdmin}
         />
       ) : (
         <main className="dash-content">
@@ -735,21 +759,23 @@ export default function DashboardPage({
                         {report.statusLabel}
                       </button>
 
-                      <div className="dash-card-actions">
-                        <button
-                          type="button"
-                          className="dash-card-action-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setReportToDelete(report);
-                            setActiveModalPreset('delete_report');
-                          }}
-                          title={`Delete report: ${report.title}`}
-                          aria-label={`Delete report: ${report.title}`}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
+                      {isReportDeletable(report) && (
+                        <div className="dash-card-actions">
+                          <button
+                            type="button"
+                            className="dash-card-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportToDelete(report);
+                              setActiveModalPreset('delete_report');
+                            }}
+                            title={`Delete report: ${report.title}`}
+                            aria-label={`Delete report: ${report.title}`}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </article>

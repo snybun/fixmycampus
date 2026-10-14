@@ -8,6 +8,7 @@ export default function ReportManagement({
   onViewReport,
   onAssignReport,
   onUpdateStatus,
+  onDeleteReport,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
@@ -242,6 +243,16 @@ export default function ReportManagement({
                           >
                             Update
                           </button>
+                          {(report.status === 'resolved' || report.status === 'closed') && onDeleteReport && (
+                            <button
+                              type="button"
+                              className="admin-btn-action-delete"
+                              onClick={() => onDeleteReport(report)}
+                              title="Delete fixed report from database"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

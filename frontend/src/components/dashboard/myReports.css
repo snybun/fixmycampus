@@ -86,7 +86,13 @@
   color: #9ca3af;
 }
 
+.myreports-filter-dropdown-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
 .myreports-filter-btn {
+  position: relative;
   width: 38px;
   height: 38px;
   background-color: #ffffff;
@@ -107,37 +113,205 @@
   color: #047857;
 }
 
+.myreports-filter-btn.open,
+.myreports-filter-btn.has-active {
+  background-color: #ecfdf5;
+  border-color: #10b981;
+  color: #059669;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.myreports-filter-active-dot {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 7px;
+  height: 7px;
+  background-color: #10b981;
+  border: 1.5px solid #ffffff;
+  border-radius: 50%;
+}
+
 /* --------------------------------------------------------------------------
-   Filter Tabs Bar & Horizontal Divider Line
+   Filter Dropdown Menu (Glassmorphism & Apple-grade Popover)
    -------------------------------------------------------------------------- */
-.myreports-tabs-bar {
+.myreports-filter-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 230px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  padding: 6px;
+  z-index: 50;
+  animation: fmcDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fmcDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.myreports-filter-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 6px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.myreports-filter-reset-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #059669;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.myreports-filter-reset-link:hover {
+  text-decoration: underline;
+  color: #047857;
+}
+
+.myreports-filter-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.myreports-filter-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.myreports-filter-dropdown-item:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.myreports-filter-dropdown-item.active {
+  background-color: #ecfdf5;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.myreports-filter-item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.myreports-filter-item-label {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.myreports-filter-item-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+.myreports-filter-dropdown-item.active .myreports-filter-item-count {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.myreports-filter-item-check {
+  color: #059669;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Active Filter Chip Pill
+   -------------------------------------------------------------------------- */
+.myreports-active-filter-row {
   display: flex;
   align-items: center;
   gap: 8px;
-  overflow-x: auto;
-  scrollbar-width: none;
+  margin-bottom: 20px;
+  padding: 6px 12px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  width: fit-content;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
 }
 
-.myreports-tabs-bar::-webkit-scrollbar {
-  display: none;
-}
-
-.myreports-tab {
-  background: transparent;
-  border: none;
-  padding: 6px 14px;
-  font-size: 0.875rem;
+.myreports-active-filter-label {
+  font-size: 0.8rem;
+  color: #6b7280;
   font-weight: 500;
-  color: #4b5563;
-  border-radius: 6px;
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.15s ease;
 }
 
-.myreports-tab:hover {
-  color: #047857;
-  background-color: #ecfdf5;
+.myreports-active-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.myreports-active-filter-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.myreports-active-filter-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  margin-left: 4px;
+}
+
+.myreports-active-filter-clear-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
 }
 
 .myreports-tab.active {
@@ -145,14 +319,10 @@
   color: #ffffff;
   font-weight: 600;
   box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
-}
-
-.myreports-divider {
-  width: 100%;
-  height: 1px;
-  background-color: #e5e7eb;
-  margin-top: 14px;
-  margin-bottom: 24px;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
 }
 
 /* --------------------------------------------------------------------------
@@ -376,6 +546,28 @@
 .myreports-card:hover .myreports-card-arrow-btn {
   background-color: #059669;
   border-color: #059669;
+  color: #ffffff;
+}
+
+/* Delete Button */
+.myreports-delete-btn {
+  width: 28px;
+  height: 28px;
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.myreports-delete-btn:hover {
+  background-color: #ef4444;
+  border-color: #ef4444;
   color: #ffffff;
 }
 

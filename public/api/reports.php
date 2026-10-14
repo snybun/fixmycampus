@@ -462,7 +462,7 @@ try {
     // POST /api/reports.php?action=delete -> Delete report
     // -------------------------------------------------------------------------
     if ($action === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $adminUser = auth_require_role('admin');
+        $actorUser = auth_require();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? $input['id'] ?? 0);
 
@@ -470,9 +470,54 @@ try {
             \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Valid report_id required.'], 400);
         }
 
-        $report = db_fetch_one("SELECT id, title, ticket_number FROM `reports` WHERE `id` = :id LIMIT 1", [':id' => $reportId]);
+        $report = db_fetch_one("
+            SELECT r.id, r.title, r.ticket_number, r.reporter_id, r.status,
+                   ra.assigned_to AS worker_id
+            FROM `reports` r
+            LEFT JOIN `report_assignments` ra ON r.id = ra.report_id
+            WHERE r.id = :id
+            LIMIT 1
+        ", [':id' => $reportId]);
+
         if (!$report) {
             \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Report not found or already deleted.'], 404);
+        }
+
+        $isAdmin = auth_is_admin() || ($actorUser['role_name'] ?? '') === 'admin' || ((int)($actorUser['role_id'] ?? 0) === 1);
+        $isReporter = ((int)$report['reporter_id'] === (int)$actorUser['id']);
+
+        // Check if report already has an assigned worker
+        $hasAssignedWorker = !empty($report['worker_id']) || in_array(strtolower($report['status']), ['assigned', 'in_progress', 'resolved', 'closed'], true);
+
+        if (!$isAdmin) {
+            if (!$isReporter) {
+                \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Unauthorized: You can only delete your own submitted reports.'], 403);
+            }
+            if ($hasAssignedWorker) {
+                \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'This report cannot be deleted because a maintenance worker has already been assigned.'], 400);
+            }
+        } else {
+            // Admins can delete reports after they have been marked as fixed / resolved / closed
+            $reportStatus = strtolower($report['status'] ?? '');
+            $isFixed = in_array($reportStatus, ['resolved', 'closed'], true);
+            if (!$isFixed) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'Admins can only delete reports after they have been fixed and resolved.'
+                ], 400);
+            }
+        }
+
+        // Clean up any uploaded photos from disk to keep storage clean
+        $attachments = db_fetch_all("SELECT file_path FROM `report_attachments` WHERE `report_id` = :id", [':id' => $reportId]);
+        foreach ($attachments as $att) {
+            $fPath = $att['file_path'] ?? '';
+            if (!empty($fPath) && str_starts_with($fPath, '/uploads/')) {
+                $diskPath = dirname(__DIR__) . $fPath;
+                if (file_exists($diskPath) && is_file($diskPath)) {
+                    @unlink($diskPath);
+                }
+            }
         }
 
         db_execute("DELETE FROM `reports` WHERE `id` = :id", [':id' => $reportId]);

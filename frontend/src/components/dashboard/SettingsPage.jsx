@@ -15,6 +15,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { updateProfilePicture, changeUserPassword, updateUserProfile } from '../../services/api';
+import ConfirmationModal from '../common/ConfirmationModal';
 import './settings.css';
 
 const DEPARTMENTS = [
@@ -49,6 +50,7 @@ export default function SettingsPage({
   const [avatarPreview, setAvatarPreview] = useState(currentUser?.avatar_url || '');
   const [isUploading, setIsUploading] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Sync avatarPreview if currentUser updates
   useEffect(() => {
@@ -403,7 +405,7 @@ export default function SettingsPage({
           <button
             type="button"
             className="settings-action-row settings-action-logout"
-            onClick={onLogout}
+            onClick={() => setShowLogoutModal(true)}
             title="Log out of FixMyCampus"
           >
             <div className="settings-action-left">
@@ -738,6 +740,24 @@ export default function SettingsPage({
           <CheckCircle2 size={16} color="#10b981" />
           <span>{toastMessage}</span>
         </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <ConfirmationModal
+          isOpen={showLogoutModal}
+          presetId="logout"
+          title="Logout?"
+          message="Are you sure you want to log out of FixMyCampus?"
+          confirmText="Log out"
+          confirmClass="modal-btn-danger"
+          cancelText="Cancel"
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={() => {
+            setShowLogoutModal(false);
+            if (onLogout) onLogout();
+          }}
+        />
       )}
     </div>
   );
