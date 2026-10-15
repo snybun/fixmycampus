@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Search, UserCheck, Shield } from 'lucide-react';
+import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
 import { fetchUsers } from '../../services/api';
 
 export default function UsersView() {
@@ -7,6 +7,10 @@ export default function UsersView() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [search, setSearch] = useState('');
   const [loading, setLoading] = useState(true);
+
+  // Pagination & limit selection state
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   useEffect(() => {
     let isMounted = true;
@@ -22,6 +26,60 @@ export default function UsersView() {
     };
   }, [roleFilter, search]);
 
+  // Reset to page 1 whenever search, role filter, or limit changes
+  const handleRoleChange = (e) => {
+    setRoleFilter(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleSearchChange = (e) => {
+    setSearch(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handlePageSizeChange = (newSize) => {
+    setPageSize(newSize);
+    setCurrentPage(1);
+  };
+
+  // Pagination calculations
+  const totalPages = Math.max(1, Math.ceil(users.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedUsers = users.slice(startIndex, startIndex + pageSize);
+
+  // Guard against out-of-range currentPage (e.g. after filtering)
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [totalPages, currentPage]);
+
+  // Smart page numbers generation
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages = [];
+    if (currentPage <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      pages.push(currentPage - 1);
+      pages.push(currentPage);
+      pages.push(currentPage + 1);
+      pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
+
   return (
     <div>
       <div className="admin-header">
@@ -34,7 +92,7 @@ export default function UsersView() {
       </div>
 
       <div className="admin-filter-card">
-        <div className="admin-search-row">
+        <div className="admin-search-row" style={{ flexWrap: 'wrap' }}>
           <div className="admin-search-input-wrap">
             <Search size={18} />
             <input
@@ -42,14 +100,14 @@ export default function UsersView() {
               className="admin-search-input"
               placeholder="Search user name, email, or institutional ID..."
               value={search}
-              onChange={(e) => setSearch(e.target.value)}
+              onChange={handleSearchChange}
             />
           </div>
 
           <select
             className="admin-filter-select"
             value={roleFilter}
-            onChange={(e) => setRoleFilter(e.target.value)}
+            onChange={handleRoleChange}
           >
             <option value="all">All Roles</option>
             <option value="admin">Administrator</option>
@@ -58,6 +116,24 @@ export default function UsersView() {
             <option value="faculty">Faculty Member</option>
             <option value="student">Student</option>
           </select>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
+              Limit:
+            </span>
+            <select
+              className="admin-filter-select"
+              value={pageSize}
+              onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+              title="Items per page limit"
+            >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
+          </div>
         </div>
       </div>
 
@@ -88,7 +164,7 @@ export default function UsersView() {
                   </td>
                 </tr>
               ) : (
-                users.map((u) => (
+                paginatedUsers.map((u) => (
                   <tr key={u.id}>
                     <td className="admin-ticket-id">{u.user_identifier || `USR-${u.id}`}</td>
                     <td>
@@ -132,6 +208,82 @@ export default function UsersView() {
             </tbody>
           </table>
         </div>
+
+        {/* Pagination & Limit Selection Bar */}
+        {!loading && users.length > 0 && (
+          <div className="admin-pagination-bar" style={{ flexWrap: 'wrap', gap: 12 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+              <span>
+                Showing {startIndex + 1}–
+                {Math.min(users.length, startIndex + pageSize)} of {users.length} user{users.length === 1 ? '' : 's'}
+              </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '0.82rem', color: 'var(--admin-text-muted)' }}>Per page:</span>
+                <select
+                  className="admin-filter-select"
+                  style={{ padding: '4px 8px', fontSize: '0.82rem', height: 'auto', minWidth: 'unset' }}
+                  value={pageSize}
+                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                  aria-label="Items per page"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="admin-pagination-btns">
+              <button
+                type="button"
+                className="admin-page-btn"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                title="Previous page"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <ChevronLeft size={14} />
+                <span>Previous</span>
+              </button>
+
+              {getPageNumbers().map((item, idx) =>
+                item === '...' ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    style={{ padding: '6px 8px', color: 'var(--admin-text-muted)', fontSize: '0.84rem' }}
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={item}
+                    type="button"
+                    className={`admin-page-btn ${currentPage === item ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(item)}
+                    title={`Page ${item}`}
+                  >
+                    {item}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                className="admin-page-btn"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                title="Next page"
+                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+              >
+                <span>Next</span>
+                <ChevronRight size={14} />
+              </button>
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
