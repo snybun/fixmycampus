@@ -229,7 +229,9 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
           if (typeof res.attempts_left === 'number') {
             setAttemptsLeft(res.attempts_left);
           }
-          setError(res.message || 'Invalid email or password.');
+          let cleanMsg = res.message || 'Invalid email or password.';
+          cleanMsg = cleanMsg.replace(/\s*\(Warning:.*?\)/i, '').trim();
+          setError(cleanMsg);
         }
       }
     } catch (err) {
@@ -238,6 +240,14 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       setLoading(false);
     }
   };
+
+  const isEmailError = Boolean(
+    error && (
+      error.toLowerCase().includes('email address') ||
+      error.toLowerCase().includes('student') ||
+      error.toLowerCase().includes('no account found')
+    )
+  );
 
   return (
     <div className="auth-page-wrapper">
@@ -273,87 +283,20 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                   marginBottom: '0.4rem',
                 }}
               >
-                <span>PHINMA University of Pangasinan Only</span>
+                <span>PHINMA University of Pangasinan</span>
               </div>
               <h1 className="auth-title">Welcome Back</h1>
               <p className="auth-subtitle">
-                Facility Defect and Maintenance Reporting System
+                Facility Defect &amp; Maintenance Reporting System &bull; Official @{allowedDomain} Accounts
               </p>
             </div>
 
-            {isLocked ? (
-              <div
-                className="auth-alert auth-alert-error"
-                style={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  alignItems: 'flex-start',
-                  gap: '0.4rem',
-                  padding: '0.85rem 1rem',
-                  borderLeft: '4px solid #dc2626',
-                  backgroundColor: '#fef2f2',
-                }}
-                role="alert"
-              >
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
-                  <ShieldAlert size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
-                  <strong style={{ color: '#991b1b', fontSize: '0.88rem' }}>Temporary Security Lockout</strong>
-                </div>
-                <p style={{ margin: 0, fontSize: '0.8125rem', color: '#7f1d1d', lineHeight: 1.45 }}>
-                  Too many failed login attempts. To protect your account from brute-force attacks, login has been temporarily restricted.
-                </p>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem' }}>
-                  <Clock size={14} style={{ color: '#dc2626' }} />
-                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#dc2626' }}>
-                    Unlocks in {retryAfter}s
-                  </span>
-                </div>
-              </div>
-            ) : error ? (
-              <div className="auth-alert auth-alert-error" role="alert">
-                <AlertCircle size={16} className="auth-alert-icon" />
-                <span>{error}</span>
-              </div>
-            ) : null}
-
-            {/* Remaining attempts warning banner */}
-            {!isLocked && attemptsLeft !== null && attemptsLeft <= 2 && attemptsLeft > 0 && (
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: '0.45rem',
-                  padding: '0.5rem 0.75rem',
-                  borderRadius: '7px',
-                  background: '#fffbeb',
-                  border: '1px solid #fde68a',
-                  color: '#92400e',
-                  fontSize: '0.78rem',
-                  fontWeight: 600,
-                  marginBottom: '0.5rem',
-                }}
-              >
-                <ShieldAlert size={15} style={{ color: '#b45309', flexShrink: 0 }} />
-                <span>
-                  Security Notice: {attemptsLeft} attempt{attemptsLeft === 1 ? '' : 's'} remaining before a 60-second lockout.
-                </span>
-              </div>
-            )}
-
             {successMsg && (
-              <div className="auth-alert auth-alert-success" role="status">
+              <div className="auth-alert auth-alert-success" role="status" style={{ marginBottom: '0.75rem' }}>
                 <CheckCircle2 size={16} className="auth-alert-icon" />
                 <span>{successMsg}</span>
               </div>
             )}
-
-            {/* Institutional Domain Banner */}
-            <div className="auth-domain-banner">
-              <ShieldCheck size={16} style={{ color: '#059669', flexShrink: 0 }} />
-              <span>
-                Exclusively for <strong>PHINMA University of Pangasinan</strong>. Please sign in with your official <strong>@{allowedDomain}</strong> account.
-              </span>
-            </div>
 
             {/* Official Google GIS Button Container */}
             <div style={{ marginBottom: '0.75rem', width: '100%' }}>
@@ -477,17 +420,37 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     id="login-email"
                     name="login_identifier_field"
                     type="text"
-                    className="auth-input"
+                    className={`auth-input ${isEmailError ? 'auth-input-error' : ''}`}
                     placeholder="yourname.up@phinmaed.com"
                     autoComplete="off"
                     data-lpignore="true"
                     data-form-type="other"
                     value={loginInput}
-                    onChange={(e) => setLoginInput(e.target.value)}
+                    onChange={(e) => {
+                      setLoginInput(e.target.value);
+                      if (error) setError('');
+                    }}
                     disabled={isLocked || loading}
                     required
                   />
                 </div>
+                {isEmailError && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.35,
+                    }}
+                    role="alert"
+                  >
+                    <AlertCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                    <span>{error}</span>
+                  </div>
+                )}
               </div>
 
               <div className="auth-field">
@@ -499,12 +462,15 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     id="login-password"
                     name="login_secret_field"
                     type={showPassword ? 'text' : 'password'}
-                    className="auth-input auth-input-has-toggle"
+                    className={`auth-input auth-input-has-toggle ${(error && !isEmailError) || isLocked ? 'auth-input-error' : ''}`}
                     placeholder="Enter your password"
                     autoComplete="new-password"
                     data-lpignore="true"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (error) setError('');
+                    }}
                     disabled={isLocked || loading}
                     required
                   />
@@ -517,6 +483,63 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+
+                {/* Text-only error right under password input like in 2nd pic */}
+                {isLocked ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.35,
+                    }}
+                    role="alert"
+                  >
+                    <ShieldAlert size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                      <span style={{ fontWeight: 600 }}>Temporary Security Lockout</span>
+                      <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>
+                        Too many failed login attempts. Unlocks in <strong>{retryAfter}s</strong>.
+                      </span>
+                    </div>
+                  </div>
+                ) : (!isEmailError && error) ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.35,
+                    }}
+                    role="alert"
+                  >
+                    <AlertCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <span>{error}</span>
+                      {!isLocked && attemptsLeft !== null && attemptsLeft <= 2 && attemptsLeft > 0 && (
+                        <span
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            color: '#b91c1c',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                          }}
+                        >
+                          <ShieldAlert size={12} style={{ color: '#dc2626', flexShrink: 0 }} />
+                          Security Notice: {attemptsLeft} attempt{attemptsLeft === 1 ? '' : 's'} remaining before a 60-second lockout.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="auth-options-row">

@@ -379,14 +379,10 @@ try {
                 ], 429);
             }
 
-            $remMsg = $failedRate['attempts_left'] <= 2
-                ? " (Warning: {$failedRate['attempts_left']} attempt" . ($failedRate['attempts_left'] === 1 ? '' : 's') . " remaining before temporary lockout)"
-                : '';
-
             \FixMyCampus\Core\Response::json([
                 'success'       => false,
                 'error_code'    => 'USER_NOT_FOUND',
-                'message'       => 'No account found matching this email address or Student/Employee ID. Please verify your details or register a new account.' . $remMsg,
+                'message'       => 'No account found matching this email address or Student/Employee ID. Please verify your details or register a new account.',
                 'attempts_left' => $failedRate['attempts_left'],
             ], 404);
         }
@@ -404,14 +400,10 @@ try {
                 ], 429);
             }
 
-            $remMsg = $failedRate['attempts_left'] <= 2
-                ? " (Warning: {$failedRate['attempts_left']} attempt" . ($failedRate['attempts_left'] === 1 ? '' : 's') . " remaining before temporary lockout)"
-                : '';
-
             \FixMyCampus\Core\Response::json([
                 'success'       => false,
                 'error_code'    => 'INVALID_PASSWORD',
-                'message'       => 'Incorrect password. If you signed up with Google, use "Sign in with Google" or use Forgot Password to reset it.' . $remMsg,
+                'message'       => 'Incorrect password. If you signed up with Google, use "Sign in with Google" or use Forgot Password to reset it.',
                 'attempts_left' => $failedRate['attempts_left'],
             ], 401);
         }
