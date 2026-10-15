@@ -28,6 +28,8 @@ import {
   deleteReport,
   addStaffMember,
   addBuilding,
+  updateBuilding,
+  deleteBuilding,
 } from '../../services/api';
 
 import ConfirmationModal from '../common/ConfirmationModal';
@@ -276,6 +278,30 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
     }
   };
 
+  // Update Building in Database
+  const handleUpdateBuilding = async (id, buildingData) => {
+    const res = await updateBuilding(id, buildingData);
+    if (res?.success) {
+      showToast(res.message || 'Campus building updated successfully.');
+      await refreshData();
+    } else {
+      alert(res?.message || res?.error || 'Failed to update building.');
+    }
+    return res;
+  };
+
+  // Delete / Deactivate Building in Database
+  const handleDeleteBuilding = async (id, buildingName) => {
+    const res = await deleteBuilding(id);
+    if (res?.success) {
+      showToast(res.message || `Building '${buildingName}' removed successfully.`);
+      await refreshData();
+    } else {
+      alert(res?.message || res?.error || 'Failed to remove building.');
+    }
+    return res;
+  };
+
   const displayName = currentUser?.full_name || 'Admin User';
   const displayRole = currentUser?.role_display || 'Super Administrator';
 
@@ -289,7 +315,13 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <div className="admin-brand-icon">
             <Wrench size={18} strokeWidth={2.4} />
           </div>
-          <span className="admin-brand-name">FixMyCampus</span>
+          <div className="admin-brand-text-group">
+            <span className="admin-brand-name">FixMyCampus</span>
+            <span className="admin-brand-role-badge">
+              <span className="admin-brand-role-dot" />
+              Administrator
+            </span>
+          </div>
         </div>
 
         <div className="admin-mobile-actions">
@@ -364,7 +396,13 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <div className="admin-brand-icon">
             <Wrench size={18} strokeWidth={2.4} />
           </div>
-          <span className="admin-brand-name">FixMyCampus</span>
+          <div className="admin-brand-text-group">
+            <span className="admin-brand-name">FixMyCampus</span>
+            <span className="admin-brand-role-badge">
+              <span className="admin-brand-role-dot" />
+              Administrator
+            </span>
+          </div>
 
           {/* Close button inside mobile drawer */}
           <button
@@ -569,6 +607,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             buildings={buildings}
             locations={locations}
             onAddBuilding={handleAddBuilding}
+            onUpdateBuilding={handleUpdateBuilding}
+            onDeleteBuilding={handleDeleteBuilding}
           />
         )}
 

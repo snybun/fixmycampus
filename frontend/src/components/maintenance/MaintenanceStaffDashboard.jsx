@@ -332,7 +332,13 @@ export default function MaintenanceStaffDashboard({
             <div className="maint-brand-logo">
               <Wrench size={18} strokeWidth={2.5} />
             </div>
-            <span className="maint-brand-title">FixMyCampus</span>
+            <div className="maint-brand-text-group">
+              <span className="maint-brand-title">FixMyCampus</span>
+              <span className="maint-brand-role-badge">
+                <span className="maint-brand-role-dot" />
+                Maintenance Staff
+              </span>
+            </div>
           </div>
 
           {/* Navigation Links */}

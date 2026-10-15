@@ -196,6 +196,35 @@ export async function addBuilding(data) {
   }
 }
 
+export async function updateBuilding(id, data) {
+  try {
+    const res = await fetch(`${API_BASE}/buildings.php?action=update&id=${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating building:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function deleteBuilding(id) {
+  try {
+    const res = await fetch(`${API_BASE}/buildings.php?action=delete&id=${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting building:', err);
+    return { success: false, message: err.message };
+  }
+}
+
 export async function fetchStaff() {
   try {
     const res = await fetch(`${API_BASE}/staff.php`, {
@@ -206,6 +235,19 @@ export async function fetchStaff() {
   } catch (err) {
     console.error('Error fetching staff:', err);
     return { success: false, data: [] };
+  }
+}
+
+export async function fetchStaffStats(staffId) {
+  try {
+    const res = await fetch(`${API_BASE}/staff.php?action=stats&id=${staffId}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching staff stats:', err);
+    return { success: false, message: err.message };
   }
 }
 

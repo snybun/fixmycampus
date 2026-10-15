@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound, ShieldAlert, Clock } from 'lucide-react';
 import { loginUser, loginWithGoogle, fetchGoogleConfig } from '../../services/api';
 import './auth.css';
 
@@ -17,7 +17,31 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [tempClientId, setTempClientId] = useState('');
   const [googleIframeRendered, setGoogleIframeRendered] = useState(false);
 
+  // Rate Limiting Security State
+  const [retryAfter, setRetryAfter] = useState(0);
+  const [attemptsLeft, setAttemptsLeft] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+
   const googleBtnRef = useRef(null);
+
+  // Countdown timer for rate limiting lockout
+  useEffect(() => {
+    if (!isLocked) return;
+
+    const timer = setInterval(() => {
+      setRetryAfter((prev) => {
+        if (prev <= 1) {
+          setIsLocked(false);
+          setError('');
+          setAttemptsLeft(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isLocked]);
 
   // 1. Fetch configured Client ID from backend or localStorage on mount
   useEffect(() => {
@@ -168,6 +192,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLocked) {
+      setError(`Login is temporarily locked. Please wait ${retryAfter} seconds before trying again.`);
+      return;
+    }
+
     setError('');
     setSuccessMsg('');
 
@@ -181,13 +210,27 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       const res = await loginUser({ email: loginInput, password, remember: rememberMe });
       if (res.success) {
         setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Authentication successful.`);
+        setRetryAfter(0);
+        setIsLocked(false);
+        setAttemptsLeft(null);
         if (onLoginSuccess) {
           onLoginSuccess(res.user);
         } else {
           onNavigate('dashboard');
         }
       } else {
-        setError(res.message || 'Invalid email or password.');
+        if (res.error_code === 'RATE_LIMITED' || (res.retry_after && res.retry_after > 0)) {
+          const waitTime = res.retry_after || 60;
+          setRetryAfter(waitTime);
+          setIsLocked(true);
+          setAttemptsLeft(0);
+          setError(res.message || `Too many failed login attempts. Please wait ${waitTime}s before trying again.`);
+        } else {
+          if (typeof res.attempts_left === 'number') {
+            setAttemptsLeft(res.attempts_left);
+          }
+          setError(res.message || 'Invalid email or password.');
+        }
       }
     } catch (err) {
       setError('Connection error. Please ensure Docker backend is running.');
@@ -238,10 +281,62 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               </p>
             </div>
 
-            {error && (
+            {isLocked ? (
+              <div
+                className="auth-alert auth-alert-error"
+                style={{
+                  display: 'flex',
+                  flexDirection: 'column',
+                  alignItems: 'flex-start',
+                  gap: '0.4rem',
+                  padding: '0.85rem 1rem',
+                  borderLeft: '4px solid #dc2626',
+                  backgroundColor: '#fef2f2',
+                }}
+                role="alert"
+              >
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', width: '100%' }}>
+                  <ShieldAlert size={18} style={{ color: '#dc2626', flexShrink: 0 }} />
+                  <strong style={{ color: '#991b1b', fontSize: '0.88rem' }}>Temporary Security Lockout</strong>
+                </div>
+                <p style={{ margin: 0, fontSize: '0.8125rem', color: '#7f1d1d', lineHeight: 1.45 }}>
+                  Too many failed login attempts. To protect your account from brute-force attacks, login has been temporarily restricted.
+                </p>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', marginTop: '0.2rem' }}>
+                  <Clock size={14} style={{ color: '#dc2626' }} />
+                  <span style={{ fontSize: '0.82rem', fontWeight: 700, color: '#dc2626' }}>
+                    Unlocks in {retryAfter}s
+                  </span>
+                </div>
+              </div>
+            ) : error ? (
               <div className="auth-alert auth-alert-error" role="alert">
                 <AlertCircle size={16} className="auth-alert-icon" />
                 <span>{error}</span>
+              </div>
+            ) : null}
+
+            {/* Remaining attempts warning banner */}
+            {!isLocked && attemptsLeft !== null && attemptsLeft <= 2 && attemptsLeft > 0 && (
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: '0.45rem',
+                  padding: '0.5rem 0.75rem',
+                  borderRadius: '7px',
+                  background: '#fffbeb',
+                  border: '1px solid #fde68a',
+                  color: '#92400e',
+                  fontSize: '0.78rem',
+                  fontWeight: 600,
+                  marginBottom: '0.5rem',
+                }}
+              >
+                <ShieldAlert size={15} style={{ color: '#b45309', flexShrink: 0 }} />
+                <span>
+                  Security Notice: {attemptsLeft} attempt{attemptsLeft === 1 ? '' : 's'} remaining before a 60-second lockout.
+                </span>
               </div>
             )}
 
@@ -389,6 +484,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     data-form-type="other"
                     value={loginInput}
                     onChange={(e) => setLoginInput(e.target.value)}
+                    disabled={isLocked || loading}
                     required
                   />
                 </div>
@@ -409,6 +505,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     data-lpignore="true"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
+                    disabled={isLocked || loading}
                     required
                   />
                   <button
@@ -444,9 +541,19 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               <button
                 type="submit"
                 className="auth-submit-btn"
-                disabled={loading}
+                disabled={loading || isLocked}
+                style={isLocked ? { background: '#94a3b8', cursor: 'not-allowed', boxShadow: 'none' } : {}}
               >
-                {loading ? 'Logging in...' : 'Login'}
+                {isLocked ? (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Clock size={16} />
+                    <span>Locked ({retryAfter}s)</span>
+                  </div>
+                ) : loading ? (
+                  'Logging in...'
+                ) : (
+                  'Login'
+                )}
               </button>
             </form>
 

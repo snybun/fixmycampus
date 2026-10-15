@@ -159,6 +159,10 @@ export default function App() {
     } else if (view === 'admin' && !isUserAdmin(activeUser)) {
       // Non-admin attempting to access #admin is blocked by RBAC
       targetView = 'access-denied';
+    } else if (view === 'dashboard' && isMaintenanceStaffUser(activeUser)) {
+      targetView = 'maintenance';
+    } else if (view === 'dashboard' && isUserAdmin(activeUser)) {
+      targetView = 'admin';
     }
 
     if (targetView === currentView && !userOverride) return;

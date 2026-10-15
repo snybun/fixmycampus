@@ -11,6 +11,7 @@ require_once dirname(__DIR__, 2) . '/src/config/app.php';
 require_once SRC_PATH . '/Core/Database.php';
 require_once SRC_PATH . '/Core/Response.php';
 require_once SRC_PATH . '/Core/Mailer.php';
+require_once SRC_PATH . '/Core/RateLimiter.php';
 require_once SRC_PATH . '/helpers/session.php';
 require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
@@ -198,6 +199,15 @@ try {
             ], 400);
         }
 
+        // Fetch user to check role. Maintenance staff and admin roles/departments are locked by admin
+        $existingUser = db_fetch_one("SELECT u.*, r.name as role_name FROM `users` u JOIN `roles` r ON u.role_id = r.id WHERE u.id = :id LIMIT 1", [':id' => $userId]);
+        $isMaintenanceOrAdmin = in_array($existingUser['role_name'] ?? '', ['admin', 'supervisor', 'technician']);
+
+        if ($isMaintenanceOrAdmin) {
+            $yearLevel  = $existingUser['year_level'] ?? null;
+            $department = $existingUser['department'] ?? null;
+        }
+
         db_query("
             UPDATE `users`
             SET `first_name` = :fn,
@@ -335,6 +345,19 @@ try {
             ], 400);
         }
 
+        // Rate Limiting Security Check: Verify if account/IP is locked
+        $rateStatus = \FixMyCampus\Core\RateLimiter::check($loginInput);
+        if ($rateStatus['is_locked']) {
+            header('Retry-After: ' . $rateStatus['retry_after']);
+            \FixMyCampus\Core\Response::json([
+                'success'       => false,
+                'error_code'    => 'RATE_LIMITED',
+                'message'       => $rateStatus['message'],
+                'retry_after'   => $rateStatus['retry_after'],
+                'attempts_left' => 0,
+            ], 429);
+        }
+
         $user = db_fetch_one("
             SELECT u.*, r.name as role_name, r.display_name as role_display
             FROM `users` u
@@ -344,16 +367,52 @@ try {
         ", [':email' => $loginInput, ':identifier' => $loginInput]);
 
         if (!$user) {
+            $failedRate = \FixMyCampus\Core\RateLimiter::recordFailedAttempt($loginInput);
+            if ($failedRate['is_locked']) {
+                header('Retry-After: ' . $failedRate['retry_after']);
+                \FixMyCampus\Core\Response::json([
+                    'success'       => false,
+                    'error_code'    => 'RATE_LIMITED',
+                    'message'       => $failedRate['message'],
+                    'retry_after'   => $failedRate['retry_after'],
+                    'attempts_left' => 0,
+                ], 429);
+            }
+
+            $remMsg = $failedRate['attempts_left'] <= 2
+                ? " (Warning: {$failedRate['attempts_left']} attempt" . ($failedRate['attempts_left'] === 1 ? '' : 's') . " remaining before temporary lockout)"
+                : '';
+
             \FixMyCampus\Core\Response::json([
-                'success' => false,
-                'message' => 'No account found matching this email address or Student/Employee ID. Please verify your details or register a new account.',
+                'success'       => false,
+                'error_code'    => 'USER_NOT_FOUND',
+                'message'       => 'No account found matching this email address or Student/Employee ID. Please verify your details or register a new account.' . $remMsg,
+                'attempts_left' => $failedRate['attempts_left'],
             ], 404);
         }
 
         if (!password_verify($password, $user['password_hash'])) {
+            $failedRate = \FixMyCampus\Core\RateLimiter::recordFailedAttempt($loginInput);
+            if ($failedRate['is_locked']) {
+                header('Retry-After: ' . $failedRate['retry_after']);
+                \FixMyCampus\Core\Response::json([
+                    'success'       => false,
+                    'error_code'    => 'RATE_LIMITED',
+                    'message'       => $failedRate['message'],
+                    'retry_after'   => $failedRate['retry_after'],
+                    'attempts_left' => 0,
+                ], 429);
+            }
+
+            $remMsg = $failedRate['attempts_left'] <= 2
+                ? " (Warning: {$failedRate['attempts_left']} attempt" . ($failedRate['attempts_left'] === 1 ? '' : 's') . " remaining before temporary lockout)"
+                : '';
+
             \FixMyCampus\Core\Response::json([
-                'success' => false,
-                'message' => 'Incorrect password. If you signed up with Google, use "Sign in with Google" or use Forgot Password to reset it.',
+                'success'       => false,
+                'error_code'    => 'INVALID_PASSWORD',
+                'message'       => 'Incorrect password. If you signed up with Google, use "Sign in with Google" or use Forgot Password to reset it.' . $remMsg,
+                'attempts_left' => $failedRate['attempts_left'],
             ], 401);
         }
 
@@ -363,6 +422,9 @@ try {
                 'message' => 'Account is not active.',
             ], 403);
         }
+
+        // Successful authentication: Reset and clear failed attempts
+        \FixMyCampus\Core\RateLimiter::clear($loginInput);
 
         // Login user
         auth_login($user);
