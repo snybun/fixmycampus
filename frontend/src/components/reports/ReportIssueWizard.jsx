@@ -68,7 +68,14 @@ export default function ReportIssueWizard({
   onReportCreated,
 }) {
   // Wizard Step: 1 = Issue, 2 = Location, 3 = Details, 4 = Review
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const stepParam = parseInt(params.get('step'), 10);
+      if (stepParam >= 1 && stepParam <= 4) return stepParam;
+    }
+    return 1;
+  });
   const [unreadCount, setUnreadCount] = useState(3);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -125,16 +132,14 @@ export default function ReportIssueWizard({
   // Location State
   const [buildings, setBuildings] = useState(DEFAULT_BUILDINGS);
   const [selectedBuilding, setSelectedBuilding] = useState('PTC Building');
-  const [selectedFloor, setSelectedFloor] = useState('3rd Floor');
+  const [selectedFloor, setSelectedFloor] = useState('1st Floor');
   const [customFloor, setCustomFloor] = useState('');
-  const [roomCoordinate, setRoomCoordinate] = useState('PTC 306');
+  const [roomCoordinate, setRoomCoordinate] = useState('');
 
   // Defect Details State
-  const [issueTitle, setIssueTitle] = useState('Broken Air Conditioner');
-  const [priorityLevel, setPriorityLevel] = useState('High'); // Low, Medium, High, Urgent
-  const [description, setDescription] = useState(
-    'The wall-mounted AC unit is leaking water heavily and making a loud rattling sound. It does not blow cold air anymore. Water is dripping onto laboratory table 4.'
-  );
+  const [issueTitle, setIssueTitle] = useState('');
+  const [priorityLevel, setPriorityLevel] = useState('Medium'); // Low, Medium, High, Urgent
+  const [description, setDescription] = useState('');
 
   const fileInputRef = useRef(null);
   const multiFileInputRef = useRef(null);
@@ -522,6 +527,9 @@ export default function ReportIssueWizard({
             className={`rw-step-node ${
               currentStep === 1 ? 'active' : currentStep > 1 ? 'completed' : 'upcoming'
             }`}
+            onClick={() => setCurrentStep(1)}
+            style={{ cursor: 'pointer' }}
+            title="Step 1: Category & Photo"
           >
             <div className="rw-step-circle">
               {currentStep > 1 ? <Check size={14} strokeWidth={3} /> : '01'}
@@ -536,6 +544,10 @@ export default function ReportIssueWizard({
             className={`rw-step-node ${
               currentStep === 2 ? 'active' : currentStep > 2 ? 'completed' : 'upcoming'
             }`}
+            onClick={() => setCurrentStep(2)}
+            style={{ cursor: 'pointer' }}
+            title="Step 2: Defect Location"
+            id="rw-stepper-node-2"
           >
             <div className="rw-step-circle">
               {currentStep > 2 ? <Check size={14} strokeWidth={3} /> : '02'}
@@ -550,6 +562,9 @@ export default function ReportIssueWizard({
             className={`rw-step-node ${
               currentStep === 3 ? 'active' : currentStep > 3 ? 'completed' : 'upcoming'
             }`}
+            onClick={() => setCurrentStep(3)}
+            style={{ cursor: 'pointer' }}
+            title="Step 3: Details & Priority"
           >
             <div className="rw-step-circle">
               {currentStep > 3 ? <Check size={14} strokeWidth={3} /> : '03'}
@@ -564,6 +579,9 @@ export default function ReportIssueWizard({
             className={`rw-step-node ${
               currentStep === 4 ? 'active' : 'upcoming'
             }`}
+            onClick={() => setCurrentStep(4)}
+            style={{ cursor: 'pointer' }}
+            title="Step 4: Review & Submit"
           >
             <div className="rw-step-circle">04</div>
             <span className="rw-step-label">Review</span>
@@ -716,16 +734,16 @@ export default function ReportIssueWizard({
             ================================================================== */}
         {currentStep === 2 && (
           <div className="rw-card">
-            <div className="rw-card-header">
-              <h1 className="rw-card-title">Set defect location</h1>
-              <p className="rw-card-subtitle">
-                Provide precise room and floor details for maintenance coordinates.
-              </p>
-            </div>
-
             <div className="rw-grid-2col">
-              {/* Left Column: Building, Floor (dropdown or textbox), Room Coordinate */}
+              {/* Left Column: Title & Subtitle + Building, Floor, Room Coordinate */}
               <div>
+                <div className="rw-card-header" style={{ marginBottom: '1.5rem' }}>
+                  <h1 className="rw-card-title">Set defect location</h1>
+                  <p className="rw-card-subtitle">
+                    Provide precise room and floor details for maintenance coordinates.
+                  </p>
+                </div>
+
                 {/* Building Dropdown */}
                 <div className="rw-form-group">
                   <label className="rw-form-label">Campus Building</label>
@@ -750,7 +768,6 @@ export default function ReportIssueWizard({
                     <input
                       type="text"
                       className="rw-input"
-                      placeholder="e.g. Mezzanine, Ground, Floor 2"
                       value={customFloor}
                       onChange={(e) => setCustomFloor(e.target.value)}
                       id="rw-custom-floor-input"
@@ -777,7 +794,6 @@ export default function ReportIssueWizard({
                   <input
                     type="text"
                     className="rw-input"
-                    placeholder="e.g. PTC 306"
                     value={roomCoordinate}
                     onChange={(e) => setRoomCoordinate(e.target.value)}
                     id="rw-room-input"
@@ -787,7 +803,14 @@ export default function ReportIssueWizard({
 
               {/* Right Column: Campus Map Placement Preview */}
               <div>
-                <label className="rw-form-label">Campus Map Placement</label>
+                <div className="rw-card-header" style={{ marginBottom: '1.5rem' }}>
+                  <h2 className="rw-card-title" style={{ fontSize: '1.5rem' }}>
+                    Campus Map Placement
+                  </h2>
+                  <p className="rw-card-subtitle">
+                    Pinpoint defect coordinates on the interactive campus route map.
+                  </p>
+                </div>
                 <CampusMapPlacement
                   selectedBuilding={selectedBuilding}
                   onSelectBuilding={handleBuildingChange}
@@ -834,7 +857,6 @@ export default function ReportIssueWizard({
                   <input
                     type="text"
                     className="rw-input"
-                    placeholder="e.g. Broken Air Conditioner"
                     value={issueTitle}
                     onChange={(e) => setIssueTitle(e.target.value)}
                     id="rw-title-input"
@@ -864,7 +886,6 @@ export default function ReportIssueWizard({
                   <textarea
                     className="rw-textarea"
                     rows={4}
-                    placeholder="Provide details on defect symptoms, safety concerns, or specific instructions..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
                     id="rw-desc-input"
