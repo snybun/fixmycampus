@@ -5,9 +5,13 @@
 
 const API_BASE = '/api';
 
-export async function fetchStats() {
+export async function fetchStats(params = {}) {
   try {
-    const res = await fetch(`${API_BASE}/stats.php`);
+    const query = new URLSearchParams(params).toString();
+    const url = query ? `${API_BASE}/stats.php?${query}` : `${API_BASE}/stats.php`;
+    const res = await fetch(url, {
+      credentials: 'include',
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {

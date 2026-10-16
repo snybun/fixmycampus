@@ -162,7 +162,8 @@ export default function DashboardPage({
     };
 
     const loadData = () => {
-      fetchStats().then((res) => {
+      const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+      fetchStats(statsParams).then((res) => {
         if (isMounted && res && res.success) {
           const statsData = res.data || res;
           setStats({
@@ -180,11 +181,19 @@ export default function DashboardPage({
         }
       }).catch(() => {});
 
-      fetchReports({ limit: 100 }).then((res) => {
+      const reportsParams = currentUser?.id 
+        ? { limit: 100, my_reports: 1, user_id: currentUser.id } 
+        : { limit: 100, my_reports: 1 };
+
+      fetchReports(reportsParams).then((res) => {
         if (isMounted && res && res.success && Array.isArray(res.data)) {
           setReports(res.data.map(mapReport));
+        } else if (isMounted) {
+          setReports([]);
         }
-      }).catch(() => {});
+      }).catch(() => {
+        if (isMounted) setReports([]);
+      });
     };
 
     loadData();
@@ -269,7 +278,8 @@ export default function DashboardPage({
           setTimeout(() => setToastMessage(''), 3500);
 
           // Refresh live stats counters
-          fetchStats().then((sRes) => {
+          const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+          fetchStats(statsParams).then((sRes) => {
             if (sRes && sRes.success) {
               const statsData = sRes.data || sRes;
               setStats({
@@ -625,6 +635,7 @@ export default function DashboardPage({
             setActiveModalPreset('delete_report');
           }}
           isAdmin={isAdmin}
+          currentUser={currentUser}
         />
       ) : (
         <main className="dash-content">

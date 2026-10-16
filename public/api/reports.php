@@ -1023,6 +1023,16 @@ try {
     $limit = ($action === 'export') ? 5000 : min((int)($_GET['limit'] ?? 50), 200);
     $myOnly         = isset($_GET['my_reports']) && $_GET['my_reports'] === '1';
 
+    $user = auth_user();
+    $targetUserId = (int)($_GET['user_id'] ?? $_SERVER['HTTP_X_USER_ID'] ?? 0);
+    if ($targetUserId <= 0 && $user) {
+        $targetUserId = (int)$user['id'];
+    }
+    $roleName = $user['role_name'] ?? auth_role() ?? '';
+    $roleId = (int)($user['role_id'] ?? 0);
+    $isStudent = ($roleName === 'student' || $roleId === 5);
+    $isAdmin = ($roleName === 'admin' || $roleId === 1 || ($user && (int)$user['id'] === 1));
+
     $sql = "
         SELECT 
             r.id,
@@ -1071,12 +1081,19 @@ try {
 
     $params = [];
 
-    if ($myOnly) {
-        $user = auth_user();
-        if ($user) {
+    // Scope to user if:
+    // 1. my_reports=1 is passed, OR
+    // 2. user_id is explicitly passed in a student context, OR
+    // 3. Authenticated user is a student and campus/global/all is not requested
+    $scopeToUser = $myOnly || ($isStudent && !$isAdmin && !isset($_GET['campus']) && !isset($_GET['all']));
+    if ($scopeToUser) {
+        if ($targetUserId > 0) {
             $sql .= " AND (r.reporter_id = :reporter_id OR r.id IN (SELECT report_id FROM `report_confirmations` WHERE user_id = :confirmed_uid))";
-            $params[':reporter_id'] = $user['id'];
-            $params[':confirmed_uid'] = $user['id'];
+            $params[':reporter_id'] = $targetUserId;
+            $params[':confirmed_uid'] = $targetUserId;
+        } else {
+            // Unknown or unauthenticated user requesting personal reports -> return empty
+            $sql .= " AND 1=0";
         }
     }
 

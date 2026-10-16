@@ -21,6 +21,7 @@ export default function MyReportsView({
   initialSelectedReport = null,
   onDeleteReport = null,
   isAdmin = false,
+  currentUser = null,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'reported', 'verified', 'worker_assigned', 'in_progress', 'resolved'
@@ -71,22 +72,28 @@ export default function MyReportsView({
   useEffect(() => {
     let isMounted = true;
     if (liveReports && liveReports.length > 0) {
-setLocalReports(liveReports);
+      setLocalReports(liveReports);
     } else {
       setLoading(true);
-      fetchReports({ limit: 100 })
+      const params = currentUser?.id 
+        ? { limit: 100, my_reports: 1, user_id: currentUser.id } 
+        : { limit: 100, my_reports: 1 };
+
+      fetchReports(params)
         .then((res) => {
           if (isMounted && res && res.success && Array.isArray(res.data)) {
             setLocalReports(res.data);
+          } else if (isMounted) {
+            setLocalReports([]);
           }
         })
         .catch((err) => {
           console.error('Error fetching student reports:', err);
+          if (isMounted) setLocalReports([]);
         })
         .finally(() => {
           if (isMounted) setLoading(false);
         });
-
     }
 
     return () => {

@@ -178,92 +178,121 @@ try {
     if (empty($_SESSION['notifs_cleared_' . $userId])) {
         $existingCount = (int)db_fetch_column("SELECT COUNT(*) FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
         if ($existingCount === 0) {
-        $realReports = db_fetch_all("
-            SELECT r.*, b.name AS building_name, l.room_number, u.full_name AS reporter_name
-            FROM `reports` r
-            LEFT JOIN `locations` l ON r.location_id = l.id
-            LEFT JOIN `buildings` b ON l.building_id = b.id
-            LEFT JOIN `users` u ON r.reporter_id = u.id
-            ORDER BY r.reported_at DESC
-            LIMIT 5
-        ");
-
-        foreach ($realReports as $r) {
-            $loc = "{$r['building_name']} • " . ($r['room_number'] ?: $r['specific_area'] ?: 'Campus');
-            $tNum = $r['ticket_number'] ?: "FMC-{$r['id']}";
-
             if ($isMaintenanceUser) {
                 // Work order dispatch for maintenance staff
-                create_notification(
-                    $userId,
-                    (int)$r['id'],
-                    'work_order',
-                    "New Work Order Dispatched: {$tNum} {$r['title']}",
-                    "Assigned task for {$r['title']} in {$loc}. Priority: " . ucfirst($r['priority']) . "."
-                );
+                $realReports = db_fetch_all("
+                    SELECT r.*, b.name AS building_name, l.room_number, u.full_name AS reporter_name
+                    FROM `reports` r
+                    LEFT JOIN `locations` l ON r.location_id = l.id
+                    LEFT JOIN `buildings` b ON l.building_id = b.id
+                    LEFT JOIN `users` u ON r.reporter_id = u.id
+                    ORDER BY r.reported_at DESC
+                    LIMIT 5
+                ");
 
-                if (in_array($r['priority'], ['high', 'emergency'], true)) {
+                foreach ($realReports as $r) {
+                    $loc = "{$r['building_name']} • " . ($r['room_number'] ?: $r['specific_area'] ?: 'Campus');
+                    $tNum = $r['ticket_number'] ?: "FMC-{$r['id']}";
                     create_notification(
                         $userId,
                         (int)$r['id'],
-                        'emergency',
-                        "PRIORITY ALERT: {$tNum} - {$r['title']}",
-                        "Urgent defect reported in {$loc}. Please inspect site and begin repairs."
+                        'work_order',
+                        "New Work Order Dispatched: {$tNum} {$r['title']}",
+                        "Assigned task for {$r['title']} in {$loc}. Priority: " . ucfirst($r['priority']) . "."
                     );
+
+                    if (in_array($r['priority'], ['high', 'emergency'], true)) {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'emergency',
+                            "PRIORITY ALERT: {$tNum} - {$r['title']}",
+                            "Urgent defect reported in {$loc}. Please inspect site and begin repairs."
+                        );
+                    }
                 }
             } elseif ($isAdmin) {
                 // Administrative alert for incident oversight
-                create_notification(
-                    $userId,
-                    (int)$r['id'],
-                    'new_report',
-                    "Defect Incident Logged: {$tNum} {$r['title']}",
-                    "Submitted by {$r['reporter_name']} in {$loc}. Current status: " . ucfirst($r['status']) . "."
-                );
+                $realReports = db_fetch_all("
+                    SELECT r.*, b.name AS building_name, l.room_number, u.full_name AS reporter_name
+                    FROM `reports` r
+                    LEFT JOIN `locations` l ON r.location_id = l.id
+                    LEFT JOIN `buildings` b ON l.building_id = b.id
+                    LEFT JOIN `users` u ON r.reporter_id = u.id
+                    ORDER BY r.reported_at DESC
+                    LIMIT 5
+                ");
 
-                if (in_array($r['priority'], ['high', 'emergency'], true)) {
+                foreach ($realReports as $r) {
+                    $loc = "{$r['building_name']} • " . ($r['room_number'] ?: $r['specific_area'] ?: 'Campus');
+                    $tNum = $r['ticket_number'] ?: "FMC-{$r['id']}";
                     create_notification(
                         $userId,
                         (int)$r['id'],
-                        'emergency',
-                        "High Priority Alert: {$tNum} in {$loc}",
-                        "Requires immediate technician dispatch and facilities supervision."
+                        'new_report',
+                        "Defect Incident Logged: {$tNum} {$r['title']}",
+                        "Submitted by {$r['reporter_name']} in {$loc}. Current status: " . ucfirst($r['status']) . "."
                     );
+
+                    if (in_array($r['priority'], ['high', 'emergency'], true)) {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'emergency',
+                            "High Priority Alert: {$tNum} in {$loc}",
+                            "Requires immediate technician dispatch and facilities supervision."
+                        );
+                    }
                 }
             } else {
-                // Student / reporter updates
-                create_notification(
-                    $userId,
-                    (int)$r['id'],
-                    'verified',
-                    "Your report {$tNum} has been received and verified.",
-                    "Campus operations has reviewed '{$r['title']}' in {$loc}."
-                );
+                // Student / reporter updates: strictly for reports submitted or confirmed by this student
+                $realReports = db_fetch_all("
+                    SELECT r.*, b.name AS building_name, l.room_number, u.full_name AS reporter_name
+                    FROM `reports` r
+                    LEFT JOIN `locations` l ON r.location_id = l.id
+                    LEFT JOIN `buildings` b ON l.building_id = b.id
+                    LEFT JOIN `users` u ON r.reporter_id = u.id
+                    WHERE r.reporter_id = :uid OR r.id IN (SELECT report_id FROM `report_confirmations` WHERE user_id = :cuid)
+                    ORDER BY r.reported_at DESC
+                    LIMIT 5
+                ", [':uid' => $userId, ':cuid' => $userId]);
 
-                if ($r['status'] === 'assigned') {
-                    create_notification(
-                        $userId,
-                        (int)$r['id'],
-                        'assignment',
-                        "Technician Assigned to {$tNum}",
-                        "A maintenance specialist has been assigned to inspect and repair '{$r['title']}'."
-                    );
-                } elseif ($r['status'] === 'in_progress') {
-                    create_notification(
-                        $userId,
-                        (int)$r['id'],
-                        'in_progress',
-                        "Repair In Progress: {$tNum}",
-                        "Maintenance personnel has begun repair work on '{$r['title']}'."
-                    );
-                } elseif ($r['status'] === 'resolved' || $r['status'] === 'closed') {
+                foreach ($realReports as $r) {
+                    $loc = "{$r['building_name']} • " . ($r['room_number'] ?: $r['specific_area'] ?: 'Campus');
+                    $tNum = $r['ticket_number'] ?: "FMC-{$r['id']}";
                     create_notification(
                         $userId,
                         (int)$r['id'],
                         'verified',
-                        "Issue Fixed: {$tNum} - {$r['title']}",
-                        "Your reported issue has been repaired and verified."
+                        "Your report {$tNum} has been received and verified.",
+                        "Campus operations has reviewed '{$r['title']}' in {$loc}."
                     );
+
+                    if ($r['status'] === 'assigned') {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'assignment',
+                            "Technician Assigned to {$tNum}",
+                            "A maintenance specialist has been assigned to inspect and repair '{$r['title']}'."
+                        );
+                    } elseif ($r['status'] === 'in_progress') {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'in_progress',
+                            "Repair In Progress: {$tNum}",
+                            "Maintenance personnel has begun repair work on '{$r['title']}'."
+                        );
+                    } elseif ($r['status'] === 'resolved' || $r['status'] === 'closed') {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'verified',
+                            "Issue Fixed: {$tNum} - {$r['title']}",
+                            "Your reported issue has been repaired and verified."
+                        );
+                    }
                 }
             }
         }
