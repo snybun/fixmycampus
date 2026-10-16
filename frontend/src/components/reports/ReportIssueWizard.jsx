@@ -144,6 +144,7 @@ export default function ReportIssueWizard({
   const fileInputRef = useRef(null);
   const multiFileInputRef = useRef(null);
 
+
   // Fetch live buildings & categories from database on mount
   useEffect(() => {
     fetchBuildings().then((res) => {
@@ -637,8 +638,11 @@ export default function ReportIssueWizard({
             </div>
 
             <div className="rw-grid-2col">
-              {/* Left Column: Drag & Drop Primary Photo Upload Box */}
+              {/* Left Column: Drag & Drop Primary Defect Photo Upload Box */}
               <div>
+                <label className="rw-section-label" style={{ marginBottom: '0.75rem', display: 'block' }}>
+                  Primary Defect Photo
+                </label>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -701,10 +705,20 @@ export default function ReportIssueWizard({
                 </div>
               </div>
 
-              {/* Right Column: 3x3 Grid of 9 Categories */}
+              {/* Right Column: 4x1 Vertically Scrollable Category Selection */}
               <div>
-                <label className="rw-section-label">Select Category</label>
-                <div className="rw-categories-grid">
+                <div className="rw-category-header-row" style={{ marginBottom: '0.75rem' }}>
+                  <label className="rw-section-label">Select Category</label>
+                  {selectedCategory && (
+                    <span className="rw-selected-badge" title="Currently selected category">
+                      <Check size={12} strokeWidth={3} />
+                      {selectedCategory.name}
+                    </span>
+                  )}
+                </div>
+
+                {/* 4x1 Vertical Scrollable List (1 column, 4 visible, scrollable up and down) */}
+                <div className="rw-categories-vertical-list">
                   {CATEGORY_DEFINITIONS.map((cat) => {
                     const IconComponent = cat.icon;
                     const isSelected = selectedCategory?.id === cat.id;
@@ -712,11 +726,17 @@ export default function ReportIssueWizard({
                       <button
                         key={cat.id}
                         type="button"
-                        className={`rw-category-card ${isSelected ? 'selected' : ''}`}
+                        className={`rw-category-card rw-category-card-vertical ${isSelected ? 'selected' : ''}`}
                         onClick={() => setSelectedCategory(cat)}
+                        title={`Select ${cat.name}`}
                       >
-                        <IconComponent className="rw-cat-icon" />
+                        <div className={`rw-cat-icon-badge ${isSelected ? 'selected' : ''}`}>
+                          <IconComponent className="rw-cat-icon" />
+                        </div>
                         <span className="rw-cat-name">{cat.name}</span>
+                        {isSelected && (
+                          <Check size={14} strokeWidth={3} className="rw-cat-check" />
+                        )}
                       </button>
                     );
                   })}

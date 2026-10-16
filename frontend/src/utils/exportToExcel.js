@@ -1,4 +1,5 @@
 import * as XLSX from 'xlsx';
+import { saveAs } from 'file-saver';
 
 /**
  * Format report status into a human-readable title
@@ -185,15 +186,75 @@ export function exportReportsToExcel(reports = [], baseFilename = 'FixMyCampus_D
   ];
 
   // -------------------------------------------------------------------------
-  // 3. Assemble Workbook & Trigger Direct Download
+  // 3. Assemble Workbook & Trigger Direct Download (.xlsx)
   // -------------------------------------------------------------------------
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, wsReports, 'Defect Tickets');
   XLSX.utils.book_append_sheet(wb, wsSummary, 'Summary Overview');
 
   const dateTag = new Date().toISOString().split('T')[0];
-  const filename = `${baseFilename}_${dateTag}.xlsx`;
+  const cleanBase = baseFilename.replace(/\.xlsx$/i, '');
+  const filename = `${cleanBase}_${dateTag}.xlsx`;
 
-  XLSX.writeFile(wb, filename);
-  return true;
+  // Write workbook to raw ArrayBuffer
+  const excelBuffer = XLSX.write(wb, {
+    bookType: 'xlsx',
+    type: 'array',
+  });
+
+  // Official Excel OOXML MIME type
+  const EXCEL_MIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;charset=UTF-8';
+
+  // 1. Create File object (preserves filename at the binary level) or fallback to Blob
+  let fileOrBlob;
+  try {
+    fileOrBlob = new File([excelBuffer], filename, { type: EXCEL_MIME });
+  } catch {
+    fileOrBlob = new Blob([excelBuffer], { type: EXCEL_MIME });
+  }
+
+  // 2. Legacy IE / Old Edge support
+  if (typeof window !== 'undefined' && window.navigator && window.navigator.msSaveOrOpenBlob) {
+    window.navigator.msSaveOrOpenBlob(fileOrBlob, filename);
+    return true;
+  }
+
+  // 3. Modern browser download via DOM-attached anchor
+  // In Chromium (Chrome & Edge), the anchor tag MUST be connected to document.body
+  // and must NOT be removed synchronously, otherwise Chromium drops the 'download'
+  // filename attribute and names the file after the internal Blob UUID without extension.
+  try {
+    const blobUrl = window.URL.createObjectURL(fileOrBlob);
+    const link = document.createElement('a');
+    link.style.display = 'none';
+    link.href = blobUrl;
+    link.download = filename;
+    link.setAttribute('download', filename);
+
+    document.body.appendChild(link);
+    link.click();
+
+    setTimeout(() => {
+      try {
+        if (link.parentNode) {
+          link.parentNode.removeChild(link);
+        }
+        window.URL.revokeObjectURL(blobUrl);
+      } catch {
+        // cleanup ignore
+      }
+    }, 15000);
+    return true;
+  } catch (err) {
+    console.warn('DOM anchor download failed, attempting file-saver saveAs fallback:', err);
+    try {
+      saveAs(fileOrBlob, filename);
+      return true;
+    } catch (saveErr) {
+      console.error('All download methods failed:', saveErr);
+      return false;
+    }
+  }
 }
+
+

@@ -331,7 +331,8 @@
   border: 2px dashed #cbd5e1;
   background-color: #f8fafc;
   border-radius: 16px;
-  min-height: 310px;
+  min-height: 275px;
+  height: 275px;
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -342,6 +343,7 @@
   transition: all 0.2s ease;
   padding: 1.5rem;
   text-align: center;
+  box-sizing: border-box;
 }
 
 .rw-upload-dropzone:hover,
@@ -445,63 +447,164 @@
   color: #ffffff;
 }
 
-/* Category Grid (3x3 matching Figma) */
+/* --------------------------------------------------------------------------
+   STEP 1: 4x1 Scrollable Category Strip & Photo Upload
+   -------------------------------------------------------------------------- */
+/* --------------------------------------------------------------------------
+   STEP 1: 4x1 Vertically Scrollable Category Selection (Side-by-Side)
+   -------------------------------------------------------------------------- */
 .rw-section-label {
   font-size: 0.9375rem;
-  font-weight: 650;
-  color: #1e293b;
-  margin: 0 0 0.85rem 0;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0;
   display: block;
 }
 
-.rw-categories-grid {
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-  gap: 0.75rem;
+.rw-category-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.rw-selected-badge {
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: #047857;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  letter-spacing: 0.01em;
+  box-shadow: 0 1px 2px rgba(5, 150, 105, 0.06);
+}
+
+/* 4x1 Vertical Scrollable List (1 column, 4 visible, scrolls up/down) */
+.rw-categories-vertical-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.625rem;
+  height: 275px;
+  max-height: 275px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding-right: 6px;
+  padding-left: 2px;
+  padding-top: 2px;
+  padding-bottom: 2px;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 transparent;
+  -webkit-overflow-scrolling: touch;
+}
+
+.rw-categories-vertical-list::-webkit-scrollbar {
+  width: 6px;
+}
+
+.rw-categories-vertical-list::-webkit-scrollbar-track {
+  background: #f8fafc;
+  border-radius: 9999px;
+}
+
+.rw-categories-vertical-list::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+}
+
+.rw-categories-vertical-list::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .rw-category-card {
   background-color: #ffffff;
   border: 1.5px solid #e2e8f0;
   border-radius: 12px;
-  padding: 0.85rem 0.75rem;
+  padding: 0.75rem 1rem;
   display: flex;
   align-items: center;
-  gap: 0.65rem;
+  gap: 0.85rem;
   cursor: pointer;
-  transition: all 0.18s ease;
+  transition: all 0.18s cubic-bezier(0.4, 0, 0.2, 1);
   color: #1e293b;
   text-align: left;
+  user-select: none;
+  min-height: 56px;
+  width: 100%;
+  flex-shrink: 0;
+  box-sizing: border-box;
+}
+
+.rw-category-card-vertical {
+  width: 100%;
+}
+
+.rw-cat-icon-badge {
+  width: 34px;
+  height: 34px;
+  border-radius: 9px;
+  background-color: #f1f5f9;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.18s ease;
 }
 
 .rw-category-card:hover:not(.selected) {
-  border-color: #a7f3d0;
-  background-color: #ecfdf5;
+  border-color: #6ee7b7;
+  background-color: #f0fdf4;
   transform: translateY(-1px);
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.10);
+}
+
+.rw-category-card:hover:not(.selected) .rw-cat-icon-badge {
+  background-color: #d1fae5;
+  color: #047857;
 }
 
 .rw-category-card.selected {
   background: linear-gradient(135deg, #059669 0%, #047857 100%);
   border-color: #047857;
   color: #ffffff;
-  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.3);
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.25);
+  transform: translateY(-1px);
+}
+
+.rw-category-card.selected .rw-cat-icon-badge {
+  background-color: rgba(255, 255, 255, 0.22);
+  color: #ffffff;
 }
 
 .rw-cat-icon {
-  width: 20px;
-  height: 20px;
+  width: 19px;
+  height: 19px;
   flex-shrink: 0;
   color: currentColor;
 }
 
 .rw-cat-name {
-  font-size: 0.8125rem;
-  font-weight: 600;
+  font-size: 0.875rem;
+  font-weight: 650;
   line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
+
+.rw-cat-check {
+  margin-left: auto;
+  flex-shrink: 0;
+  color: #ffffff;
+}
+
+
 
 /* --------------------------------------------------------------------------
    STEP 2: Set Defect Location
