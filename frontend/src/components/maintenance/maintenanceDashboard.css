@@ -722,9 +722,19 @@
   box-shadow: 0 3px 10px rgba(5, 150, 105, 0.25);
 }
 
-.maint-btn-action-primary:hover {
+.maint-btn-action-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border-color: #059669;
+}
+
+.maint-btn-action-primary:disabled,
+.maint-btn-action-primary.in-progress,
+.maint-btn-action-primary.completed {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .maint-btn-action-secondary {
@@ -1334,6 +1344,10 @@
   border-left-color: #ef4444;
 }
 
+.maint-notif-card.border-in-progress {
+  border-left-color: #f97316;
+}
+
 .maint-notif-card.border-work-order {
   border-left-color: #059669;
 }
@@ -1382,6 +1396,11 @@
 .maint-notif-icon-box.emergency {
   background-color: #fee2e2;
   color: #dc2626;
+}
+
+.maint-notif-icon-box.in-progress {
+  background-color: #fff7ed;
+  color: #ea580c;
 }
 
 .maint-notif-icon-box.work-order {
@@ -1444,6 +1463,11 @@
 .maint-notif-type-pill.emergency {
   background-color: #fee2e2;
   color: #991b1b;
+}
+
+.maint-notif-type-pill.in-progress {
+  background-color: #ffedd5;
+  color: #c2410c;
 }
 
 .maint-notif-type-pill.work-order {

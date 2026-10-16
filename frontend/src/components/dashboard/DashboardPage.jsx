@@ -82,23 +82,29 @@ export default function DashboardPage({
   // Load stats, real reports, and notifications from backend
   useEffect(() => {
     let isMounted = true;
-    fetchStats().then((res) => {
-      if (isMounted && res && res.success) {
-        const statsData = res.data || res;
-        setStats({
-          total: statsData.total_reports ?? 0,
-          pending: statsData.pending_review ?? 0,
-          in_progress: statsData.in_progress ?? 0,
-          resolved: statsData.resolved ?? 0,
-        });
-      }
-    });
 
-    fetchNotifications().then((res) => {
-      if (isMounted && res && res.success && typeof res.unread_count === 'number') {
-        setUnreadCount(res.unread_count);
-      }
-    }).catch(() => {});
+    const loadData = () => {
+      fetchStats().then((res) => {
+        if (isMounted && res && res.success) {
+          const statsData = res.data || res;
+          setStats({
+            total: statsData.total_reports ?? 0,
+            pending: statsData.pending_review ?? 0,
+            in_progress: statsData.in_progress ?? 0,
+            resolved: statsData.resolved ?? 0,
+          });
+        }
+      }).catch(() => {});
+
+      fetchNotifications(currentUser?.id).then((res) => {
+        if (isMounted && res && res.success && typeof res.unread_count === 'number') {
+          setUnreadCount(res.unread_count);
+        }
+      }).catch(() => {});
+    };
+
+    loadData();
+    const interval = setInterval(loadData, 15000);
 
     fetchReports({ limit: 100 }).then((res) => {
       if (isMounted && res.success && Array.isArray(res.data)) {
@@ -589,11 +595,21 @@ export default function DashboardPage({
         <NotificationsView
           onNavigate={onNavigate}
           onSelectReport={(ticketNumber) => {
+            const found = reports.find(
+              (r) =>
+                r.ticket_number === ticketNumber ||
+                r.ticket_id === ticketNumber ||
+                String(r.id) === String(ticketNumber)
+            );
+            if (found) {
+              setSelectedReportForDetails(found);
+            }
             setActiveTab('my-reports');
             window.location.hash = 'my-reports';
           }}
           unreadCount={unreadCount}
           setUnreadCount={setUnreadCount}
+          currentUser={currentUser}
         />
       ) : activeTab === 'my-reports' ? (
         <MyReportsView

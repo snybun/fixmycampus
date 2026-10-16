@@ -27,6 +27,7 @@ export default function NotificationsView({
   onSelectReport,
   unreadCount,
   setUnreadCount,
+  currentUser = null,
 }) {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -35,9 +36,8 @@ export default function NotificationsView({
   const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   const loadNotifications = async () => {
-    setLoading(true);
     try {
-      const res = await fetchNotifications();
+      const res = await fetchNotifications(currentUser?.id);
       if (res && res.success && Array.isArray(res.data)) {
         setNotifications(res.data);
         if (typeof setUnreadCount === 'function' && typeof res.unread_count === 'number') {
@@ -57,10 +57,13 @@ export default function NotificationsView({
     }
   };
 
-  // Fetch real notifications on mount
+  // Fetch real notifications on mount and poll periodically
   useEffect(() => {
+    setLoading(true);
     loadNotifications();
-  }, [setUnreadCount]);
+    const interval = setInterval(loadNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [setUnreadCount, currentUser?.id]);
 
   // Mark all as read
   const handleMarkAllRead = async () => {
@@ -147,8 +150,14 @@ export default function NotificationsView({
     switch (type) {
       case 'emergency':
         return (
-          <div className="notif-icon-badge" style={{ backgroundColor: '#fee2e2', borderColor: '#fca5a5', color: '#dc2626' }} title="Emergency Hazard">
+          <div className="notif-icon-badge notif-badge-emergency" title="Emergency Hazard">
             <AlertOctagon size={20} strokeWidth={2.4} />
+          </div>
+        );
+      case 'in_progress':
+        return (
+          <div className="notif-icon-badge notif-badge-in-progress" title="Repair In Progress">
+            <Clock size={20} strokeWidth={2.4} />
           </div>
         );
       case 'work_order':
@@ -286,6 +295,11 @@ export default function NotificationsView({
                       {item.message && <p className="notif-card-desc">{item.message}</p>}
                       <div className="notif-card-meta">
                         <span className="notif-card-time">{item.time_ago}</span>
+                        {item.badge_label && (
+                          <span className={`notif-status-pill notif-status-${item.type || 'info'}`}>
+                            {item.badge_label}
+                          </span>
+                        )}
                         {item.location && <span className="notif-card-location">• {item.location}</span>}
                         {item.ticket_number && (
                           <span

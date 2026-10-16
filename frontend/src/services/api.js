@@ -88,9 +88,12 @@ export async function deleteReport(reportId) {
   }
 }
 
-export async function fetchNotifications() {
+export async function fetchNotifications(userId = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php`, {
+    const url = userId
+      ? `${API_BASE}/notifications.php?user_id=${encodeURIComponent(userId)}`
+      : `${API_BASE}/notifications.php`;
+    const res = await fetch(url, {
       credentials: 'include',
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);

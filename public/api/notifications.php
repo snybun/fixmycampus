@@ -31,6 +31,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 session_start_safe();
 $action = $_GET['action'] ?? 'list';
 $user = auth_user();
+if (!$user) {
+    $paramUid = (int)($_GET['user_id'] ?? $_SERVER['HTTP_X_USER_ID'] ?? 0);
+    if ($paramUid > 0) {
+        $found = db_fetch_one("
+            SELECT u.*, r.name AS role_name
+            FROM `users` u
+            LEFT JOIN `roles` r ON u.role_id = r.id
+            WHERE u.id = :id AND u.status = 'active'
+            LIMIT 1
+        ", [':id' => $paramUid]);
+        if ($found) {
+            $user = $found;
+        }
+    }
+}
+
 if ($user) {
     $userId = (int) $user['id'];
     $roleName = $user['role_name'] ?? auth_role() ?? 'student';
@@ -224,18 +240,35 @@ try {
                     "Campus operations has reviewed '{$r['title']}' in {$loc}."
                 );
 
-                if ($r['status'] === 'assigned' || $r['status'] === 'in_progress') {
+                if ($r['status'] === 'assigned') {
                     create_notification(
                         $userId,
                         (int)$r['id'],
                         'assignment',
                         "Technician Assigned to {$tNum}",
-                        "A maintenance specialist has been assigned to inspect and repair {$r['title']}."
+                        "A maintenance specialist has been assigned to inspect and repair '{$r['title']}'."
+                    );
+                } elseif ($r['status'] === 'in_progress') {
+                    create_notification(
+                        $userId,
+                        (int)$r['id'],
+                        'in_progress',
+                        "Repair In Progress: {$tNum}",
+                        "Maintenance personnel has begun repair work on '{$r['title']}'."
+                    );
+                } elseif ($r['status'] === 'resolved' || $r['status'] === 'closed') {
+                    create_notification(
+                        $userId,
+                        (int)$r['id'],
+                        'verified',
+                        "Issue Fixed: {$tNum} - {$r['title']}",
+                        "Your reported issue has been repaired and verified."
                     );
                 }
             }
         }
     }
+}
 
     // -------------------------------------------------------------------------
     // GET /api/notifications.php -> List database notifications
@@ -284,10 +317,13 @@ try {
             'work_order'  => 'Work Order Dispatch',
             'assignment'  => 'Staff Assigned',
             'in_progress' => 'Repair In Progress',
-            'verified'    => 'Supervisor Verified',
+            'verified'    => 'Issue Fixed',
+            'fixed'       => 'Issue Fixed',
+            'resolved'    => 'Issue Fixed',
             'parts'       => 'Parts & Requisition',
             'sla_warning' => 'SLA Notice',
             'new_report'  => 'New Defect Report',
+            'submitted'   => 'Report Submitted',
             default       => 'Campus Notification',
         };
 

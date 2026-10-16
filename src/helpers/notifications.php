@@ -48,7 +48,8 @@ if (!function_exists('notify_admins_and_supervisors')) {
         ?int $reportId,
         string $type,
         string $title,
-        string $message
+        string $message,
+        ?int $excludeUserId = null
     ): void {
         try {
             $users = db_fetch_all("
@@ -56,7 +57,11 @@ if (!function_exists('notify_admins_and_supervisors')) {
                 WHERE `role_id` IN (1, 2) AND `status` = 'active'
             ");
             foreach ($users as $u) {
-                create_notification((int)$u['id'], $reportId, $type, $title, $message);
+                $uid = (int)$u['id'];
+                if ($excludeUserId !== null && $uid === $excludeUserId) {
+                    continue;
+                }
+                create_notification($uid, $reportId, $type, $title, $message);
             }
         } catch (\Throwable $e) {
             error_log('[FixMyCampus Notifications] Broadcast error: ' . $e->getMessage());

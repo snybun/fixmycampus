@@ -6,7 +6,8 @@ import {
   Trash2,
   CheckCircle2,
   LogOut,
-  AlertTriangle
+  AlertTriangle,
+  Wrench,
 } from 'lucide-react';
 import './modals.css';
 
@@ -90,6 +91,16 @@ export const MODAL_PRESETS = {
     cancelText: 'Cancel',
     confirmText: 'Delete All',
     confirmClass: 'modal-btn-danger',
+  },
+  start_repair: {
+    id: 'start_repair',
+    title: 'Start Repair?',
+    message: 'Are you sure you want to start this repair? Once started, this action cannot be undone.',
+    icon: Wrench,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Yes, Start Repair',
+    confirmClass: 'modal-btn-primary',
   },
 };
 

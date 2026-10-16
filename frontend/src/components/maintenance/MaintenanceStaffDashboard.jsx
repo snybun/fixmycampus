@@ -127,6 +127,11 @@ export default function MaintenanceStaffDashboard({
   const [isSubmittingCompletion, setIsSubmittingCompletion] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
+  // Confirmation modal state for starting repair
+  const [showStartRepairModal, setShowStartRepairModal] = useState(false);
+  const [jobToStartRepair, setJobToStartRepair] = useState(null);
+  const [isStartingRepair, setIsStartingRepair] = useState(false);
+
   const displayName = currentUser?.full_name || 'Juan Dela Cruz';
   const firstName = displayName.split(' ')[0] || 'Staff';
   const displayRole = currentUser?.department
@@ -136,41 +141,48 @@ export default function MaintenanceStaffDashboard({
   // Load real tickets from database via API
   useEffect(() => {
     let isMounted = true;
-    setLoading(true);
 
-    fetchReports({ limit: 100 })
-      .then((res) => {
-        if (!isMounted) return;
-        if (res && res.success && Array.isArray(res.data)) {
-          const mappedApi = res.data.map((r) => mapApiReportToJob(r, displayName));
-          setJobs(mappedApi);
-        } else {
+    const loadData = (showSpinner = false) => {
+      if (showSpinner) setLoading(true);
+
+      fetchReports({ limit: 100 })
+        .then((res) => {
+          if (!isMounted) return;
+          if (res && res.success && Array.isArray(res.data)) {
+            const mappedApi = res.data.map((r) => mapApiReportToJob(r, displayName));
+            setJobs(mappedApi);
+          } else {
+            setJobs([]);
+          }
+        })
+        .catch((err) => {
+          if (!isMounted) return;
+          console.error('Error fetching maintenance reports from database:', err);
           setJobs([]);
-        }
-      })
-      .catch((err) => {
-        if (!isMounted) return;
-        console.error('Error fetching maintenance reports from database:', err);
-        setJobs([]);
-      })
-      .finally(() => {
-        if (isMounted) setLoading(false);
-      });
+        })
+        .finally(() => {
+          if (isMounted && showSpinner) setLoading(false);
+        });
 
-    // Fetch unread notifications count from database
-    fetchNotifications()
-      .then((notifRes) => {
-        if (!isMounted) return;
-        if (notifRes && notifRes.success && typeof notifRes.unread_count === 'number') {
-          setUnreadNotifCount(notifRes.unread_count);
-        }
-      })
-      .catch(() => {});
+      // Fetch unread notifications count from database
+      fetchNotifications(currentUser?.id)
+        .then((notifRes) => {
+          if (!isMounted) return;
+          if (notifRes && notifRes.success && typeof notifRes.unread_count === 'number') {
+            setUnreadNotifCount(notifRes.unread_count);
+          }
+        })
+        .catch(() => {});
+    };
+
+    loadData(true);
+    const interval = setInterval(() => loadData(false), 15000);
 
     return () => {
       isMounted = false;
+      clearInterval(interval);
     };
-  }, [displayName, refreshKey]);
+  }, [displayName, refreshKey, currentUser?.id]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -179,11 +191,30 @@ export default function MaintenanceStaffDashboard({
     }, 3200);
   };
 
-  const handleStartRepair = async (jobId, e) => {
+  const handleRequestStartRepair = (jobOrId, e) => {
     if (e) e.stopPropagation();
+    const targetJob = typeof jobOrId === 'object' ? jobOrId : jobs.find((j) => j.id === jobOrId);
+    if (!targetJob) return;
+    if (targetJob.status === 'in_progress') {
+      showToast('Repair is already in progress.');
+      return;
+    }
+    if (targetJob.status === 'resolved' || targetJob.status === 'closed') {
+      showToast('This job is already completed.');
+      return;
+    }
+    setJobToStartRepair(targetJob);
+    setShowStartRepairModal(true);
+  };
+
+  const handleExecuteStartRepair = async () => {
+    if (!jobToStartRepair) return;
+    const targetJobId = jobToStartRepair.id;
+    setIsStartingRepair(true);
+
     setJobs((prev) =>
       prev.map((job) =>
-        job.id === jobId
+        job.id === targetJobId
           ? {
               ...job,
               status: 'in_progress',
@@ -196,23 +227,37 @@ export default function MaintenanceStaffDashboard({
 
     try {
       await updateReportStatus({
-        report_id: jobId,
+        report_id: targetJobId,
         status: 'in_progress',
         remarks: `Work started by ${displayName}`,
         changed_by: currentUser?.id || 1,
       });
 
-      if (currentUser?.id) {
-        assignReport({
-          report_id: jobId,
+      // Only assign worker if the ticket was not previously assigned
+      const isAlreadyAssigned = Boolean(jobToStartRepair.worker_id || jobToStartRepair.assigned_to);
+      if (currentUser?.id && !isAlreadyAssigned) {
+        await assignReport({
+          report_id: targetJobId,
           assigned_to: currentUser.id,
           assigned_by: currentUser.id,
-          notes: `Assigned upon repair start by ${displayName}`,
+          notes: `Self-assigned upon repair start by ${displayName}`,
         }).catch(() => {});
       }
       setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error('Failed to update status on server:', err);
+      showToast('Failed to update status on server.');
+    } finally {
+      setIsStartingRepair(false);
+      setShowStartRepairModal(false);
+      setJobToStartRepair(null);
+    }
+  };
+
+  const handleCancelStartRepair = () => {
+    if (!isStartingRepair) {
+      setShowStartRepairModal(false);
+      setJobToStartRepair(null);
     }
   };
 
@@ -545,10 +590,20 @@ export default function MaintenanceStaffDashboard({
                   <h4 className="maint-card-title">JOB ACTIONS</h4>
                   <button
                     type="button"
-                    className="maint-btn-action-primary"
-                    onClick={() => handleStartRepair(selectedJob.id)}
+                    className={`maint-btn-action-primary ${selectedJob.status === 'in_progress' ? 'in-progress' : selectedJob.status === 'resolved' || selectedJob.status === 'closed' ? 'completed' : ''}`}
+                    onClick={() => {
+                      if (selectedJob.status !== 'in_progress' && selectedJob.status !== 'resolved' && selectedJob.status !== 'closed') {
+                        handleRequestStartRepair(selectedJob);
+                      }
+                    }}
+                    disabled={selectedJob.status === 'in_progress' || selectedJob.status === 'resolved' || selectedJob.status === 'closed'}
+                    id="maint-start-repair-btn"
                   >
-                    {selectedJob.status === 'in_progress' ? 'Repair In Progress' : 'Start Repair'}
+                    {selectedJob.status === 'in_progress'
+                      ? 'Repair In Progress'
+                      : selectedJob.status === 'resolved' || selectedJob.status === 'closed'
+                      ? 'Repair Completed'
+                      : 'Start Repair'}
                   </button>
                   <button
                     type="button"
@@ -751,8 +806,9 @@ export default function MaintenanceStaffDashboard({
           <MaintenanceNotificationsView
             onViewJob={(jobId) => {
               setSelectedJobId(jobId);
+              setActiveTab('dashboard');
             }}
-            onStartRepair={handleStartRepair}
+            onStartRepair={handleRequestStartRepair}
             jobs={jobs}
             currentUser={currentUser}
             onUnreadChange={setUnreadNotifCount}
@@ -928,10 +984,11 @@ export default function MaintenanceStaffDashboard({
                           type="button"
                           className={`maint-btn-start ${isFixed ? 'completed' : isOngoing ? 'in-progress' : ''}`}
                           onClick={(e) => {
-                            if (!isFixed) {
-                              handleStartRepair(job.id, e);
+                            if (!isFixed && !isOngoing) {
+                              handleRequestStartRepair(job, e);
                             }
                           }}
+                          disabled={isFixed || isOngoing}
                         >
                           {isFixed ? 'Completed' : isOngoing ? 'In Progress' : 'Start Repair'}
                         </button>
@@ -944,6 +1001,21 @@ export default function MaintenanceStaffDashboard({
           </div>
         )}
       </main>
+
+      {/* Confirmation Modal for Starting Repair */}
+      {showStartRepairModal && jobToStartRepair && (
+        <ConfirmationModal
+          isOpen={showStartRepairModal}
+          presetId="start_repair"
+          title="Start Repair?"
+          message={`Are you sure you want to start repair on ticket #${jobToStartRepair.ticket_number || jobToStartRepair.id} (${jobToStartRepair.title})? Once started, this action cannot be undone.`}
+          confirmText="Yes, Start Repair"
+          cancelText="Cancel"
+          loading={isStartingRepair}
+          onClose={handleCancelStartRepair}
+          onConfirm={handleExecuteStartRepair}
+        />
+      )}
 
       {/* Confirmation Modal for Submitting / Marking Report as Fixed */}
       {showCompletionModal && jobToComplete && (
