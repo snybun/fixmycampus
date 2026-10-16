@@ -30,35 +30,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 session_start_safe();
 $action = $_GET['action'] ?? 'list';
+
+$rawBody = file_get_contents('php://input');
+$bodyData = !empty($rawBody) ? json_decode($rawBody, true) : null;
+if (!is_array($bodyData)) {
+    $bodyData = [];
+}
+
 $user = auth_user();
-if (!$user) {
-    $paramUid = (int)($_GET['user_id'] ?? $_SERVER['HTTP_X_USER_ID'] ?? 0);
-    if ($paramUid > 0) {
-        $found = db_fetch_one("
-            SELECT u.*, r.name AS role_name
-            FROM `users` u
-            LEFT JOIN `roles` r ON u.role_id = r.id
-            WHERE u.id = :id AND u.status = 'active'
-            LIMIT 1
-        ", [':id' => $paramUid]);
-        if ($found) {
-            $user = $found;
-        }
+$paramUid = (int)($_GET['user_id'] ?? $bodyData['user_id'] ?? $_SERVER['HTTP_X_USER_ID'] ?? 0);
+$dashboardContext = strtolower(trim((string)($_GET['dashboard'] ?? $bodyData['dashboard'] ?? '')));
+
+// 1. If explicit user_id provided, look up that user in database
+if ($paramUid > 0) {
+    $found = db_fetch_one("
+        SELECT u.*, r.name AS role_name
+        FROM `users` u
+        LEFT JOIN `roles` r ON u.role_id = r.id
+        WHERE u.id = :id AND u.status = 'active'
+        LIMIT 1
+    ", [':id' => $paramUid]);
+    if ($found) {
+        $user = $found;
     }
 }
 
-if ($user) {
-    $userId = (int) $user['id'];
-    $roleName = $user['role_name'] ?? auth_role() ?? 'student';
-    $roleId = (int) ($user['role_id'] ?? 0);
-} else {
-    $userId = auth_id() ?? 1;
-    $roleName = auth_role() ?? 'admin';
-    $roleId = 1;
+// 2. If no user resolved yet, check session
+if (!$user) {
+    $sessionUser = auth_user();
+    if ($sessionUser) {
+        $user = $sessionUser;
+    }
 }
 
-$isAdmin = ($roleName === 'admin' || $roleId === 1 || $userId === 1);
-$isMaintenanceUser = (!$isAdmin && ($roleName === 'supervisor' || $roleName === 'technician' || $roleId === 2 || $roleId === 3 || $userId === 17));
+// 3. If still no user, use dashboard context to find the representative active user
+if (!$user) {
+    if ($dashboardContext === 'admin') {
+        $found = db_fetch_one("
+            SELECT u.*, r.name AS role_name
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE r.name = 'admin' AND u.status = 'active'
+            ORDER BY u.id ASC
+            LIMIT 1
+        ");
+        $user = $found ?: ['id' => 1, 'role_name' => 'admin', 'role_id' => 1];
+    } elseif ($dashboardContext === 'maintenance') {
+        $found = db_fetch_one("
+            SELECT u.*, r.name AS role_name
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE r.name IN ('supervisor', 'technician') AND u.status = 'active'
+            ORDER BY u.id ASC
+            LIMIT 1
+        ");
+        $user = $found ?: ['id' => 17, 'role_name' => 'supervisor', 'role_id' => 2];
+    } else {
+        // Default to student
+        $found = db_fetch_one("
+            SELECT u.*, r.name AS role_name
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE r.name = 'student' AND u.status = 'active'
+            ORDER BY u.id ASC
+            LIMIT 1
+        ");
+        $user = $found ?: ['id' => 2, 'role_name' => 'student', 'role_id' => 5];
+    }
+}
+
+$userId = (int) $user['id'];
+$roleName = $user['role_name'] ?? auth_role() ?? 'student';
+$roleId = (int) ($user['role_id'] ?? 5);
+
+$isAdmin = ($roleName === 'admin' || $roleId === 1 || $dashboardContext === 'admin');
+$isMaintenanceUser = (!$isAdmin && ($roleName === 'supervisor' || $roleName === 'technician' || $roleId === 2 || $roleId === 3 || $dashboardContext === 'maintenance'));
 
 // Helper for relative time formatting
 function get_relative_time(string $datetime): string {
@@ -81,37 +127,31 @@ function get_relative_time(string $datetime): string {
 try {
     // -------------------------------------------------------------------------
     // POST /api/notifications.php?action=mark_all_read -> Mark all as read
+    // Strictly update only notifications belonging to this specific user
     // -------------------------------------------------------------------------
     if ($action === 'mark_all_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        if ($isAdmin) {
-            db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `user_id` = :uid OR `user_id` = 1", [':uid' => $userId]);
-        } else {
-            db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `user_id` = :uid", [':uid' => $userId]);
-        }
+        db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `user_id` = :uid", [':uid' => $userId]);
 
         \FixMyCampus\Core\Response::json([
             'success'      => true,
             'message'      => 'All notifications marked as read.',
             'unread_count' => 0,
         ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
     // POST /api/notifications.php?action=mark_read -> Mark single notification read
+    // Strictly update only if notification belongs to this specific user
     // -------------------------------------------------------------------------
     if ($action === 'mark_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $notifId = (int) ($input['id'] ?? $_GET['id'] ?? 0);
+        $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
         if ($notifId > 0) {
-            if ($isAdmin) {
-                db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `id` = :id", [':id' => $notifId]);
-            } else {
-                db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `id` = :id AND `user_id` = :uid", [
-                    ':id'  => $notifId,
-                    ':uid' => $userId,
-                ]);
-            }
+            db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `id` = :id AND `user_id` = :uid", [
+                ':id'  => $notifId,
+                ':uid' => $userId,
+            ]);
         }
 
         \FixMyCampus\Core\Response::json([
@@ -119,28 +159,26 @@ try {
             'message' => 'Notification marked as read.',
             'id'      => $notifId,
         ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
     // POST /api/notifications.php?action=delete -> Delete single notification
+    // STRICT ISOLATION: A user can ONLY delete their own notification!
     // -------------------------------------------------------------------------
     if ($action === 'delete' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE')) {
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $notifId = (int) ($input['id'] ?? $_GET['id'] ?? 0);
+        $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
         if ($notifId > 0) {
-            if ($isAdmin) {
-                db_execute("DELETE FROM `notifications` WHERE `id` = :id", [':id' => $notifId]);
-            } else {
-                db_execute("DELETE FROM `notifications` WHERE `id` = :id AND `user_id` = :uid", [
-                    ':id'  => $notifId,
-                    ':uid' => $userId,
-                ]);
-            }
+            db_execute("DELETE FROM `notifications` WHERE `id` = :id AND `user_id` = :uid", [
+                ':id'  => $notifId,
+                ':uid' => $userId,
+            ]);
 
             $remaining = (int)db_fetch_column("SELECT COUNT(*) FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
             if ($remaining === 0) {
                 $_SESSION['notifs_cleared_' . $userId] = true;
+                setcookie('notifs_cleared_' . $userId, '1', time() + 86400 * 30, '/');
             }
         }
 
@@ -149,19 +187,18 @@ try {
             'message' => 'Notification deleted.',
             'id'      => $notifId,
         ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
     // POST /api/notifications.php?action=delete_all -> Delete all notifications
+    // STRICT ISOLATION: Clearing notifications ONLY affects this specific user's inbox!
     // -------------------------------------------------------------------------
     if ($action === 'delete_all' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE')) {
-        $_SESSION['notifs_cleared_' . $userId] = true;
+        db_execute("DELETE FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
 
-        if ($isAdmin) {
-            db_execute("DELETE FROM `notifications` WHERE `user_id` = :uid OR `user_id` = 1", [':uid' => $userId]);
-        } else {
-            db_execute("DELETE FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
-        }
+        $_SESSION['notifs_cleared_' . $userId] = true;
+        setcookie('notifs_cleared_' . $userId, '1', time() + 86400 * 30, '/');
 
         \FixMyCampus\Core\Response::json([
             'success'      => true,
@@ -170,12 +207,13 @@ try {
             'count'        => 0,
             'data'         => [],
         ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
     // Auto-seed real notification records for existing database tickets if table empty
     // -------------------------------------------------------------------------
-    if (empty($_SESSION['notifs_cleared_' . $userId])) {
+    if (empty($_SESSION['notifs_cleared_' . $userId]) && empty($_COOKIE['notifs_cleared_' . $userId])) {
         $existingCount = (int)db_fetch_column("SELECT COUNT(*) FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
         if ($existingCount === 0) {
             if ($isMaintenanceUser) {
@@ -297,7 +335,6 @@ try {
             }
         }
     }
-}
 
     // -------------------------------------------------------------------------
     // GET /api/notifications.php -> List database notifications
@@ -323,14 +360,13 @@ try {
         LEFT JOIN `reports` r ON n.report_id = r.id
         LEFT JOIN `locations` l ON r.location_id = l.id
         LEFT JOIN `buildings` b ON l.building_id = b.id
-        WHERE n.user_id = :uid OR (:is_admin = 1 AND n.user_id = 1)
+        WHERE n.user_id = :uid
         ORDER BY n.created_at DESC
         LIMIT 100
     ";
 
     $rows = db_fetch_all($sql, [
-        ':uid'      => $userId,
-        ':is_admin' => $isAdmin ? 1 : 0,
+        ':uid' => $userId,
     ]);
 
     $notifications = [];

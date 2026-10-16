@@ -92,13 +92,18 @@ export async function deleteReport(reportId) {
   }
 }
 
-export async function fetchNotifications(userId = null) {
+export async function fetchNotifications(userId = null, dashboard = null) {
   try {
-    const url = userId
-      ? `${API_BASE}/notifications.php?user_id=${encodeURIComponent(userId)}`
-      : `${API_BASE}/notifications.php`;
+    const params = new URLSearchParams();
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const queryString = params.toString();
+    const url = queryString ? `${API_BASE}/notifications.php?${queryString}` : `${API_BASE}/notifications.php`;
+    const headers = {};
+    if (userId) headers['X-User-ID'] = String(userId);
     const res = await fetch(url, {
       credentials: 'include',
+      headers,
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
@@ -108,13 +113,19 @@ export async function fetchNotifications(userId = null) {
   }
 }
 
-export async function markNotificationRead(id) {
+export async function markNotificationRead(id, userId = null, dashboard = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
+    const params = new URLSearchParams({ action: 'mark_read' });
+    if (id) params.append('id', id);
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, user_id: userId, dashboard }),
     });
     return await res.json();
   } catch (err) {
@@ -123,12 +134,18 @@ export async function markNotificationRead(id) {
   }
 }
 
-export async function markAllNotificationsRead() {
+export async function markAllNotificationsRead(userId = null, dashboard = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=mark_all_read`, {
+    const params = new URLSearchParams({ action: 'mark_all_read' });
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
+      body: JSON.stringify({ user_id: userId, dashboard }),
     });
     return await res.json();
   } catch (err) {
@@ -137,13 +154,19 @@ export async function markAllNotificationsRead() {
   }
 }
 
-export async function deleteNotification(id) {
+export async function deleteNotification(id, userId = null, dashboard = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=delete`, {
+    const params = new URLSearchParams({ action: 'delete' });
+    if (id) params.append('id', id);
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, user_id: userId, dashboard }),
     });
     return await res.json();
   } catch (err) {
@@ -152,12 +175,18 @@ export async function deleteNotification(id) {
   }
 }
 
-export async function deleteAllNotifications() {
+export async function deleteAllNotifications(userId = null, dashboard = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=delete_all`, {
+    const params = new URLSearchParams({ action: 'delete_all' });
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
+      body: JSON.stringify({ user_id: userId, dashboard }),
     });
     return await res.json();
   } catch (err) {

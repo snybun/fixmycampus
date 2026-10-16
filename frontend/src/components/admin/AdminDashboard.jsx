@@ -80,7 +80,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         fetchStaff(),
         fetchBuildings(),
         fetchCategories(),
-        fetchNotifications(),
+        fetchNotifications(currentUser?.id || 1, 'admin'),
       ]);
 
       if (statsRes?.success && statsRes.data) {
@@ -565,6 +565,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             onViewReport={handleViewReport}
             showToast={showToast}
             onUnreadChange={setUnreadNotifCount}
+            currentUser={currentUser}
           />
         )}
 

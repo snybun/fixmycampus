@@ -32,7 +32,9 @@ export default function AdminNotificationsView({
   onViewReport = null,
   showToast = null,
   onUnreadChange = null,
+  currentUser = null,
 }) {
+  const effectiveAdminId = currentUser?.id || 1;
   const [notifications, setNotifications] = useState([]);
   const [filterType, setFilterType] = useState('all'); // 'all', 'unread', 'emergency', 'new_report', 'work_order'
   const [searchQuery, setSearchQuery] = useState('');
@@ -44,7 +46,7 @@ export default function AdminNotificationsView({
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetchNotifications();
+      const res = await fetchNotifications(effectiveAdminId, 'admin');
       if (res && res.success && Array.isArray(res.data)) {
         setNotifications(res.data);
       } else {
@@ -60,7 +62,7 @@ export default function AdminNotificationsView({
 
   useEffect(() => {
     loadNotifications();
-  }, []);
+  }, [effectiveAdminId]);
 
   const unreadCount = useMemo(() => {
     return notifications.filter((n) => !n.is_read).length;
@@ -103,7 +105,7 @@ export default function AdminNotificationsView({
     }
 
     try {
-      await markAllNotificationsRead();
+      await markAllNotificationsRead(effectiveAdminId, 'admin');
     } catch (err) {
       console.error('Error marking all notifications read:', err);
     } finally {
@@ -122,7 +124,7 @@ export default function AdminNotificationsView({
 
     if (newStatus === 1) {
       try {
-        await markNotificationRead(notif.id);
+        await markNotificationRead(notif.id, effectiveAdminId, 'admin');
       } catch (err) {
         console.error('Error marking notification read:', err);
       }
@@ -141,7 +143,7 @@ export default function AdminNotificationsView({
     }
 
     try {
-      await deleteNotification(targetId);
+      await deleteNotification(targetId, effectiveAdminId, 'admin');
     } catch (err) {
       console.error('Error deleting notification:', err);
     }
@@ -151,7 +153,7 @@ export default function AdminNotificationsView({
   const handleConfirmDeleteAll = async () => {
     setIsDeletingAll(true);
     try {
-      await deleteAllNotifications();
+      await deleteAllNotifications(effectiveAdminId, 'admin');
       setNotifications([]);
       if (typeof showToast === 'function') {
         showToast('All notifications deleted.');
@@ -170,7 +172,7 @@ export default function AdminNotificationsView({
       setNotifications((prev) =>
         prev.map((n) => (n.id === notif.id ? { ...n, is_read: 1 } : n))
       );
-      markNotificationRead(notif.id).catch(() => {});
+      markNotificationRead(notif.id, effectiveAdminId, 'admin').catch(() => {});
     }
 
     if (typeof onViewReport === 'function') {

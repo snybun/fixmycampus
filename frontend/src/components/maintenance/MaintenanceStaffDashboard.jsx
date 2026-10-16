@@ -170,7 +170,7 @@ export default function MaintenanceStaffDashboard({
         });
 
       // Fetch unread notifications count from database
-      fetchNotifications(currentUser?.id)
+      fetchNotifications(currentUser?.id || 17, 'maintenance')
         .then((notifRes) => {
           if (!isMounted) return;
           if (notifRes && notifRes.success && typeof notifRes.unread_count === 'number') {

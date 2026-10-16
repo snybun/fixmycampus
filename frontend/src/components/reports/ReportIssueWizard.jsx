@@ -171,7 +171,7 @@ export default function ReportIssueWizard({
       }
     });
 
-    fetchNotifications(currentUser?.id)
+    fetchNotifications(currentUser?.id, 'student')
       .then((res) => {
         if (res && res.success) {
           if (typeof res.unread_count === 'number') {

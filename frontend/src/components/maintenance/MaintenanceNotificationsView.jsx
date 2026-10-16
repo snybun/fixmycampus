@@ -39,6 +39,7 @@ export default function MaintenanceNotificationsView({
   onUnreadChange = null,
   showToast = null,
 }) {
+  const effectiveMaintId = currentUser?.id || 17;
   const [notifications, setNotifications] = useState([]);
   const [filterType, setFilterType] = useState('all'); // 'all', 'unread', 'emergency', 'work_order', 'parts', 'verified'
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,7 +51,7 @@ export default function MaintenanceNotificationsView({
   // Sync notifications from API if available
   const loadNotifications = async () => {
     try {
-      const res = await fetchNotifications(currentUser?.id);
+      const res = await fetchNotifications(effectiveMaintId, 'maintenance');
       if (res && res.success && Array.isArray(res.data)) {
         // Map API notifications and merge with linked job details
         const mapped = res.data.map((item) => {
@@ -137,7 +138,7 @@ export default function MaintenanceNotificationsView({
     }
 
     try {
-      await markAllNotificationsRead();
+      await markAllNotificationsRead(effectiveMaintId, 'maintenance');
     } catch (err) {
       console.error('Error marking all notifications read:', err);
     } finally {
@@ -156,7 +157,7 @@ export default function MaintenanceNotificationsView({
 
     if (newStatus === 1) {
       try {
-        await markNotificationRead(notif.id);
+        await markNotificationRead(notif.id, effectiveMaintId, 'maintenance');
       } catch (err) {
         console.error('Error marking notification read:', err);
       }
@@ -176,7 +177,7 @@ export default function MaintenanceNotificationsView({
     }
 
     try {
-      await deleteNotification(targetId);
+      await deleteNotification(targetId, effectiveMaintId, 'maintenance');
     } catch (err) {
       console.error('Error deleting notification:', err);
     }
@@ -186,7 +187,7 @@ export default function MaintenanceNotificationsView({
   const handleConfirmDeleteAll = async () => {
     setIsDeletingAll(true);
     try {
-      await deleteAllNotifications();
+      await deleteAllNotifications(effectiveMaintId, 'maintenance');
       setNotifications([]);
       if (typeof showToast === 'function') {
         showToast('All notifications deleted.');
@@ -206,7 +207,7 @@ export default function MaintenanceNotificationsView({
       setNotifications((prev) =>
         prev.map((n) => (n.id === notif.id ? { ...n, is_read: 1 } : n))
       );
-      markNotificationRead(notif.id).catch(() => {});
+      markNotificationRead(notif.id, effectiveMaintId, 'maintenance').catch(() => {});
     }
 
     if (notif.job_id && typeof onViewJob === 'function') {

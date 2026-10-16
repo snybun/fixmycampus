@@ -37,7 +37,7 @@ export default function NotificationsView({
 
   const loadNotifications = async () => {
     try {
-      const res = await fetchNotifications(currentUser?.id);
+      const res = await fetchNotifications(currentUser?.id, 'student');
       if (res && res.success && Array.isArray(res.data)) {
         setNotifications(res.data);
         if (typeof setUnreadCount === 'function' && typeof res.unread_count === 'number') {
@@ -79,7 +79,7 @@ export default function NotificationsView({
     }
 
     try {
-      await markAllNotificationsRead();
+      await markAllNotificationsRead(currentUser?.id, 'student');
     } catch (err) {
       console.error('Error marking all notifications as read:', err);
     } finally {
@@ -97,7 +97,7 @@ export default function NotificationsView({
         setUnreadCount((prev) => Math.max(0, prev - 1));
       }
       try {
-        await markNotificationRead(notif.id);
+        await markNotificationRead(notif.id, currentUser?.id, 'student');
       } catch (err) {
         console.error('Error marking notification as read:', err);
       }
@@ -122,7 +122,7 @@ export default function NotificationsView({
     }
 
     try {
-      await deleteNotification(targetId);
+      await deleteNotification(targetId, currentUser?.id, 'student');
     } catch (err) {
       console.error('Error deleting notification:', err);
     }
@@ -132,7 +132,7 @@ export default function NotificationsView({
   const handleConfirmDeleteAll = async () => {
     setIsDeletingAll(true);
     try {
-      await deleteAllNotifications();
+      await deleteAllNotifications(currentUser?.id, 'student');
       setNotifications([]);
       if (typeof setUnreadCount === 'function') {
         setUnreadCount(0);

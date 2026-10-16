@@ -191,7 +191,7 @@ export default function DashboardPage({
         }
       }).catch(() => {});
 
-      fetchNotifications(currentUser?.id).then((res) => {
+      fetchNotifications(currentUser?.id, 'student').then((res) => {
         if (isMounted && res && res.success && typeof res.unread_count === 'number') {
           setUnreadCount(res.unread_count);
         }
