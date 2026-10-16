@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   SlidersHorizontal,
   Bell,
+  History,
+  Archive,
 } from 'lucide-react';
 import {
   fetchStats,
@@ -26,6 +28,7 @@ import {
   assignReport,
   updateReportStatus,
   deleteReport,
+  archiveReport,
   addStaffMember,
   addBuilding,
   updateBuilding,
@@ -43,6 +46,7 @@ import AnalyticsView from './AnalyticsView';
 import UsersView from './UsersView';
 import AdminSettings from './AdminSettings';
 import AdminNotificationsView from './AdminNotificationsView';
+import HistoryLogView from './HistoryLogView';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import './admin.css';
@@ -67,8 +71,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [quickUpdateModal, setQuickUpdateModal] = useState(null);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
   const [selectedNewStatus, setSelectedNewStatus] = useState('in_progress');
-  const [reportToDelete, setReportToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [reportToArchive, setReportToArchive] = useState(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Load all real data on mount
@@ -217,27 +221,27 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
     }
   };
 
-  // Delete Fixed Report Handler
-  const handleRequestDeleteReport = (report) => {
+  // Archive Fixed Report Handler
+  const handleRequestArchiveReport = (report) => {
     if (!report) return;
     const rawStatus = (report.status || '').toLowerCase();
     const isFixed = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
     if (!isFixed) {
-      showToast('Only fixed and resolved reports can be deleted from the database.');
+      showToast('Only fixed and resolved reports can be archived.');
       return;
     }
-    setReportToDelete(report);
+    setReportToArchive(report);
   };
 
-  const handleConfirmDeleteReport = async () => {
-    if (!reportToDelete) return;
-    const targetId = reportToDelete.id;
+  const handleConfirmArchiveReport = async () => {
+    if (!reportToArchive) return;
+    const targetId = reportToArchive.id;
 
-    setIsDeleting(true);
+    setIsArchiving(true);
     try {
-      const res = await deleteReport(targetId);
+      const res = await archiveReport(targetId);
       if (res?.success) {
-        showToast(`Report #${reportToDelete.ticket_number || targetId} deleted from database.`);
+        showToast(`Report #${reportToArchive.ticket_number || targetId} archived and saved to History Logs.`);
         setReports((prev) => prev.filter((r) => r.id !== targetId));
         if (selectedReport?.id === targetId) {
           setSelectedReport(null);
@@ -245,14 +249,14 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         }
         refreshData();
       } else {
-        showToast(res?.message || 'Failed to delete report.');
+        showToast(res?.message || 'Failed to archive report.');
       }
     } catch (err) {
-      console.error('Error deleting report:', err);
-      showToast('Error deleting report from database.');
+      console.error('Error archiving report:', err);
+      showToast('Error archiving report.');
     } finally {
-      setIsDeleting(false);
-      setReportToDelete(null);
+      setIsArchiving(false);
+      setReportToArchive(null);
     }
   };
 
@@ -494,11 +498,12 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
           <button
             type="button"
-            className={`admin-nav-item ${activeTab === 'modals-gallery' ? 'active' : ''}`}
-            onClick={() => setActiveTab('modals-gallery')}
+            className={`admin-nav-item ${activeTab === 'history-logs' ? 'active' : ''}`}
+            onClick={() => handleNavTabClick('history-logs')}
+            id="admin-nav-history-logs"
           >
-            <SlidersHorizontal size={18} />
-            <span>Modals &amp; States (7)</span>
+            <History size={18} />
+            <span>History Logs</span>
           </button>
         </nav>
 
@@ -554,7 +559,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             recentReports={reports}
             onViewReport={handleViewReport}
             onAssignReport={handleOpenAssign}
-            onDeleteReport={handleRequestDeleteReport}
+            onArchiveReport={handleRequestArchiveReport}
+            onDeleteReport={handleRequestArchiveReport}
           />
         )}
 
@@ -578,7 +584,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             onViewReport={handleViewReport}
             onAssignReport={handleOpenAssign}
             onUpdateStatus={handleOpenUpdate}
-            onDeleteReport={handleRequestDeleteReport}
+            onArchiveReport={handleRequestArchiveReport}
+            onDeleteReport={handleRequestArchiveReport}
           />
         )}
 
@@ -590,7 +597,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             onBack={() => setActiveTab('reports')}
             onAssignSubmit={handleAssignSubmit}
             onStatusSubmit={handleStatusSubmit}
-            onDelete={handleRequestDeleteReport}
+            onArchive={handleRequestArchiveReport}
+            onDelete={handleRequestArchiveReport}
           />
         )}
 
@@ -624,7 +632,12 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         {/* View 8: Settings */}
         {activeTab === 'settings' && <AdminSettings />}
 
-        {/* View 9: System Modals & States Gallery */}
+        {/* View 9: History Logs */}
+        {activeTab === 'history-logs' && (
+          <HistoryLogView onViewReport={handleViewReport} />
+        )}
+
+        {/* View 10: System Modals & States Gallery */}
         {activeTab === 'modals-gallery' && (
           <ModalsGalleryView onBackToDashboard={() => setActiveTab('dashboard')} />
         )}
@@ -771,20 +784,20 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         </div>
       )}
 
-      {/* Delete Fixed Report Confirmation Modal */}
-      {reportToDelete && (
+      {/* Archive Fixed Report Confirmation Modal */}
+      {reportToArchive && (
         <ConfirmationModal
-          isOpen={Boolean(reportToDelete)}
-          presetId="delete_report"
-          title="Delete Fixed Report?"
-          message={`Are you sure you want to permanently delete report #${reportToDelete.ticket_number || reportToDelete.id} ("${reportToDelete.title}") from the database? This action will remove the record to keep your database tidy and cannot be undone.`}
-          confirmText="Yes, Delete Report"
+          isOpen={Boolean(reportToArchive)}
+          presetId="archive_report"
+          title="Archive Fixed Report?"
+          message={`Are you sure you want to archive report #${reportToArchive.ticket_number || reportToArchive.id} ("${reportToArchive.title}")? It will be safely stored in the History Logs and removed from active defect lists.`}
+          confirmText="Yes, Archive Report"
           cancelText="Cancel"
-          loading={isDeleting}
+          loading={isArchiving}
           onClose={() => {
-            if (!isDeleting) setReportToDelete(null);
+            if (!isArchiving) setReportToArchive(null);
           }}
-          onConfirm={handleConfirmDeleteReport}
+          onConfirm={handleConfirmArchiveReport}
         />
       )}
 

@@ -375,7 +375,13 @@ export default function FacilitiesDashboard({
                         <button
                           type="button"
                           className="admin-btn-action-assign"
-                          onClick={() => onAssignReport(report)}
+                          onClick={() => {
+                            if (report.status === 'resolved' || report.status === 'closed') return;
+                            onAssignReport(report);
+                          }}
+                          disabled={report.status === 'resolved' || report.status === 'closed'}
+                          style={(report.status === 'resolved' || report.status === 'closed') ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                          title={(report.status === 'resolved' || report.status === 'closed') ? 'Assignment locked: Issue already fixed' : 'Assign maintenance technician'}
                         >
                           Assign
                         </button>

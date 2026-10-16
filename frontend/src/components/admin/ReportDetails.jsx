@@ -32,9 +32,12 @@ export default function ReportDetails({
     );
   }
 
+  const rawStatus = (report?.status || '').toLowerCase();
+  const isFixed = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
+
   const handleAssign = async (e) => {
     e.preventDefault();
-    if (!selectedStaffId) return;
+    if (isFixed || !selectedStaffId) return;
     setIsAssigning(true);
     await onAssignSubmit({
       report_id: report.id,
@@ -43,19 +46,9 @@ export default function ReportDetails({
     setIsAssigning(false);
   };
 
-  const handleUpdate = async (e) => {
+  const handleUpdate = (e) => {
     e.preventDefault();
-    if (selectedStatus === 'resolved') {
-      setShowConfirmModal(true);
-      return;
-    }
-    setIsUpdating(true);
-    await onStatusSubmit({
-      report_id: report.id,
-      status: selectedStatus,
-      remarks,
-    });
-    setIsUpdating(false);
+    setShowConfirmModal(true);
   };
 
   const handleConfirmSubmit = async () => {
@@ -178,16 +171,40 @@ export default function ReportDetails({
         {/* Right Column: Actions */}
         <div>
           {/* Card 1: Assign Maintenance Worker */}
-          <div className="admin-action-card">
-            <h3 className="admin-action-card-title">Assign Maintenance Worker</h3>
+          <div
+            className="admin-action-card"
+            style={isFixed ? { opacity: 0.85, backgroundColor: '#f8fafc', borderColor: '#e2e8f0' } : {}}
+          >
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
+              <h3 className="admin-action-card-title" style={{ marginBottom: 0 }}>Assign Maintenance Worker</h3>
+              {isFixed && (
+                <span
+                  style={{
+                    fontSize: '0.72rem',
+                    background: '#ecfdf5',
+                    color: '#047857',
+                    border: '1px solid #a7f3d0',
+                    padding: '2px 8px',
+                    borderRadius: 999,
+                    fontWeight: 600,
+                  }}
+                >
+                  Locked (Fixed)
+                </span>
+              )}
+            </div>
 
             <form onSubmit={handleAssign}>
               <div className="admin-form-group">
-                <label className="admin-form-label">Select Staff Member</label>
+                <label className="admin-form-label">
+                  {isFixed ? 'Assigned Staff Member' : 'Select Staff Member'}
+                </label>
                 <select
                   className="admin-select-input"
                   value={selectedStaffId}
                   onChange={(e) => setSelectedStaffId(e.target.value)}
+                  disabled={isFixed || isAssigning}
+                  style={isFixed ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
                 >
                   <option value="">-- Choose maintenance technician --</option>
                   {staff.map((member) => (
@@ -201,10 +218,19 @@ export default function ReportDetails({
               <button
                 type="submit"
                 className="admin-btn-black"
-                style={{ width: '100%', justifyContent: 'center' }}
-                disabled={isAssigning || !selectedStaffId}
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  ...(isFixed ? { opacity: 0.5, cursor: 'not-allowed', backgroundColor: '#94a3b8' } : {}),
+                }}
+                disabled={isFixed || isAssigning || !selectedStaffId}
+                title={isFixed ? 'Worker assignment is locked because this report is already marked as fixed' : ''}
               >
-                {isAssigning ? 'Assigning...' : 'Assign Worker'}
+                {isFixed
+                  ? 'Assignment Locked (Issue Fixed)'
+                  : isAssigning
+                  ? 'Assigning...'
+                  : 'Assign Worker'}
               </button>
             </form>
           </div>
@@ -281,11 +307,15 @@ export default function ReportDetails({
       {showConfirmModal && (
         <ConfirmationModal
           isOpen={showConfirmModal}
-          presetId="mark_fixed"
-          title="Ready to Submit Report?"
-          message={`Are you sure you are ready to submit this report? This will mark ticket #${report.ticket_number || `FM-${report.id}`} (${report.title}) as Fixed / Resolved.`}
-          confirmText="Yes, Submit Report"
-          cancelText="Cancel"
+          presetId="update_status"
+          title="Are you sure?"
+          message={
+            selectedStatus === 'resolved' || selectedStatus === 'closed'
+              ? `Are you sure you want to mark ticket #${report.ticket_number || `FM-${report.id}`} (${report.title}) as Fixed / Resolved?`
+              : `Are you sure you want to update the status of ticket #${report.ticket_number || `FM-${report.id}`} to "${selectedStatus.replace('_', ' ')}"?`
+          }
+          confirmText="Yes, Update Report"
+          cancelText="Di pa 'ko ready"
           loading={isUpdating}
           onClose={() => {
             if (!isUpdating) setShowConfirmModal(false);
