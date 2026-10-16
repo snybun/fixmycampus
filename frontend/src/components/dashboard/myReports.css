@@ -700,3 +700,37 @@
     justify-content: space-between;
   }
 }
+
+/* --------------------------------------------------------------------------
+   Student Confirmation & Impact Badges
+   -------------------------------------------------------------------------- */
+.myreports-confirmed-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #065f46;
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.myreports-impact-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1e40af;
+  background-color: #dbeafe;
+  border: 1px solid #bfdbfe;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+

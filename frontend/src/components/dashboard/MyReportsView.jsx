@@ -71,7 +71,7 @@ export default function MyReportsView({
   useEffect(() => {
     let isMounted = true;
     if (liveReports && liveReports.length > 0) {
-      setLocalReports(liveReports);
+setLocalReports(liveReports);
     } else {
       setLoading(true);
       fetchReports({ limit: 100 })
@@ -86,6 +86,7 @@ export default function MyReportsView({
         .finally(() => {
           if (isMounted) setLoading(false);
         });
+
     }
 
     return () => {
@@ -165,6 +166,8 @@ export default function MyReportsView({
         priority: priorityLabel,
         status: rawStatus,
         statusLabel,
+        is_confirmed: Boolean(r.is_confirmed || r.has_confirmed),
+        confirmation_count: Number(r.confirmation_count || 1),
         category: r.category_name || r.category || 'General Facility Defect',
         description: r.description || 'Facility maintenance defect ticket.',
         image: r.primary_photo || r.image_url || r.image || '/images/hero_ac_defect.jpg',
@@ -477,6 +480,21 @@ export default function MyReportsView({
                       </span>
                       <span className="myreports-card-dot">•</span>
                       <span className="myreports-card-date">{report.date}</span>
+                      {report.is_confirmed ? (
+                        <>
+                          <span className="myreports-card-dot">•</span>
+                          <span className="myreports-confirmed-tag">
+                            👥 Confirmed by You{report.confirmation_count > 1 ? ` (+${report.confirmation_count - 1})` : ''}
+                          </span>
+                        </>
+                      ) : report.confirmation_count > 1 ? (
+                        <>
+                          <span className="myreports-card-dot">•</span>
+                          <span className="myreports-impact-tag">
+                            👥 {report.confirmation_count} students affected
+                          </span>
+                        </>
+                      ) : null}
                     </div>
 
                     <h3 className="myreports-card-title">{report.title}</h3>

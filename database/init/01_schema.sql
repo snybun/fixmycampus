@@ -286,4 +286,23 @@ CREATE TABLE `notifications` (
     CONSTRAINT `fk_notifications_report` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE SET NULL ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- -----------------------------------------------------------------------------
+-- Table: report_confirmations
+-- Student confirmations and upvotes for open defect reports (anti-duplicate)
+-- -----------------------------------------------------------------------------
+DROP TABLE IF EXISTS `report_confirmations`;
+CREATE TABLE `report_confirmations` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `report_id` INT UNSIGNED NOT NULL,
+    `user_id` INT UNSIGNED NOT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    UNIQUE KEY `uk_report_user_confirmation` (`report_id`, `user_id`),
+    KEY `idx_confirmations_report_id` (`report_id`),
+    KEY `idx_confirmations_user_id` (`user_id`),
+    CONSTRAINT `fk_confirmations_report` FOREIGN KEY (`report_id`) REFERENCES `reports` (`id`) ON DELETE CASCADE ON UPDATE CASCADE,
+    CONSTRAINT `fk_confirmations_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET foreign_key_checks = 1;
+

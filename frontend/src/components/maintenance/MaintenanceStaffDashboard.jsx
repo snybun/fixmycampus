@@ -6,6 +6,7 @@ import {
   CheckCircle2,
   Bell,
   User,
+  Users,
   Calendar,
   ArrowLeft,
   Camera,
@@ -87,6 +88,7 @@ const mapApiReportToJob = (r, defaultWorkerName = 'Maintenance Staff') => {
     assigned_date: assignedDate,
     reported_date: formatDate(r.reported_at),
     reported_time_str: formatDateTime(r.reported_at),
+    confirmation_count: Number(r.confirmation_count || 1),
     reporter_name: r.reporter_name
       ? `${r.reporter_name} (${r.reporter_department || 'Student'})`
       : 'Alex Johnson (Student)',
@@ -100,6 +102,7 @@ const mapApiReportToJob = (r, defaultWorkerName = 'Maintenance Staff') => {
     updated_at: r.updated_at,
   };
 };
+
 
 export default function MaintenanceStaffDashboard({
   currentUser,
@@ -581,6 +584,16 @@ export default function MaintenanceStaffDashboard({
                       <span className="maint-info-label">DATE REPORTED</span>
                       <span className="maint-info-val">{selectedJob.reported_date}</span>
                     </div>
+
+                    {selectedJob.confirmation_count > 1 && (
+                      <div className="maint-info-item">
+                        <span className="maint-info-label">COMMUNITY IMPACT</span>
+                        <span className="maint-info-impact">
+                          <Users size={14} />
+                          {selectedJob.confirmation_count} Students Confirmed
+                        </span>
+                      </div>
+                    )}
                   </div>
                 </div>
               </div>
@@ -952,7 +965,7 @@ export default function MaintenanceStaffDashboard({
                 </p>
               </div>
             ) : (
-              <div className="maint-jobs-list">
+                            <div className="maint-jobs-list">
                 {displayedJobs.map((job) => {
                   const isOngoing = job.status === 'in_progress';
                   const isFixed = job.status === 'resolved' || job.status === 'closed';
@@ -979,6 +992,12 @@ export default function MaintenanceStaffDashboard({
                             <span className={`maint-priority-badge ${job.priority}`}>
                               {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
                             </span>
+                            {job.confirmation_count > 1 && (
+                              <span className="maint-job-impact-badge" title={`${job.confirmation_count} students reported or confirmed this defect`}>
+                                <Users size={12} />
+                                {job.confirmation_count} Confirmed
+                              </span>
+                            )}
                             <span className="maint-job-assigned-date">
                               <Calendar size={13} />
                               Assigned: {job.assigned_date}
