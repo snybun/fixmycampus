@@ -12,6 +12,7 @@ import {
   Trash2,
   SlidersHorizontal,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   User,
   Menu,
@@ -54,6 +55,17 @@ export default function DashboardPage({
   const [unreadCount, setUnreadCount] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const recentReportsRef = useRef(null);
+
+  const scrollReports = (direction) => {
+    if (recentReportsRef.current) {
+      const scrollAmount = 370;
+      recentReportsRef.current.scrollBy({
+        left: direction === 'left' ? -scrollAmount : scrollAmount,
+        behavior: 'smooth',
+      });
+    }
+  };
 
   useEffect(() => {
     if (initialTab) {
@@ -707,115 +719,6 @@ export default function DashboardPage({
         </section>
 
         {/* ------------------------------------------------------------------
-            Recent Reports Section (3-card grid)
-            ------------------------------------------------------------------ */}
-        <section className="dash-section" aria-labelledby="recent-reports-heading">
-          <div className="dash-section-header">
-            <h2 id="recent-reports-heading">Recent Reports</h2>
-          </div>
-
-          {reports.length === 0 ? (
-            <div
-              style={{
-                backgroundColor: '#ffffff',
-                border: '1.5px dashed #e2e8f0',
-                borderRadius: 16,
-                padding: '3.5rem 1.5rem',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.75rem',
-              }}
-            >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: '50%',
-                  backgroundColor: '#f1f5f9',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#64748b',
-                }}
-              >
-                <Camera size={24} />
-              </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                No Defect Reports Submitted Yet
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0, maxWidth: 460 }}>
-                All campus statistics start at zero until an issue is filed. Help keep the campus safe, clean, and functional by reporting your first defect!
-              </p>
-              <button
-                type="button"
-                className="dash-btn-primary"
-                onClick={() => onNavigate('report-issue')}
-                style={{ marginTop: '0.5rem' }}
-              >
-                <Plus size={16} strokeWidth={2.6} />
-                <span>Report a Facility Issue</span>
-              </button>
-            </div>
-          ) : (
-            <div className="dash-reports-grid">
-              {reports.map((report) => (
-                <article
-                  key={report.id}
-                  className="dash-report-card"
-                  onClick={() => {
-                    setSelectedReportForDetails(report);
-                    setActiveTab('my-reports');
-                    window.location.hash = 'my-reports';
-                  }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="dash-report-image">
-                    <img src={report.image} alt={report.title} loading="lazy" />
-                  </div>
-
-                  <div className="dash-report-info">
-                    <h3 className="dash-report-title">{report.title}</h3>
-                    <p className="dash-report-location">{report.location}</p>
-                    <p className="dash-report-date">{report.date}</p>
-
-                    <div className="dash-report-badge-container">
-                      <button
-                        type="button"
-                        className={`dash-badge ${report.badgeClass}`}
-                        onClick={() => setActiveModalPreset(report.modalTrigger)}
-                        title={`Click to test "${MODAL_PRESETS[report.modalTrigger]?.title}" dialog`}
-                      >
-                        {report.statusLabel}
-                      </button>
-
-                      {isReportDeletable(report) && (
-                        <div className="dash-card-actions">
-                          <button
-                            type="button"
-                            className="dash-card-action-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setReportToDelete(report);
-                              setActiveModalPreset('delete_report');
-                            }}
-                            title={`Delete report: ${report.title}`}
-                            aria-label={`Delete report: ${report.title}`}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ------------------------------------------------------------------
             How It Works Card (4 horizontal steps)
             ------------------------------------------------------------------ */}
         <section className="dash-how-it-works" aria-labelledby="how-it-works-heading">
@@ -870,6 +773,146 @@ export default function DashboardPage({
               </p>
             </div>
           </div>
+        </section>
+
+        {/* ------------------------------------------------------------------
+            Recent Reports Section (Scrollable horizontally when 3+ reports)
+            ------------------------------------------------------------------ */}
+        <section className="dash-section" aria-labelledby="recent-reports-heading">
+          <div className="dash-section-header">
+            <div className="dash-section-title-wrap">
+              <h2 id="recent-reports-heading">Recent Reports</h2>
+              {reports.length >= 3 && (
+                <span className="dash-reports-count-pill">{reports.length} Reports</span>
+              )}
+            </div>
+
+            {reports.length >= 3 && (
+              <div className="dash-scroll-arrows" aria-label="Scroll recent reports">
+                <button
+                  type="button"
+                  className="dash-scroll-btn"
+                  onClick={() => scrollReports('left')}
+                  title="Scroll Left"
+                  aria-label="Scroll reports left"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  type="button"
+                  className="dash-scroll-btn"
+                  onClick={() => scrollReports('right')}
+                  title="Scroll Right"
+                  aria-label="Scroll reports right"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {reports.length === 0 ? (
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1.5px dashed #e2e8f0',
+                borderRadius: 16,
+                padding: '3.5rem 1.5rem',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}
+            >
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  backgroundColor: '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748b',
+                }}
+              >
+                <Camera size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                No Defect Reports Submitted Yet
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0, maxWidth: 460 }}>
+                All campus statistics start at zero until an issue is filed. Help keep the campus safe, clean, and functional by reporting your first defect!
+              </p>
+              <button
+                type="button"
+                className="dash-btn-primary"
+                onClick={() => onNavigate('report-issue')}
+                style={{ marginTop: '0.5rem' }}
+              >
+                <Plus size={16} strokeWidth={2.6} />
+                <span>Report a Facility Issue</span>
+              </button>
+            </div>
+          ) : (
+            <div 
+              ref={recentReportsRef}
+              className={`dash-reports-grid ${reports.length >= 3 ? 'dash-reports-horizontal' : ''}`}
+            >
+              {reports.map((report) => (
+                <article
+                  key={report.id}
+                  className="dash-report-card"
+                  onClick={() => {
+                    setSelectedReportForDetails(report);
+                    setActiveTab('my-reports');
+                    window.location.hash = 'my-reports';
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="dash-report-image">
+                    <img src={report.image} alt={report.title} loading="lazy" />
+                  </div>
+
+                  <div className="dash-report-info">
+                    <h3 className="dash-report-title">{report.title}</h3>
+                    <p className="dash-report-location">{report.location}</p>
+                    <p className="dash-report-date">{report.date}</p>
+
+                    <div className="dash-report-badge-container">
+                      <button
+                        type="button"
+                        className={`dash-badge ${report.badgeClass}`}
+                        onClick={() => setActiveModalPreset(report.modalTrigger)}
+                        title={`Click to test "${MODAL_PRESETS[report.modalTrigger]?.title}" dialog`}
+                      >
+                        {report.statusLabel}
+                      </button>
+
+                      {isReportDeletable(report) && (
+                        <div className="dash-card-actions">
+                          <button
+                            type="button"
+                            className="dash-card-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportToDelete(report);
+                              setActiveModalPreset('delete_report');
+                            }}
+                            title={`Delete report: ${report.title}`}
+                            aria-label={`Delete report: ${report.title}`}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       </main>
       )}
