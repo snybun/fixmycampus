@@ -25,6 +25,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+session_start_safe();
+
 try {
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         // Only Super Administrators can register new maintenance staff personnel
@@ -82,10 +84,130 @@ try {
         ], 201);
     }
 
-    // GET Request: fetch maintenance personnel (technicians & supervisors)
-    // Strictly restricted to authorized staff/admin personnel
+    // GET Request: check if specific staff member statistics requested
     $currentUser = auth_require_role(['admin', 'supervisor', 'technician']);
+    $action = $_GET['action'] ?? 'list';
 
+    // --------------------------------------------------------------------------
+    // ACTION: STATS / DETAIL FOR A SPECIFIC STAFF MEMBER
+    // --------------------------------------------------------------------------
+    if ($action === 'stats' || $action === 'detail') {
+        $staffId = (int)($_GET['id'] ?? 0);
+        if ($staffId <= 0) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Valid Staff ID is required.'
+            ], 400);
+        }
+
+        $member = db_fetch_one("
+            SELECT 
+                u.id,
+                u.role_id,
+                u.user_identifier,
+                u.full_name,
+                u.email,
+                u.phone_number,
+                u.department,
+                u.status,
+                u.created_at,
+                r.name AS role_name,
+                r.display_name AS role_display,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    WHERE ra.assigned_to = u.id
+                ) AS total_jobs,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    WHERE ra.assigned_to = u.id 
+                      AND ra.status IN ('pending', 'accepted', 'in_progress')
+                ) AS active_jobs,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    WHERE ra.assigned_to = u.id 
+                      AND ra.status = 'in_progress'
+                ) AS in_progress_jobs,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    WHERE ra.assigned_to = u.id 
+                      AND ra.status = 'pending'
+                ) AS pending_jobs,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    WHERE ra.assigned_to = u.id 
+                      AND ra.status = 'completed'
+                ) AS completed_jobs
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE u.id = :id
+            LIMIT 1
+        ", [':id' => $staffId]);
+
+        if (!$member) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Staff member not found.'
+            ], 404);
+        }
+
+        $member['total_jobs']       = (int)$member['total_jobs'];
+        $member['active_jobs']      = (int)$member['active_jobs'];
+        $member['in_progress_jobs'] = (int)$member['in_progress_jobs'];
+        $member['pending_jobs']     = (int)$member['pending_jobs'];
+        $member['completed_jobs']   = (int)$member['completed_jobs'];
+        $member['completion_rate']  = $member['total_jobs'] > 0
+            ? (int)round(($member['completed_jobs'] / $member['total_jobs']) * 100)
+            : 0;
+
+        // Fetch assigned ticket job details
+        $jobs = db_fetch_all("
+            SELECT 
+                ra.id AS assignment_id,
+                ra.status AS assignment_status,
+                ra.assigned_at,
+                ra.assignment_notes,
+                r.id AS report_id,
+                r.ticket_number,
+                r.title,
+                r.description,
+                r.priority,
+                r.status AS report_status,
+                r.reported_at AS report_created_at,
+                b.name AS building_name,
+                l.name AS location_name,
+                c.name AS category_name
+            FROM `report_assignments` ra
+            JOIN `reports` r ON ra.report_id = r.id
+            LEFT JOIN `locations` l ON r.location_id = l.id
+            LEFT JOIN `buildings` b ON l.building_id = b.id
+            LEFT JOIN `categories` c ON r.category_id = c.id
+            WHERE ra.assigned_to = :staff_id
+            ORDER BY ra.assigned_at DESC
+        ", [':staff_id' => $staffId]);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'staff'   => $member,
+            'jobs'    => $jobs,
+            'metrics' => [
+                'total_jobs'       => $member['total_jobs'],
+                'active_jobs'      => $member['active_jobs'],
+                'in_progress_jobs' => $member['in_progress_jobs'],
+                'pending_jobs'     => $member['pending_jobs'],
+                'completed_jobs'   => $member['completed_jobs'],
+                'completion_rate'  => $member['completion_rate'],
+            ]
+        ]);
+    }
+
+    // --------------------------------------------------------------------------
+    // ACTION: LIST ALL MAINTENANCE STAFF
+    // --------------------------------------------------------------------------
     $sql = "
         SELECT 
             u.id,
@@ -101,9 +223,26 @@ try {
             (
                 SELECT COUNT(*) 
                 FROM `report_assignments` ra 
+                WHERE ra.assigned_to = u.id
+            ) AS total_jobs,
+            (
+                SELECT COUNT(*) 
+                FROM `report_assignments` ra 
                 WHERE ra.assigned_to = u.id 
                   AND ra.status IN ('pending', 'accepted', 'in_progress')
             ) AS active_jobs,
+            (
+                SELECT COUNT(*) 
+                FROM `report_assignments` ra 
+                WHERE ra.assigned_to = u.id 
+                  AND ra.status = 'in_progress'
+            ) AS in_progress_jobs,
+            (
+                SELECT COUNT(*) 
+                FROM `report_assignments` ra 
+                WHERE ra.assigned_to = u.id 
+                  AND ra.status = 'pending'
+            ) AS pending_jobs,
             (
                 SELECT COUNT(*) 
                 FROM `report_assignments` ra 
@@ -118,18 +257,15 @@ try {
 
     $staff = db_fetch_all($sql);
 
-    // Compute availability status badge dynamically
     foreach ($staff as &$member) {
-        $member['active_jobs'] = (int)$member['active_jobs'];
-        $member['completed_jobs'] = (int)$member['completed_jobs'];
-        
-        if ($member['status'] !== 'active') {
-            $member['availability'] = 'Off Duty';
-        } elseif ($member['active_jobs'] >= 2) {
-            $member['availability'] = 'Busy';
-        } else {
-            $member['availability'] = 'Available';
-        }
+        $member['total_jobs']       = (int)$member['total_jobs'];
+        $member['active_jobs']      = (int)$member['active_jobs'];
+        $member['in_progress_jobs'] = (int)$member['in_progress_jobs'];
+        $member['pending_jobs']     = (int)$member['pending_jobs'];
+        $member['completed_jobs']   = (int)$member['completed_jobs'];
+        $member['completion_rate']  = $member['total_jobs'] > 0
+            ? (int)round(($member['completed_jobs'] / $member['total_jobs']) * 100)
+            : 0;
     }
     unset($member);
 

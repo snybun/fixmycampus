@@ -423,14 +423,6 @@ export default function CampusMapPlacement({
               <div className="cmp-pin-icon-wrap">
                 <MapPin size={22} className="cmp-pin-icon" />
               </div>
-              <div className="cmp-pin-callout">
-                <span className="cmp-pin-title">
-                  {activeConfig?.label || selectedBuilding}
-                </span>
-                <span className="cmp-pin-sub">
-                  {activeConfig?.desc || 'Designated Placement'}
-                </span>
-              </div>
             </div>
           )}
         </div>
@@ -549,14 +541,6 @@ export default function CampusMapPlacement({
                       <div className="cmp-pin-pulse" />
                       <div className="cmp-pin-icon-wrap">
                         <MapPin size={26} className="cmp-pin-icon" />
-                      </div>
-                      <div className="cmp-pin-callout">
-                        <span className="cmp-pin-title">
-                          {activeConfig?.label || selectedBuilding}
-                        </span>
-                        <span className="cmp-pin-sub">
-                          {activeConfig?.desc || 'Defect Coordinate'}
-                        </span>
                       </div>
                     </div>
                   )}

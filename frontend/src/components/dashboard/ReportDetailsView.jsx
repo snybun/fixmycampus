@@ -7,6 +7,7 @@ import {
   Clock,
   MapPin,
   Calendar,
+  Trash2,
 } from 'lucide-react';
 import { fetchReportDetail } from '../../services/api';
 import './reportDetails.css';
@@ -14,6 +15,8 @@ import './reportDetails.css';
 export default function ReportDetailsView({
   report,
   onBack,
+  onDelete,
+  isAdmin = false,
 }) {
   if (!report) return null;
 
@@ -192,7 +195,7 @@ export default function ReportDetailsView({
   // Dynamic updates log built directly from database history
   const updatesLog = useMemo(() => {
     if (detailedReport.status_history && detailedReport.status_history.length > 0) {
-      return detailedReport.status_history
+      const rawList = detailedReport.status_history
         .slice()
         .reverse()
         .map((h) => {
@@ -218,6 +221,19 @@ export default function ReportDetailsView({
             message: msg,
           };
         });
+
+      // Filter out consecutive duplicate entries for clean readability
+      const deduplicated = [];
+      for (const item of rawList) {
+        if (
+          deduplicated.length === 0 ||
+          deduplicated[deduplicated.length - 1].message !== item.message ||
+          deduplicated[deduplicated.length - 1].date !== item.date
+        ) {
+          deduplicated.push(item);
+        }
+      }
+      return deduplicated;
     }
 
     const repLongDate = detailedReport.date || 'Recently';
@@ -242,29 +258,63 @@ export default function ReportDetailsView({
   const priorityClass = `priority-${(detailedReport.priority || 'medium').toLowerCase()}`;
   const statusClass = `status-${(detailedReport.status || 'reported').toLowerCase()}`;
 
+  // Determine if this report can be deleted (only if no worker is assigned yet)
+  const isReportDeletable = (r) => {
+    if (!r) return false;
+    if (isAdmin) return true;
+    const rawStatus = (r.status || '').toLowerCase();
+    const hasWorker = Boolean(
+      r.worker_name ||
+      r.worker_id ||
+      r.assignedWorker ||
+      rawStatus === 'assigned' ||
+      rawStatus === 'in_progress' ||
+      rawStatus === 'resolved' ||
+      rawStatus === 'closed' ||
+      r.statusLabel === 'Worker Assigned' ||
+      r.statusLabel === 'Repair Ongoing' ||
+      r.statusLabel === 'Fixed'
+    );
+    return !hasWorker;
+  };
+
   return (
     <main className="rep-details-page">
       <div className="rep-details-container">
         {/* Top Header / Breadcrumb */}
         <div className="rep-details-header">
-          <button
-            type="button"
-            className="rep-details-back-btn"
-            onClick={onBack}
-            aria-label="Back to My Reports"
-            title="Back to My Reports"
-          >
-            <ArrowLeft size={18} strokeWidth={2.2} />
-          </button>
+          <div style={{ display: 'flex', alignItems: 'flex-start', gap: 16 }}>
+            <button
+              type="button"
+              className="rep-details-back-btn"
+              onClick={onBack}
+              aria-label="Back to My Reports"
+              title="Back to My Reports"
+            >
+              <ArrowLeft size={18} strokeWidth={2.2} />
+            </button>
 
-          <div className="rep-details-header-meta">
-            <div className="rep-details-breadcrumb">
-              MY REPORTS &nbsp;/&nbsp; {detailedReport.ticket_number}
+            <div className="rep-details-header-meta">
+              <div className="rep-details-breadcrumb">
+                MY REPORTS &nbsp;/&nbsp; {detailedReport.ticket_number}
+              </div>
+              <h1 className="rep-details-title">
+                Report Details - {detailedReport.ticket_number}
+              </h1>
             </div>
-            <h1 className="rep-details-title">
-              Report Details - {detailedReport.ticket_number}
-            </h1>
           </div>
+
+          {isReportDeletable(detailedReport) && onDelete && (
+            <button
+              type="button"
+              className="rep-details-delete-btn"
+              onClick={() => onDelete(detailedReport)}
+              title="Delete this report"
+            >
+              <Trash2 size={15} />
+              <span>Delete Report</span>
+            </button>
+          )}
         </div>
 
         {/* 2-Column Responsive Layout */}
@@ -328,7 +378,7 @@ export default function ReportDetailsView({
                   <span className="rep-desc-label" style={{ display: 'block', marginBottom: 6 }}>
                     Notes / Description
                   </span>
-                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#374151', lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#374151', lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
                     {detailedReport.description}
                   </p>
                 </div>

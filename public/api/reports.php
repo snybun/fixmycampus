@@ -582,7 +582,7 @@ try {
     // POST /api/reports.php?action=assign -> Assign maintenance technician
     // -------------------------------------------------------------------------
     if ($action === 'assign' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $actorUser = auth_require_role(['admin', 'supervisor']);
+        $actorUser = auth_require_role(['admin', 'supervisor', 'technician']);
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? 0);
         $technicianId = (int)($input['assigned_to'] ?? 0);
@@ -644,27 +644,33 @@ try {
                 ]);
             }
 
-            db_execute("UPDATE `reports` SET `status` = 'assigned', `updated_at` = NOW() WHERE `id` = :id", [':id' => $reportId]);
+            // Only transition report status to 'assigned' if it's currently submitted or under_review.
+            // If the report is already in_progress or resolved, do NOT regress the status back to assigned!
+            $finalStatus = $report['status'];
+            if (in_array($report['status'], ['submitted', 'under_review', 'assigned'], true)) {
+                $finalStatus = 'assigned';
+                db_execute("UPDATE `reports` SET `status` = 'assigned', `updated_at` = NOW() WHERE `id` = :id", [':id' => $reportId]);
 
-            db_execute("
-                INSERT INTO `report_status_history` (`report_id`, `changed_by`, `previous_status`, `new_status`, `remarks`)
-                VALUES (:report_id, :changed_by, :prev, 'assigned', :remarks)
-            ", [
-                ':report_id'   => $reportId,
-                ':changed_by'  => $assignedBy,
-                ':prev'        => $report['status'],
-                ':remarks'     => "Assigned to {$tech['full_name']} ({$tech['department']})"
-            ]);
+                db_execute("
+                    INSERT INTO `report_status_history` (`report_id`, `changed_by`, `previous_status`, `new_status`, `remarks`)
+                    VALUES (:report_id, :changed_by, :prev, 'assigned', :remarks)
+                ", [
+                    ':report_id'   => $reportId,
+                    ':changed_by'  => $assignedBy,
+                    ':prev'        => $report['status'],
+                    ':remarks'     => "Assigned to {$tech['full_name']} ({$tech['department']})"
+                ]);
+            }
 
             $pdo->commit();
 
-            // Dispatch notification to technician and student reporter
+            // Dispatch notification to technician, reporter, and management
             create_notification(
                 (int)$technicianId,
                 $reportId,
                 'work_order',
                 "New Work Order Dispatched: {$report['ticket_number']} - {$report['title']}",
-                "Work order assigned by {$actorUser['full_name']}. Notes: {$notes}."
+                "Work order assigned by {$actorUser['full_name']}. Notes: {$notes}"
             );
 
             if (!empty($report['reporter_id'])) {
@@ -677,11 +683,19 @@ try {
                 );
             }
 
+            notify_admins_and_supervisors(
+                $reportId,
+                'assignment',
+                "Worker Assigned: {$report['ticket_number']}",
+                "Worker {$tech['full_name']} ({$tech['department']}) assigned to '{$report['title']}'.",
+                (int)$actorUser['id']
+            );
+
             \FixMyCampus\Core\Response::json([
-                'success' => true,
-                'message' => "Worker {$tech['full_name']} assigned successfully.",
+                'success'    => true,
+                'message'    => "Worker {$tech['full_name']} assigned successfully.",
                 'technician' => $tech,
-                'status' => 'assigned'
+                'status'     => $finalStatus
             ]);
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -738,25 +752,111 @@ try {
 
             $pdo->commit();
 
-            // Notify reporter and management on status changes
+            // Notify reporter, assigned technician, and management on status changes
             $tNum = $report['ticket_number'] ?? "FMC-{$reportId}";
             $repTitle = $report['title'] ?? 'Defect Report';
             $repId = (int)($report['reporter_id'] ?? 0);
 
+            // Find assigned technician if exists
+            $assignment = db_fetch_one("SELECT assigned_to FROM `report_assignments` WHERE `report_id` = :rid LIMIT 1", [':rid' => $reportId]);
+            $assignedWorkerId = $assignment ? (int)$assignment['assigned_to'] : 0;
+
             if ($newStatus === 'in_progress') {
                 if ($repId > 0) {
-                    create_notification($repId, $reportId, 'in_progress', "Repair In Progress: {$tNum}", "Maintenance personnel started repair work on '{$repTitle}'.");
+                    create_notification(
+                        $repId,
+                        $reportId,
+                        'in_progress',
+                        "Repair In Progress: {$tNum} - {$repTitle}",
+                        "Maintenance personnel ({$actorUser['full_name']}) has started repair work on '{$repTitle}'."
+                    );
                 }
-                notify_admins_and_supervisors($reportId, 'update', "Work In Progress: {$tNum}", "'{$repTitle}' marked in progress by {$actorUser['full_name']}.");
+                if ($assignedWorkerId > 0 && $assignedWorkerId !== (int)$actorUser['id']) {
+                    create_notification(
+                        $assignedWorkerId,
+                        $reportId,
+                        'in_progress',
+                        "Repair In Progress: {$tNum} - {$repTitle}",
+                        "Work marked in progress by {$actorUser['full_name']}."
+                    );
+                }
+                notify_admins_and_supervisors(
+                    $reportId,
+                    'in_progress',
+                    "Repair In Progress: {$tNum}",
+                    "'{$repTitle}' is now in progress (started by {$actorUser['full_name']}).",
+                    (int)$actorUser['id']
+                );
             } elseif ($newStatus === 'resolved') {
                 if ($repId > 0) {
-                    create_notification($repId, $reportId, 'verified', "Issue Fixed: {$tNum} - {$repTitle}", "Your reported issue has been repaired. Remarks: {$remarks}");
+                    create_notification(
+                        $repId,
+                        $reportId,
+                        'verified',
+                        "Issue Fixed: {$tNum} - {$repTitle}",
+                        "Your reported issue has been repaired by {$actorUser['full_name']}. Remarks: {$remarks}"
+                    );
                 }
-                notify_admins_and_supervisors($reportId, 'verified', "Repair Completed: {$tNum}", "'{$repTitle}' was marked resolved by {$actorUser['full_name']}.");
+                if ($assignedWorkerId > 0 && $assignedWorkerId !== (int)$actorUser['id']) {
+                    create_notification(
+                        $assignedWorkerId,
+                        $reportId,
+                        'verified',
+                        "Repair Completed: {$tNum}",
+                        "'{$repTitle}' was marked resolved by {$actorUser['full_name']}."
+                    );
+                }
+                notify_admins_and_supervisors(
+                    $reportId,
+                    'verified',
+                    "Repair Completed: {$tNum}",
+                    "'{$repTitle}' was marked resolved by {$actorUser['full_name']}. Remarks: {$remarks}",
+                    (int)$actorUser['id']
+                );
             } elseif ($newStatus === 'under_review') {
                 if ($repId > 0) {
-                    create_notification($repId, $reportId, 'update', "Report Under Review: {$tNum}", "Campus facilities is reviewing your defect report for '{$repTitle}'.");
+                    create_notification(
+                        $repId,
+                        $reportId,
+                        'update',
+                        "Report Under Review: {$tNum}",
+                        "Campus facilities is reviewing your defect report for '{$repTitle}'."
+                    );
                 }
+            } elseif ($newStatus === 'on_hold') {
+                if ($repId > 0) {
+                    create_notification(
+                        $repId,
+                        $reportId,
+                        'warning',
+                        "Work On Hold: {$tNum}",
+                        "Work on '{$repTitle}' has been placed on hold. Reason: {$remarks}"
+                    );
+                }
+                notify_admins_and_supervisors(
+                    $reportId,
+                    'warning',
+                    "Work On Hold: {$tNum}",
+                    "'{$repTitle}' placed on hold by {$actorUser['full_name']}. Reason: {$remarks}",
+                    (int)$actorUser['id']
+                );
+            } elseif ($newStatus === 'rejected') {
+                if ($repId > 0) {
+                    create_notification(
+                        $repId,
+                        $reportId,
+                        'warning',
+                        "Report Declined: {$tNum}",
+                        "Defect report for '{$repTitle}' was declined. Reason: {$remarks}"
+                    );
+                }
+                notify_admins_and_supervisors(
+                    $reportId,
+                    'warning',
+                    "Report Declined: {$tNum}",
+                    "'{$repTitle}' was declined by {$actorUser['full_name']}. Reason: {$remarks}",
+                    (int)$actorUser['id']
+                );
             }
 
             \FixMyCampus\Core\Response::json([
@@ -774,7 +874,7 @@ try {
     // POST /api/reports.php?action=delete -> Delete report
     // -------------------------------------------------------------------------
     if ($action === 'delete' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $adminUser = auth_require_role('admin');
+        $actorUser = auth_require();
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? $input['id'] ?? 0);
 
@@ -782,9 +882,54 @@ try {
             \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Valid report_id required.'], 400);
         }
 
-        $report = db_fetch_one("SELECT id, title, ticket_number FROM `reports` WHERE `id` = :id LIMIT 1", [':id' => $reportId]);
+        $report = db_fetch_one("
+            SELECT r.id, r.title, r.ticket_number, r.reporter_id, r.status,
+                   ra.assigned_to AS worker_id
+            FROM `reports` r
+            LEFT JOIN `report_assignments` ra ON r.id = ra.report_id
+            WHERE r.id = :id
+            LIMIT 1
+        ", [':id' => $reportId]);
+
         if (!$report) {
             \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Report not found or already deleted.'], 404);
+        }
+
+        $isAdmin = auth_is_admin() || ($actorUser['role_name'] ?? '') === 'admin' || ((int)($actorUser['role_id'] ?? 0) === 1);
+        $isReporter = ((int)$report['reporter_id'] === (int)$actorUser['id']);
+
+        // Check if report already has an assigned worker
+        $hasAssignedWorker = !empty($report['worker_id']) || in_array(strtolower($report['status']), ['assigned', 'in_progress', 'resolved', 'closed'], true);
+
+        if (!$isAdmin) {
+            if (!$isReporter) {
+                \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Unauthorized: You can only delete your own submitted reports.'], 403);
+            }
+            if ($hasAssignedWorker) {
+                \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'This report cannot be deleted because a maintenance worker has already been assigned.'], 400);
+            }
+        } else {
+            // Admins can delete reports after they have been marked as fixed / resolved / closed
+            $reportStatus = strtolower($report['status'] ?? '');
+            $isFixed = in_array($reportStatus, ['resolved', 'closed'], true);
+            if (!$isFixed) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'Admins can only delete reports after they have been fixed and resolved.'
+                ], 400);
+            }
+        }
+
+        // Clean up any uploaded photos from disk to keep storage clean
+        $attachments = db_fetch_all("SELECT file_path FROM `report_attachments` WHERE `report_id` = :id", [':id' => $reportId]);
+        foreach ($attachments as $att) {
+            $fPath = $att['file_path'] ?? '';
+            if (!empty($fPath) && str_starts_with($fPath, '/uploads/')) {
+                $diskPath = dirname(__DIR__) . $fPath;
+                if (file_exists($diskPath) && is_file($diskPath)) {
+                    @unlink($diskPath);
+                }
+            }
         }
 
         db_execute("DELETE FROM `reports` WHERE `id` = :id", [':id' => $reportId]);
@@ -875,7 +1020,7 @@ try {
     $buildingFilter = $_GET['building_id'] ?? null;
     $categoryFilter = $_GET['category_id'] ?? null;
     $search         = trim($_GET['search'] ?? '');
-    $limit          = min((int)($_GET['limit'] ?? 50), 200);
+    $limit = ($action === 'export') ? 5000 : min((int)($_GET['limit'] ?? 50), 200);
     $myOnly         = isset($_GET['my_reports']) && $_GET['my_reports'] === '1';
 
     $sql = "
@@ -969,6 +1114,69 @@ try {
     $sql .= " ORDER BY r.reported_at DESC LIMIT " . $limit;
 
     $reports = db_fetch_all($sql, $params);
+
+    // If Excel/CSV export requested, output directly as an attachment stream
+    if ($action === 'export') {
+        $filename = 'FixMyCampus_Defect_Reports_' . date('Y-m-d_His') . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $out = fopen('php://output', 'w');
+        // UTF-8 BOM for Excel compatibility
+        fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        fputcsv($out, [
+            'Ticket Number',
+            'Issue Title',
+            'Category',
+            'Priority',
+            'Status',
+            'Building',
+            'Floor',
+            'Room / Area',
+            'Reporter Name',
+            'Reporter Email',
+            'Reporter ID',
+            'Assigned Worker',
+            'Worker Department',
+            'Date Reported',
+            'Last Updated',
+            'Description / Notes'
+        ]);
+
+        foreach ($reports as $r) {
+            $formattedStatus = ucwords(str_replace('_', ' ', strtolower($r['status'] ?? 'submitted')));
+            $formattedPriority = ucfirst(strtolower($r['priority'] ?? 'medium'));
+            if (strtolower($r['priority'] ?? '') === 'emergency') {
+                $formattedPriority = 'Emergency';
+            }
+
+            fputcsv($out, [
+                $r['ticket_number'] ?? "FMC-{$r['id']}",
+                $r['title'] ?? '',
+                $r['category_name'] ?? 'General',
+                $formattedPriority,
+                $formattedStatus,
+                $r['building_name'] ?? 'Campus Wide',
+                $r['floor_name'] ?? '—',
+                $r['room_number'] ?? $r['location_name'] ?? $r['specific_area'] ?? '—',
+                $r['reporter_name'] ?? 'Campus User',
+                $r['reporter_email'] ?? '—',
+                $r['reporter_identifier'] ?? '—',
+                $r['worker_name'] ?? 'Unassigned',
+                $r['worker_department'] ?? '—',
+                $r['reported_at'] ?? '—',
+                $r['updated_at'] ?? '—',
+                $r['description'] ?? ''
+            ]);
+        }
+
+        fclose($out);
+        exit;
+    }
 
     if ($myOnly && !empty($_SESSION['mock_confirmed_reports'])) {
         foreach ($_SESSION['mock_confirmed_reports'] as $mockRep) {

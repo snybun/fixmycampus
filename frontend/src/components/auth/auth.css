@@ -265,6 +265,17 @@
   box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.14);
 }
 
+.auth-input.auth-input-error,
+.auth-input-wrapper.auth-input-error .auth-input {
+  border-color: #ef4444 !important;
+}
+
+.auth-input.auth-input-error:focus,
+.auth-input-wrapper.auth-input-error .auth-input:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
+}
+
 .auth-input-has-toggle {
   padding-right: 2.75rem;
 }

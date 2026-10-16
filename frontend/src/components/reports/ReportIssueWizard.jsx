@@ -27,7 +27,7 @@ import {
   PlusCircle,
   User,
 } from 'lucide-react';
-import { fetchBuildings, fetchCategories, createReport, checkDuplicateReport, confirmReport } from '../../services/api';
+import { fetchBuildings, fetchCategories, createReport, fetchNotifications, checkDuplicateReport, confirmReport } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 import DuplicateReportModal from './DuplicateReportModal';
 import UserProfileDropdown from '../common/UserProfileDropdown';
@@ -69,7 +69,14 @@ export default function ReportIssueWizard({
   onReportCreated,
 }) {
   // Wizard Step: 1 = Issue, 2 = Location, 3 = Details, 4 = Review
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      const stepParam = parseInt(params.get('step'), 10);
+      if (stepParam >= 1 && stepParam <= 4) return stepParam;
+    }
+    return 1;
+  });
   const [unreadCount, setUnreadCount] = useState(3);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -126,16 +133,14 @@ export default function ReportIssueWizard({
   // Location State
   const [buildings, setBuildings] = useState(DEFAULT_BUILDINGS);
   const [selectedBuilding, setSelectedBuilding] = useState('PTC Building');
-  const [selectedFloor, setSelectedFloor] = useState('3rd Floor');
+  const [selectedFloor, setSelectedFloor] = useState('1st Floor');
   const [customFloor, setCustomFloor] = useState('');
-  const [roomCoordinate, setRoomCoordinate] = useState('PTC 306');
+  const [roomCoordinate, setRoomCoordinate] = useState('');
 
   // Defect Details State
-  const [issueTitle, setIssueTitle] = useState('Broken Air Conditioner');
-  const [priorityLevel, setPriorityLevel] = useState('High'); // Low, Medium, High, Urgent
-  const [description, setDescription] = useState(
-    'The wall-mounted AC unit is leaking water heavily and making a loud rattling sound. It does not blow cold air anymore. Water is dripping onto laboratory table 4.'
-  );
+  const [issueTitle, setIssueTitle] = useState('');
+  const [priorityLevel, setPriorityLevel] = useState('Medium'); // Low, Medium, High, Urgent
+  const [description, setDescription] = useState('');
 
   const fileInputRef = useRef(null);
   const multiFileInputRef = useRef(null);
@@ -165,6 +170,15 @@ export default function ReportIssueWizard({
         setBuildings(mapped);
       }
     });
+
+    fetchNotifications()
+      .then((res) => {
+        if (res && res.success && Array.isArray(res.notifications)) {
+          const unread = res.notifications.filter((n) => !n.is_read).length;
+          setUnreadCount(unread);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Update floor options when building changes
@@ -427,7 +441,7 @@ export default function ReportIssueWizard({
               <button
                 type="button"
                 className="rw-nav-link"
-                onClick={() => handleRequestExit(() => onNavigate('dashboard'))}
+                onClick={() => handleRequestExit(() => onNavigate('my-reports'))}
                 id="rw-nav-my-reports-btn"
               >
                 My Reports
@@ -453,8 +467,9 @@ export default function ReportIssueWizard({
             <button
               type="button"
               className="rw-notif-btn"
-              onClick={() => setUnreadCount(0)}
+              onClick={() => handleRequestExit(() => onNavigate('notifications'))}
               title="Notifications"
+              id="rw-notif-btn"
             >
               <Bell size={18} />
               {unreadCount > 0 && <span className="rw-notif-badge">{unreadCount}</span>}
@@ -509,12 +524,33 @@ export default function ReportIssueWizard({
                   className="rw-mobile-nav-item"
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    handleRequestExit(() => onNavigate('dashboard'));
+                    handleRequestExit(() => onNavigate('my-reports'));
                   }}
                   id="rw-mobile-nav-my-reports"
                 >
                   <FileText size={18} className="rw-mobile-nav-icon" />
                   <span>My Reports</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="rw-mobile-nav-item"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleRequestExit(() => onNavigate('notifications'));
+                  }}
+                  id="rw-mobile-nav-notifications"
+                >
+                  <Bell size={18} className="rw-mobile-nav-icon" />
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <span
+                      className="rw-notif-badge"
+                      style={{ position: 'static', marginLeft: 'auto' }}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
                 </button>
 
                 <button
@@ -677,8 +713,11 @@ export default function ReportIssueWizard({
             </div>
 
             <div className="rw-grid-2col">
-              {/* Left Column: Drag & Drop Primary Photo Upload Box */}
+              {/* Left Column: Drag & Drop Primary Defect Photo Upload Box */}
               <div>
+                <label className="rw-section-label" style={{ marginBottom: '0.75rem', display: 'block' }}>
+                  Primary Defect Photo
+                </label>
                 <input
                   type="file"
                   ref={fileInputRef}
@@ -751,10 +790,20 @@ export default function ReportIssueWizard({
                 </div>
               </div>
 
-              {/* Right Column: 3x3 Grid of 9 Categories */}
+              {/* Right Column: 4x1 Vertically Scrollable Category Selection */}
               <div>
-                <label className="rw-section-label">Select Category</label>
-                <div className="rw-categories-grid">
+                <div className="rw-category-header-row" style={{ marginBottom: '0.75rem' }}>
+                  <label className="rw-section-label">Select Category</label>
+                  {selectedCategory && (
+                    <span className="rw-selected-badge" title="Currently selected category">
+                      <Check size={12} strokeWidth={3} />
+                      {selectedCategory.name}
+                    </span>
+                  )}
+                </div>
+
+                {/* 4x1 Vertical Scrollable List (1 column, 4 visible, scrollable up and down) */}
+                <div className="rw-categories-vertical-list">
                   {CATEGORY_DEFINITIONS.map((cat) => {
                     const IconComponent = cat.icon;
                     const isSelected = selectedCategory?.id === cat.id;
@@ -762,11 +811,17 @@ export default function ReportIssueWizard({
                       <button
                         key={cat.id}
                         type="button"
-                        className={`rw-category-card ${isSelected ? 'selected' : ''}`}
+                        className={`rw-category-card rw-category-card-vertical ${isSelected ? 'selected' : ''}`}
                         onClick={() => setSelectedCategory(cat)}
+                        title={`Select ${cat.name}`}
                       >
-                        <IconComponent className="rw-cat-icon" />
+                        <div className={`rw-cat-icon-badge ${isSelected ? 'selected' : ''}`}>
+                          <IconComponent className="rw-cat-icon" />
+                        </div>
                         <span className="rw-cat-name">{cat.name}</span>
+                        {isSelected && (
+                          <Check size={14} strokeWidth={3} className="rw-cat-check" />
+                        )}
                       </button>
                     );
                   })}
@@ -802,16 +857,16 @@ export default function ReportIssueWizard({
             ================================================================== */}
         {currentStep === 2 && (
           <div className="rw-card">
-            <div className="rw-card-header">
-              <h1 className="rw-card-title">Set defect location</h1>
-              <p className="rw-card-subtitle">
-                Provide precise room and floor details for maintenance coordinates.
-              </p>
-            </div>
-
             <div className="rw-grid-2col">
-              {/* Left Column: Building, Floor (dropdown or textbox), Room Coordinate */}
+              {/* Left Column: Title & Subtitle + Building, Floor, Room Coordinate */}
               <div>
+                <div className="rw-card-header" style={{ marginBottom: '1.5rem' }}>
+                  <h1 className="rw-card-title">Set defect location</h1>
+                  <p className="rw-card-subtitle">
+                    Provide precise room and floor details for maintenance coordinates.
+                  </p>
+                </div>
+
                 {/* Building Dropdown */}
                 <div className="rw-form-group">
                   <label className="rw-form-label">Campus Building</label>
@@ -836,7 +891,6 @@ export default function ReportIssueWizard({
                     <input
                       type="text"
                       className="rw-input"
-                      placeholder="e.g. Mezzanine, Ground, Floor 2"
                       value={customFloor}
                       onChange={(e) => setCustomFloor(e.target.value)}
                       id="rw-custom-floor-input"
@@ -863,7 +917,6 @@ export default function ReportIssueWizard({
                   <input
                     type="text"
                     className="rw-input"
-                    placeholder="e.g. PTC 306"
                     value={roomCoordinate}
                     onChange={(e) => setRoomCoordinate(e.target.value)}
                     id="rw-room-input"
@@ -873,7 +926,14 @@ export default function ReportIssueWizard({
 
               {/* Right Column: Campus Map Placement Preview */}
               <div>
-                <label className="rw-form-label">Campus Map Placement</label>
+                <div className="rw-card-header" style={{ marginBottom: '1.5rem' }}>
+                  <h2 className="rw-card-title" style={{ fontSize: '1.5rem' }}>
+                    Campus Map Placement
+                  </h2>
+                  <p className="rw-card-subtitle">
+                    Pinpoint defect coordinates on the interactive campus route map.
+                  </p>
+                </div>
                 <CampusMapPlacement
                   selectedBuilding={selectedBuilding}
                   onSelectBuilding={handleBuildingChange}
@@ -920,7 +980,6 @@ export default function ReportIssueWizard({
                   <input
                     type="text"
                     className="rw-input"
-                    placeholder="e.g. Broken Air Conditioner"
                     value={issueTitle}
                     onChange={(e) => setIssueTitle(e.target.value)}
                     id="rw-title-input"
@@ -950,9 +1009,9 @@ export default function ReportIssueWizard({
                   <textarea
                     className="rw-textarea"
                     rows={4}
-                    placeholder="Provide details on defect symptoms, safety concerns, or specific instructions..."
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                    style={{ resize: 'none', overflowY: 'auto' }}
                     id="rw-desc-input"
                   />
                 </div>
@@ -1100,7 +1159,13 @@ export default function ReportIssueWizard({
 
                 <div className="rw-review-field-group">
                   <div className="rw-review-field-label">Additional Description</div>
-                  <div className="rw-review-desc-box">{description}</div>
+                  <div className="rw-review-desc-box">
+                    {description && description.trim() ? (
+                      description
+                    ) : (
+                      <span className="rw-review-desc-empty">No additional description provided.</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

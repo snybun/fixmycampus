@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
-import { Search } from 'lucide-react';
+import { Search, FileSpreadsheet } from 'lucide-react';
+import { exportReportsToExcel } from '../../utils/exportToExcel';
 
 export default function ReportManagement({
   reports = [],
@@ -8,6 +9,7 @@ export default function ReportManagement({
   onViewReport,
   onAssignReport,
   onUpdateStatus,
+  onDeleteReport,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
   const [activeSearch, setActiveSearch] = useState('');
@@ -25,7 +27,11 @@ export default function ReportManagement({
     setCurrentPage(1);
   };
 
-  // Filter reports locally
+  const handleExportExcel = () => {
+    const listToExport = filtered.length > 0 ? filtered : reports;
+    exportReportsToExcel(listToExport, 'FixMyCampus_Report_Management');
+  };
+
   const filtered = reports.filter((r) => {
     if (activeSearch) {
       const matchSearch =
@@ -58,6 +64,17 @@ export default function ReportManagement({
             Filter, search, and update facility tickets on campus.
           </p>
         </div>
+        <button
+          type="button"
+          className="admin-btn-excel"
+          onClick={handleExportExcel}
+          disabled={reports.length === 0}
+          title="Export filtered reports to Microsoft Excel (.xlsx)"
+          id="admin-export-excel-btn"
+        >
+          <FileSpreadsheet size={16} />
+          <span>Export to Excel ({filtered.length})</span>
+        </button>
       </div>
 
       {/* Filter and Search Card */}
@@ -186,10 +203,10 @@ export default function ReportManagement({
                 paginatedReports.map((report) => {
                   const dateStr = report.reported_at
                     ? new Date(report.reported_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })
+                      month: 'short',
+                      day: 'numeric',
+                      year: 'numeric',
+                    })
                     : 'Recent';
 
                   const locSub = report.building_name
@@ -242,6 +259,16 @@ export default function ReportManagement({
                           >
                             Update
                           </button>
+                          {(report.status === 'resolved' || report.status === 'closed') && onDeleteReport && (
+                            <button
+                              type="button"
+                              className="admin-btn-action-delete"
+                              onClick={() => onDeleteReport(report)}
+                              title="Delete fixed report from database"
+                            >
+                              Delete
+                            </button>
+                          )}
                         </div>
                       </td>
                     </tr>

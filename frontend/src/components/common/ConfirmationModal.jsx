@@ -6,7 +6,8 @@ import {
   Trash2,
   CheckCircle2,
   LogOut,
-  AlertTriangle
+  AlertTriangle,
+  Wrench,
 } from 'lucide-react';
 import './modals.css';
 
@@ -81,6 +82,26 @@ export const MODAL_PRESETS = {
     confirmText: 'Confirm',
     confirmClass: 'modal-btn-primary',
   },
+  delete_notifications: {
+    id: 'delete_notifications',
+    title: 'Delete All Notifications?',
+    message: 'Are you sure you want to delete all notifications? This action cannot be undone.',
+    icon: Trash2,
+    badgeClass: 'badge-red',
+    cancelText: 'Cancel',
+    confirmText: 'Delete All',
+    confirmClass: 'modal-btn-danger',
+  },
+  start_repair: {
+    id: 'start_repair',
+    title: 'Start Repair?',
+    message: 'Are you sure you want to start this repair? Once started, this action cannot be undone.',
+    icon: Wrench,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Yes, Start Repair',
+    confirmClass: 'modal-btn-primary',
+  },
 };
 
 /**
@@ -146,6 +167,7 @@ export function ModalCard({
 export default function ConfirmationModal({
   isOpen,
   onClose,
+  onCancel,
   onConfirm,
   presetId,
   title,
@@ -156,19 +178,23 @@ export default function ConfirmationModal({
   confirmText,
   confirmClass,
   loading = false,
+  isLoading = false,
 }) {
+  const handleClose = onClose || onCancel || (() => {});
+  const isBusy = loading || isLoading;
+
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleClose();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   if (!isOpen) return null;
 
@@ -177,7 +203,7 @@ export default function ConfirmationModal({
       className="modal-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          onClose();
+          handleClose();
         }
       }}
       role="dialog"
@@ -192,9 +218,9 @@ export default function ConfirmationModal({
         cancelText={cancelText}
         confirmText={confirmText}
         confirmClass={confirmClass}
-        onCancel={onClose}
+        onCancel={handleClose}
         onConfirm={onConfirm}
-        loading={loading}
+        loading={isBusy}
       />
     </div>
   );

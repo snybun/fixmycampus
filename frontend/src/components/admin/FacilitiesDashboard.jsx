@@ -13,6 +13,7 @@ export default function FacilitiesDashboard({
   recentReports = [],
   onViewReport,
   onAssignReport,
+  onDeleteReport,
 }) {
   const total = stats?.total_reports || 0;
   const pending = stats?.pending_review || 0;
@@ -377,6 +378,16 @@ export default function FacilitiesDashboard({
                         >
                           Assign
                         </button>
+                        {(report.status === 'resolved' || report.status === 'closed') && onDeleteReport && (
+                          <button
+                            type="button"
+                            className="admin-btn-action-delete"
+                            onClick={() => onDeleteReport(report)}
+                            title="Delete fixed report from database"
+                          >
+                            Delete
+                          </button>
+                        )}
                       </div>
                     </td>
                   </tr>

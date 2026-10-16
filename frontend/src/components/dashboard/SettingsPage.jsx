@@ -15,6 +15,7 @@ import {
   EyeOff,
 } from 'lucide-react';
 import { updateProfilePicture, changeUserPassword, updateUserProfile } from '../../services/api';
+import ConfirmationModal from '../common/ConfirmationModal';
 import './settings.css';
 
 const DEPARTMENTS = [
@@ -49,6 +50,7 @@ export default function SettingsPage({
   const [avatarPreview, setAvatarPreview] = useState(currentUser?.avatar_url || '');
   const [isUploading, setIsUploading] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Sync avatarPreview if currentUser updates
   useEffect(() => {
@@ -84,12 +86,43 @@ export default function SettingsPage({
   const [slaAlerts, setSlaAlerts] = useState(true);
   const [smsAlerts, setSmsAlerts] = useState(false);
 
+  // Check if current user is maintenance staff or admin
+  const isMaintenance = Boolean(
+    currentUser && (
+      currentUser.role_name === 'supervisor' ||
+      currentUser.role_name === 'technician' ||
+      currentUser.role_id === 2 ||
+      currentUser.role_id === 3 ||
+      currentUser.role === 'maintenance' ||
+      currentUser.role === 'technician' ||
+      currentUser.role === 'supervisor' ||
+      String(currentUser.user_identifier || '').toUpperCase().startsWith('MGT-') ||
+      String(currentUser.user_identifier || '').toUpperCase().startsWith('MNT-') ||
+      String(currentUser.user_identifier || '').toUpperCase().startsWith('TEC-') ||
+      String(currentUser.user_identifier || '').toUpperCase().startsWith('STF-')
+    )
+  );
+
+  const isAdmin = Boolean(
+    currentUser && (
+      currentUser.role_name === 'admin' ||
+      currentUser.role_id === 1 ||
+      currentUser.role === 'admin'
+    )
+  );
+
   // Parse existing names from currentUser
-  const displayName = currentUser?.full_name || 'Mark Dyvie Cerna';
-  const studentId = currentUser?.user_identifier || '03-01-2526-045589';
-  const emailAddress = currentUser?.email || 'mafe.cerna.up@phinmaed.com';
-  const departmentName = currentUser?.department || 'CITE - College of Information Technology Education';
-  const yearDisplay = currentUser?.year_level || '2nd Year Student';
+  const displayName = currentUser?.full_name || (isMaintenance ? 'Maintenance Staff' : 'Mark Dyvie Cerna');
+  const staffOrStudentId = currentUser?.user_identifier || (isMaintenance ? 'MGT-001' : '03-01-2526-045589');
+  const emailAddress = currentUser?.email || 'user@phinmaed.com';
+  const departmentName = currentUser?.department || '';
+  
+  // Role display: locked by admin for staff/admin, year level for students
+  const roleDisplay = isMaintenance
+    ? (currentUser?.role_display || (currentUser?.role_name === 'supervisor' ? 'Maintenance Supervisor' : 'Maintenance Staff'))
+    : isAdmin
+    ? (currentUser?.role_display || 'Administrator')
+    : (currentUser?.year_level || 'Student');
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -119,9 +152,9 @@ export default function SettingsPage({
       }
     }
 
-    setEditFirstName(fn || 'Mark');
-    setEditMiddleName(mn || 'Dyvie');
-    setEditLastName(ln || 'Cerna');
+    setEditFirstName(fn || '');
+    setEditMiddleName(mn || '');
+    setEditLastName(ln || '');
     setEditYear(currentUser?.year_level || '2nd Year Student');
     setEditDepartment(currentUser?.department || 'CITE - College of Information Technology Education');
     setShowEditProfileModal(true);
@@ -139,13 +172,19 @@ export default function SettingsPage({
 
     setIsSubmittingProfile(true);
     try {
-      const res = await updateUserProfile({
+      const payload = {
         first_name: editFirstName.trim(),
         middle_name: editMiddleName.trim(),
         last_name: editLastName.trim(),
-        year_level: editYear,
-        department: editDepartment,
-      });
+      };
+
+      // Only student profiles include year_level and college department
+      if (!isMaintenance && !isAdmin) {
+        payload.year_level = editYear;
+        payload.department = editDepartment;
+      }
+
+      const res = await updateUserProfile(payload);
 
       if (res && res.success) {
         showToast('Profile updated successfully!');
@@ -262,7 +301,7 @@ export default function SettingsPage({
         <button
           type="button"
           className="settings-back-btn"
-          onClick={() => onNavigate('dashboard')}
+          onClick={() => onNavigate(isMaintenance ? 'maintenance' : isAdmin ? 'admin' : 'dashboard')}
           title="Return to Dashboard"
         >
           <ArrowLeft size={16} />
@@ -296,23 +335,25 @@ export default function SettingsPage({
           </div>
 
           <h2 className="settings-user-name">{displayName}</h2>
-          <p className="settings-user-role">{yearDisplay}</p>
+          <p className="settings-user-role">{roleDisplay}</p>
         </div>
 
         <div className="settings-divider" />
 
         {/* Information Fields */}
         <div className="settings-fields-group">
-          {/* Student ID (Read Only) */}
+          {/* Student / Staff ID (Read Only) */}
           <div className="settings-field">
-            <label className="settings-field-label">Student ID</label>
+            <label className="settings-field-label">
+              {isMaintenance ? 'Staff ID' : isAdmin ? 'Admin ID' : 'Student ID'}
+            </label>
             <input
               type="text"
               className="settings-field-input"
-              value={studentId}
+              value={staffOrStudentId}
               readOnly
               disabled
-              title="Student ID is permanent and managed by Registrar"
+              title={isMaintenance ? 'Staff ID assigned by Campus Administration' : 'Student ID is permanent and managed by Registrar'}
             />
           </div>
 
@@ -329,30 +370,32 @@ export default function SettingsPage({
             />
           </div>
 
-          {/* Department (Displays Current Department) */}
-          <div className="settings-field">
-            <label className="settings-field-label">Department</label>
-            <input
-              type="text"
-              className="settings-field-input"
-              value={departmentName}
-              readOnly
-              disabled
-              title="Academic Department / College"
-            />
-          </div>
+          {/* Department (Only shown for student accounts; removed for maintenance staff) */}
+          {!isMaintenance && departmentName && (
+            <div className="settings-field">
+              <label className="settings-field-label">Department</label>
+              <input
+                type="text"
+                className="settings-field-input"
+                value={departmentName}
+                readOnly
+                disabled
+                title="Academic Department / College"
+              />
+            </div>
+          )}
         </div>
 
         <div className="settings-divider" />
 
         {/* Action Buttons List */}
         <div className="settings-actions-list">
-          {/* 1. Edit Profile -> Opens Edit Profile dialog to change LN, FN, MN, Year, Department */}
+          {/* 1. Edit Profile */}
           <button
             type="button"
             className="settings-action-row"
             onClick={handleOpenEditProfile}
-            title="Edit your name, academic year level, and department"
+            title={isMaintenance ? 'Edit your name details' : 'Edit your name, academic year level, and department'}
           >
             <div className="settings-action-left">
               <div className="settings-action-icon">
@@ -403,7 +446,7 @@ export default function SettingsPage({
           <button
             type="button"
             className="settings-action-row settings-action-logout"
-            onClick={onLogout}
+            onClick={() => setShowLogoutModal(true)}
             title="Log out of FixMyCampus"
           >
             <div className="settings-action-left">
@@ -436,7 +479,9 @@ export default function SettingsPage({
             </div>
 
             <p style={{ fontSize: '0.84rem', color: '#6b7280', margin: '0 0 16px 0', lineHeight: 1.45 }}>
-              Update your name details, academic year, and college department.
+              {isMaintenance || isAdmin
+                ? 'Update your name details. Your role is managed and locked by Campus Administration.'
+                : 'Update your name details, academic year, and college department.'}
             </p>
 
             {editProfileError && (
@@ -456,7 +501,7 @@ export default function SettingsPage({
                     className="settings-field-input"
                     value={editFirstName}
                     onChange={(e) => setEditFirstName(e.target.value)}
-                    placeholder="e.g. Mark"
+                    placeholder="e.g. Juan"
                     required
                   />
                 </div>
@@ -467,57 +512,61 @@ export default function SettingsPage({
                     className="settings-field-input"
                     value={editMiddleName}
                     onChange={(e) => setEditMiddleName(e.target.value)}
-                    placeholder="e.g. Dyvie (Optional)"
+                    placeholder="e.g. Dela (Optional)"
                   />
                 </div>
               </div>
 
               {/* Name Row: LN */}
-              <div className="settings-field" style={{ marginBottom: '12px' }}>
+              <div className="settings-field" style={{ marginBottom: (isMaintenance || isAdmin) ? '18px' : '12px' }}>
                 <label className="settings-field-label">Last Name (LN) *</label>
                 <input
                   type="text"
                   className="settings-field-input"
                   value={editLastName}
                   onChange={(e) => setEditLastName(e.target.value)}
-                  placeholder="e.g. Cerna"
+                  placeholder="e.g. Cruz"
                   required
                 />
               </div>
 
-              {/* Year Level Dropdown */}
-              <div className="settings-field" style={{ marginBottom: '12px' }}>
-                <label className="settings-field-label">Year Level *</label>
-                <select
-                  className="settings-field-select"
-                  value={editYear}
-                  onChange={(e) => setEditYear(e.target.value)}
-                  required
-                >
-                  {YEAR_LEVELS.map((yr) => (
-                    <option key={yr} value={yr}>
-                      {yr}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Year Level Dropdown - Hidden for maintenance & admin (role locked by admin) */}
+              {!isMaintenance && !isAdmin && (
+                <div className="settings-field" style={{ marginBottom: '12px' }}>
+                  <label className="settings-field-label">Year Level *</label>
+                  <select
+                    className="settings-field-select"
+                    value={editYear}
+                    onChange={(e) => setEditYear(e.target.value)}
+                    required
+                  >
+                    {YEAR_LEVELS.map((yr) => (
+                      <option key={yr} value={yr}>
+                        {yr}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
-              {/* Department Dropdown */}
-              <div className="settings-field" style={{ marginBottom: '16px' }}>
-                <label className="settings-field-label">College / Department *</label>
-                <select
-                  className="settings-field-select"
-                  value={editDepartment}
-                  onChange={(e) => setEditDepartment(e.target.value)}
-                  required
-                >
-                  {DEPARTMENTS.map((dept) => (
-                    <option key={dept} value={dept}>
-                      {dept}
-                    </option>
-                  ))}
-                </select>
-              </div>
+              {/* Department Dropdown - Hidden for maintenance & admin (role and trade locked by admin) */}
+              {!isMaintenance && !isAdmin && (
+                <div className="settings-field" style={{ marginBottom: '16px' }}>
+                  <label className="settings-field-label">College / Department *</label>
+                  <select
+                    className="settings-field-select"
+                    value={editDepartment}
+                    onChange={(e) => setEditDepartment(e.target.value)}
+                    required
+                  >
+                    {DEPARTMENTS.map((dept) => (
+                      <option key={dept} value={dept}>
+                        {dept}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div style={{ display: 'flex', gap: '10px', marginTop: '16px' }}>
                 <button
@@ -738,6 +787,24 @@ export default function SettingsPage({
           <CheckCircle2 size={16} color="#10b981" />
           <span>{toastMessage}</span>
         </div>
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <ConfirmationModal
+          isOpen={showLogoutModal}
+          presetId="logout"
+          title="Logout?"
+          message="Are you sure you want to log out of FixMyCampus?"
+          confirmText="Log out"
+          confirmClass="modal-btn-danger"
+          cancelText="Cancel"
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={() => {
+            setShowLogoutModal(false);
+            if (onLogout) onLogout();
+          }}
+        />
       )}
     </div>
   );

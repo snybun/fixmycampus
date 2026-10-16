@@ -25,9 +25,14 @@ import {
   fetchNotifications,
   assignReport,
   updateReportStatus,
+  deleteReport,
   addStaffMember,
   addBuilding,
+  updateBuilding,
+  deleteBuilding,
 } from '../../services/api';
+
+import ConfirmationModal from '../common/ConfirmationModal';
 
 import FacilitiesDashboard from './FacilitiesDashboard';
 import ReportManagement from './ReportManagement';
@@ -62,6 +67,9 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [quickUpdateModal, setQuickUpdateModal] = useState(null);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
   const [selectedNewStatus, setSelectedNewStatus] = useState('in_progress');
+  const [reportToDelete, setReportToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Load all real data on mount
   const refreshData = async () => {
@@ -209,6 +217,45 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
     }
   };
 
+  // Delete Fixed Report Handler
+  const handleRequestDeleteReport = (report) => {
+    if (!report) return;
+    const rawStatus = (report.status || '').toLowerCase();
+    const isFixed = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
+    if (!isFixed) {
+      showToast('Only fixed and resolved reports can be deleted from the database.');
+      return;
+    }
+    setReportToDelete(report);
+  };
+
+  const handleConfirmDeleteReport = async () => {
+    if (!reportToDelete) return;
+    const targetId = reportToDelete.id;
+
+    setIsDeleting(true);
+    try {
+      const res = await deleteReport(targetId);
+      if (res?.success) {
+        showToast(`Report #${reportToDelete.ticket_number || targetId} deleted from database.`);
+        setReports((prev) => prev.filter((r) => r.id !== targetId));
+        if (selectedReport?.id === targetId) {
+          setSelectedReport(null);
+          setActiveTab('reports');
+        }
+        refreshData();
+      } else {
+        showToast(res?.message || 'Failed to delete report.');
+      }
+    } catch (err) {
+      console.error('Error deleting report:', err);
+      showToast('Error deleting report from database.');
+    } finally {
+      setIsDeleting(false);
+      setReportToDelete(null);
+    }
+  };
+
   // Add Staff Member directly into Database
   const handleAddStaff = async (staffData) => {
     const res = await addStaffMember(staffData);
@@ -231,6 +278,30 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
     }
   };
 
+  // Update Building in Database
+  const handleUpdateBuilding = async (id, buildingData) => {
+    const res = await updateBuilding(id, buildingData);
+    if (res?.success) {
+      showToast(res.message || 'Campus building updated successfully.');
+      await refreshData();
+    } else {
+      alert(res?.message || res?.error || 'Failed to update building.');
+    }
+    return res;
+  };
+
+  // Delete / Deactivate Building in Database
+  const handleDeleteBuilding = async (id, buildingName) => {
+    const res = await deleteBuilding(id);
+    if (res?.success) {
+      showToast(res.message || `Building '${buildingName}' removed successfully.`);
+      await refreshData();
+    } else {
+      alert(res?.message || res?.error || 'Failed to remove building.');
+    }
+    return res;
+  };
+
   const displayName = currentUser?.full_name || 'Admin User';
   const displayRole = currentUser?.role_display || 'Super Administrator';
 
@@ -244,7 +315,13 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <div className="admin-brand-icon">
             <Wrench size={18} strokeWidth={2.4} />
           </div>
-          <span className="admin-brand-name">FixMyCampus</span>
+          <div className="admin-brand-text-group">
+            <span className="admin-brand-name">FixMyCampus</span>
+            <span className="admin-brand-role-badge">
+              <span className="admin-brand-role-dot" />
+              Administrator
+            </span>
+          </div>
         </div>
 
         <div className="admin-mobile-actions">
@@ -281,7 +358,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             currentUser={currentUser}
             onNavigate={onNavigate}
             onSettingsClick={() => handleNavTabClick('settings')}
-            onLogout={onLogout}
+            onLogout={() => setShowLogoutModal(true)}
             idPrefix="admin-mobile-profile"
           />
 
@@ -319,7 +396,13 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <div className="admin-brand-icon">
             <Wrench size={18} strokeWidth={2.4} />
           </div>
-          <span className="admin-brand-name">FixMyCampus</span>
+          <div className="admin-brand-text-group">
+            <span className="admin-brand-name">FixMyCampus</span>
+            <span className="admin-brand-role-badge">
+              <span className="admin-brand-role-dot" />
+              Administrator
+            </span>
+          </div>
 
           {/* Close button inside mobile drawer */}
           <button
@@ -425,7 +508,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             currentUser={currentUser}
             onNavigate={onNavigate}
             onSettingsClick={() => handleNavTabClick('settings')}
-            onLogout={onLogout}
+            onLogout={() => setShowLogoutModal(true)}
             direction="up"
             fullWidth={true}
             showSubInButton={true}
@@ -471,6 +554,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             recentReports={reports}
             onViewReport={handleViewReport}
             onAssignReport={handleOpenAssign}
+            onDeleteReport={handleRequestDeleteReport}
           />
         )}
 
@@ -493,6 +577,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             onViewReport={handleViewReport}
             onAssignReport={handleOpenAssign}
             onUpdateStatus={handleOpenUpdate}
+            onDeleteReport={handleRequestDeleteReport}
           />
         )}
 
@@ -504,6 +589,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             onBack={() => setActiveTab('reports')}
             onAssignSubmit={handleAssignSubmit}
             onStatusSubmit={handleStatusSubmit}
+            onDelete={handleRequestDeleteReport}
           />
         )}
 
@@ -521,6 +607,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             buildings={buildings}
             locations={locations}
             onAddBuilding={handleAddBuilding}
+            onUpdateBuilding={handleUpdateBuilding}
+            onDeleteBuilding={handleDeleteBuilding}
           />
         )}
 
@@ -680,6 +768,41 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             </form>
           </div>
         </div>
+      )}
+
+      {/* Delete Fixed Report Confirmation Modal */}
+      {reportToDelete && (
+        <ConfirmationModal
+          isOpen={Boolean(reportToDelete)}
+          presetId="delete_report"
+          title="Delete Fixed Report?"
+          message={`Are you sure you want to permanently delete report #${reportToDelete.ticket_number || reportToDelete.id} ("${reportToDelete.title}") from the database? This action will remove the record to keep your database tidy and cannot be undone.`}
+          confirmText="Yes, Delete Report"
+          cancelText="Cancel"
+          loading={isDeleting}
+          onClose={() => {
+            if (!isDeleting) setReportToDelete(null);
+          }}
+          onConfirm={handleConfirmDeleteReport}
+        />
+      )}
+
+      {/* Logout Confirmation Modal */}
+      {showLogoutModal && (
+        <ConfirmationModal
+          isOpen={showLogoutModal}
+          presetId="logout"
+          title="Logout?"
+          message="Are you sure you want to log out of FixMyCampus?"
+          confirmText="Log out"
+          confirmClass="modal-btn-danger"
+          cancelText="Cancel"
+          onClose={() => setShowLogoutModal(false)}
+          onConfirm={() => {
+            setShowLogoutModal(false);
+            if (onLogout) onLogout();
+          }}
+        />
       )}
     </div>
   );

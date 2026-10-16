@@ -15,12 +15,17 @@ import {
   Layers,
   Inbox,
   ShieldAlert,
+  Trash2,
+  FileText,
 } from 'lucide-react';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  deleteNotification,
+  deleteAllNotifications,
 } from '../../services/api';
+import ConfirmationModal from '../common/ConfirmationModal';
 
 export default function AdminNotificationsView({
   reports = [],
@@ -33,6 +38,8 @@ export default function AdminNotificationsView({
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -73,7 +80,13 @@ export default function AdminNotificationsView({
 
   const newReportsCount = useMemo(() => {
     return notifications.filter(
-      (n) => n.type === 'new_report' || n.type === 'submitted' || n.type === 'work_order'
+      (n) => n.type === 'new_report' || n.type === 'submitted'
+    ).length;
+  }, [notifications]);
+
+  const workOrdersCount = useMemo(() => {
+    return notifications.filter(
+      (n) => n.type === 'work_order' || n.type === 'assignment'
     ).length;
   }, [notifications]);
 
@@ -113,6 +126,41 @@ export default function AdminNotificationsView({
       } catch (err) {
         console.error('Error marking notification read:', err);
       }
+    }
+  };
+
+  // Delete individual notification
+  const handleDeleteSingle = async (notif, e) => {
+    if (e) e.stopPropagation();
+    const targetId = notif.id;
+
+    // Optimistic removal
+    setNotifications((prev) => prev.filter((n) => n.id !== targetId));
+    if (typeof showToast === 'function') {
+      showToast('Notification deleted.');
+    }
+
+    try {
+      await deleteNotification(targetId);
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
+
+  // Delete all notifications
+  const handleConfirmDeleteAll = async () => {
+    setIsDeletingAll(true);
+    try {
+      await deleteAllNotifications();
+      setNotifications([]);
+      if (typeof showToast === 'function') {
+        showToast('All notifications deleted.');
+      }
+    } catch (err) {
+      console.error('Error deleting all notifications:', err);
+    } finally {
+      setIsDeletingAll(false);
+      setShowDeleteAllModal(false);
     }
   };
 
@@ -220,6 +268,49 @@ export default function AdminNotificationsView({
     }
   };
 
+  const filterTabs = [
+    {
+      id: 'all',
+      label: 'All Alerts',
+      icon: Layers,
+      count: notifications.length,
+      accentColor: '#059669',
+      badgeBg: '#ecfdf5',
+    },
+    {
+      id: 'unread',
+      label: 'Unread',
+      icon: Bell,
+      count: unreadCount,
+      accentColor: '#d97706',
+      badgeBg: '#fef3c7',
+    },
+    {
+      id: 'emergency',
+      label: 'Urgent & Safety',
+      icon: AlertTriangle,
+      count: urgentCount,
+      accentColor: '#dc2626',
+      badgeBg: '#fee2e2',
+    },
+    {
+      id: 'new_report',
+      label: 'New Defect Reports',
+      icon: FileText,
+      count: newReportsCount,
+      accentColor: '#059669',
+      badgeBg: '#ecfdf5',
+    },
+    {
+      id: 'work_order',
+      label: 'Dispatches & Tasks',
+      icon: Wrench,
+      count: workOrdersCount,
+      accentColor: '#2563eb',
+      badgeBg: '#dbeafe',
+    },
+  ];
+
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
       {/* Header */}
@@ -307,6 +398,31 @@ export default function AdminNotificationsView({
             <CheckCheck size={16} />
             <span>Mark All as Read</span>
           </button>
+
+          <button
+            type="button"
+            id="admin-notif-delete-all-btn"
+            onClick={() => setShowDeleteAllModal(true)}
+            disabled={notifications.length === 0}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '8px 16px',
+              borderRadius: 8,
+              border: '1px solid #fee2e2',
+              backgroundColor: notifications.length === 0 ? '#f8fafc' : '#fef2f2',
+              color: notifications.length === 0 ? '#cbd5e1' : '#dc2626',
+              fontSize: '0.88rem',
+              fontWeight: 600,
+              cursor: notifications.length === 0 ? 'not-allowed' : 'pointer',
+              transition: 'all 0.15s ease',
+            }}
+            title={notifications.length === 0 ? 'No notifications to delete' : 'Delete all notifications'}
+          >
+            <Trash2 size={15} />
+            <span>Delete All</span>
+          </button>
         </div>
       </div>
 
@@ -345,7 +461,7 @@ export default function AdminNotificationsView({
         <div className="admin-stat-card">
           <div className="admin-stat-meta">
             <span className="admin-stat-title">NEW REPORTS &amp; DISPATCH</span>
-            <span className="admin-stat-value blue">{newReportsCount}</span>
+            <span className="admin-stat-value blue">{newReportsCount + workOrdersCount}</span>
           </div>
           <div className="admin-stat-icon blue" title="New Dispatches">
             <Wrench size={20} />
@@ -361,99 +477,41 @@ export default function AdminNotificationsView({
           justifyContent: 'space-between',
           flexWrap: 'wrap',
           gap: 12,
-          padding: '14px 18px',
+          padding: '12px 16px',
           backgroundColor: '#ffffff',
           borderRadius: 12,
           border: '1px solid #e2e8f0',
           marginBottom: 20,
         }}
       >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
-          <button
-            type="button"
-            className={`admin-filter-pill ${filterType === 'all' ? 'active' : ''}`}
-            onClick={() => setFilterType('all')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              border: filterType === 'all' ? '1px solid #059669' : '1px solid #e2e8f0',
-              backgroundColor: filterType === 'all' ? '#059669' : '#f8fafc',
-              color: filterType === 'all' ? '#ffffff' : '#475569',
-              cursor: 'pointer',
-            }}
-          >
-            All Alerts ({notifications.length})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilterType('unread')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              border: filterType === 'unread' ? '1px solid #d97706' : '1px solid #e2e8f0',
-              backgroundColor: filterType === 'unread' ? '#d97706' : '#f8fafc',
-              color: filterType === 'unread' ? '#ffffff' : '#475569',
-              cursor: 'pointer',
-            }}
-          >
-            Unread ({unreadCount})
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilterType('emergency')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              border: filterType === 'emergency' ? '1px solid #dc2626' : '1px solid #e2e8f0',
-              backgroundColor: filterType === 'emergency' ? '#dc2626' : '#f8fafc',
-              color: filterType === 'emergency' ? '#ffffff' : '#475569',
-              cursor: 'pointer',
-            }}
-          >
-            Urgent &amp; Safety
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilterType('new_report')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              border: filterType === 'new_report' ? '1px solid #059669' : '1px solid #e2e8f0',
-              backgroundColor: filterType === 'new_report' ? '#059669' : '#f8fafc',
-              color: filterType === 'new_report' ? '#ffffff' : '#475569',
-              cursor: 'pointer',
-            }}
-          >
-            New Defect Reports
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setFilterType('work_order')}
-            style={{
-              padding: '6px 14px',
-              borderRadius: 20,
-              fontSize: '0.85rem',
-              fontWeight: 500,
-              border: filterType === 'work_order' ? '1px solid #2563eb' : '1px solid #e2e8f0',
-              backgroundColor: filterType === 'work_order' ? '#2563eb' : '#f8fafc',
-              color: filterType === 'work_order' ? '#ffffff' : '#475569',
-              cursor: 'pointer',
-            }}
-          >
-            Dispatches &amp; Tasks
-          </button>
+        {/* Minimalist Filter Track */}
+        <div className="admin-minimal-filter-track" role="tablist" aria-label="Notification filters">
+          {filterTabs.map((tab) => {
+            const isActive = filterType === tab.id;
+            const Icon = tab.icon;
+            return (
+              <button
+                key={tab.id}
+                type="button"
+                role="tab"
+                aria-selected={isActive}
+                className={`admin-minimal-filter-btn ${isActive ? 'active' : ''}`}
+                onClick={() => setFilterType(tab.id)}
+                style={{
+                  '--pill-accent': tab.accentColor,
+                  '--pill-badge-bg': tab.badgeBg,
+                }}
+              >
+                <span className="filter-icon">
+                  <Icon size={14} strokeWidth={2} />
+                </span>
+                <span>{tab.label}</span>
+                <span className="filter-badge">
+                  {tab.count}
+                </span>
+              </button>
+            );
+          })}
         </div>
 
         {/* Search */}
@@ -466,6 +524,7 @@ export default function AdminNotificationsView({
               top: '50%',
               transform: 'translateY(-50%)',
               color: '#94a3b8',
+              pointerEvents: 'none',
             }}
           />
           <input
@@ -477,10 +536,22 @@ export default function AdminNotificationsView({
               width: '100%',
               padding: '7px 32px 7px 34px',
               borderRadius: 8,
-              border: '1px solid #cbd5e1',
-              fontSize: '0.88rem',
+              border: '1px solid #e2e8f0',
+              fontSize: '0.85rem',
               outline: 'none',
               backgroundColor: '#f8fafc',
+              color: '#0f172a',
+              transition: 'all 0.15s ease',
+            }}
+            onFocus={(e) => {
+              e.target.style.borderColor = '#059669';
+              e.target.style.backgroundColor = '#ffffff';
+              e.target.style.boxShadow = '0 0 0 3px rgba(5,150,105,0.08)';
+            }}
+            onBlur={(e) => {
+              e.target.style.borderColor = '#e2e8f0';
+              e.target.style.backgroundColor = '#f8fafc';
+              e.target.style.boxShadow = 'none';
             }}
           />
           {searchQuery && (
@@ -497,7 +568,12 @@ export default function AdminNotificationsView({
                 color: '#94a3b8',
                 cursor: 'pointer',
                 fontSize: '0.9rem',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                padding: 2,
               }}
+              title="Clear search"
             >
               ✕
             </button>
@@ -729,6 +805,29 @@ export default function AdminNotificationsView({
                     <Check size={13} />
                     <span>{isUnread ? 'Mark Read' : 'Read'}</span>
                   </button>
+
+                  <button
+                    type="button"
+                    className="admin-notif-card-delete-btn"
+                    onClick={(e) => handleDeleteSingle(item, e)}
+                    style={{
+                      display: 'inline-flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      width: 32,
+                      height: 32,
+                      borderRadius: 8,
+                      border: '1px solid #fee2e2',
+                      backgroundColor: '#fef2f2',
+                      color: '#dc2626',
+                      cursor: 'pointer',
+                      transition: 'all 0.15s ease',
+                      flexShrink: 0,
+                    }}
+                    title="Delete notification"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             );
@@ -793,6 +892,15 @@ export default function AdminNotificationsView({
           </div>
         )}
       </div>
+
+      {/* Delete All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteAllModal}
+        presetId="delete_notifications"
+        onConfirm={handleConfirmDeleteAll}
+        onCancel={() => setShowDeleteAllModal(false)}
+        isLoading={isDeletingAll}
+      />
     </div>
   );
 }

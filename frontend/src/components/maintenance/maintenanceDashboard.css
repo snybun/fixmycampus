@@ -72,11 +72,46 @@
   flex-shrink: 0;
 }
 
+.maint-brand-text-group {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  min-width: 0;
+}
+
 .maint-brand-title {
-  font-size: 1.1rem;
+  font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: -0.01em;
   color: #064e3b;
+  line-height: 1.15;
+}
+
+.maint-brand-role-badge {
+  display: inline-flex;
+  align-items: center;
+  align-self: flex-start;
+  gap: 5px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 0.65rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  line-height: 1.25;
+}
+
+.maint-brand-role-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background-color: #3b82f6;
+  display: inline-block;
+  flex-shrink: 0;
 }
 
 .maint-nav {
@@ -361,6 +396,45 @@
 .maint-filter-tab.active {
   color: #15803d;
   font-weight: 700;
+}
+
+.maint-btn-export-excel {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #ffffff;
+  color: #047857;
+  border: 1.5px solid #10b981;
+  padding: 6px 14px;
+  border-radius: 8px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.maint-btn-export-excel:hover {
+  background-color: #ecfdf5;
+  border-color: #059669;
+  color: #065f46;
+  box-shadow: 0 3px 8px rgba(16, 185, 129, 0.16);
+  transform: translateY(-1px);
+}
+
+.maint-btn-export-excel:active {
+  transform: translateY(1px);
+}
+
+.maint-btn-export-excel:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.maint-btn-export-excel svg {
+  color: #059669;
 }
 
 /* -----------------------------------------------------------------------------
@@ -716,9 +790,19 @@
   box-shadow: 0 3px 10px rgba(5, 150, 105, 0.25);
 }
 
-.maint-btn-action-primary:hover {
+.maint-btn-action-primary:hover:not(:disabled) {
   background: linear-gradient(135deg, #10b981 0%, #059669 100%);
   border-color: #059669;
+}
+
+.maint-btn-action-primary:disabled,
+.maint-btn-action-primary.in-progress,
+.maint-btn-action-primary.completed {
+  background: #f1f5f9;
+  border-color: #e2e8f0;
+  color: #64748b;
+  cursor: not-allowed;
+  box-shadow: none;
 }
 
 .maint-btn-action-secondary {
@@ -1194,6 +1278,36 @@
   box-shadow: none;
 }
 
+.maint-notif-btn-delete-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 16px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  background: #fef2f2;
+  color: #dc2626;
+  border: 1px solid #fee2e2;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.maint-notif-btn-delete-all:hover:not(:disabled) {
+  background: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.15);
+}
+
+.maint-notif-btn-delete-all:disabled {
+  background: #f8fafc;
+  color: #cbd5e1;
+  border-color: #e2e8f0;
+  cursor: not-allowed;
+  box-shadow: none;
+}
+
 /* Toolbar & Filter Tabs */
 .maint-notif-toolbar {
   display: flex;
@@ -1298,6 +1412,10 @@
   border-left-color: #ef4444;
 }
 
+.maint-notif-card.border-in-progress {
+  border-left-color: #f97316;
+}
+
 .maint-notif-card.border-work-order {
   border-left-color: #059669;
 }
@@ -1346,6 +1464,11 @@
 .maint-notif-icon-box.emergency {
   background-color: #fee2e2;
   color: #dc2626;
+}
+
+.maint-notif-icon-box.in-progress {
+  background-color: #fff7ed;
+  color: #ea580c;
 }
 
 .maint-notif-icon-box.work-order {
@@ -1408,6 +1531,11 @@
 .maint-notif-type-pill.emergency {
   background-color: #fee2e2;
   color: #991b1b;
+}
+
+.maint-notif-type-pill.in-progress {
+  background-color: #ffedd5;
+  color: #c2410c;
 }
 
 .maint-notif-type-pill.work-order {
@@ -1564,6 +1692,28 @@
 
 .maint-notif-btn-toggle-read.unread:hover {
   background-color: #d1fae5;
+}
+
+.maint-notif-btn-delete {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  border: 1px solid #fee2e2;
+  background-color: #fef2f2;
+  color: #dc2626;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.maint-notif-btn-delete:hover {
+  background-color: #fee2e2;
+  color: #b91c1c;
+  border-color: #fca5a5;
+  transform: scale(1.04);
 }
 
 /* Empty State */

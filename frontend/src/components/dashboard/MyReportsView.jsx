@@ -1,12 +1,17 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   SlidersHorizontal,
   ChevronRight,
   FileQuestion,
   Plus,
+  Trash2,
+  Check,
+  X,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { fetchReports } from '../../services/api';
+import { exportReportsToExcel } from '../../utils/exportToExcel';
 import ReportDetailsView from './ReportDetailsView';
 import './myReports.css';
 
@@ -14,12 +19,47 @@ export default function MyReportsView({
   liveReports = [],
   onNavigate,
   initialSelectedReport = null,
+  onDeleteReport = null,
+  isAdmin = false,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'reported', 'verified', 'worker_assigned', 'in_progress', 'resolved'
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
   const [selectedReport, setSelectedReport] = useState(initialSelectedReport);
   const [localReports, setLocalReports] = useState([]);
   const [loading, setLoading] = useState(false);
+
+  const STATUS_CONFIG = [
+    { key: 'all', label: 'All Reports', dotColor: '#9ca3af' },
+    { key: 'reported', label: 'Reported', dotColor: '#f59e0b' },
+    { key: 'verified', label: 'Verified', dotColor: '#3b82f6' },
+    { key: 'worker_assigned', label: 'Worker Assigned', dotColor: '#6366f1' },
+    { key: 'in_progress', label: 'Repair Ongoing', dotColor: '#8b5cf6' },
+    { key: 'resolved', label: 'Fixed', dotColor: '#10b981' },
+  ];
+
+  // Close filter dropdown on outside click or Escape
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        setIsFilterOpen(false);
+      }
+    };
+    if (isFilterOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleKeyDown);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isFilterOpen]);
 
   useEffect(() => {
     if (initialSelectedReport) {
@@ -137,6 +177,32 @@ setLocalReports(liveReports);
     });
   }, [liveReports, localReports]);
 
+  // Compute ticket counts per status for the filter dropdown
+  const statusCounts = useMemo(() => {
+    const counts = {
+      all: allReports.length,
+      reported: 0,
+      verified: 0,
+      worker_assigned: 0,
+      in_progress: 0,
+      resolved: 0,
+    };
+    allReports.forEach((report) => {
+      if (report.status === 'submitted' || report.status === 'pending' || report.statusLabel === 'Reported') {
+        counts.reported += 1;
+      } else if (report.status === 'under_review' || report.statusLabel === 'Verified') {
+        counts.verified += 1;
+      } else if (report.status === 'assigned' || report.statusLabel === 'Worker Assigned') {
+        counts.worker_assigned += 1;
+      } else if (report.status === 'in_progress' || report.statusLabel === 'Repair Ongoing') {
+        counts.in_progress += 1;
+      } else if (report.status === 'resolved' || report.status === 'closed' || report.statusLabel === 'Fixed') {
+        counts.resolved += 1;
+      }
+    });
+    return counts;
+  }, [allReports]);
+
   // Filter reports by search and status tab
   const filteredReports = useMemo(() => {
     return allReports.filter((report) => {
@@ -174,12 +240,35 @@ setLocalReports(liveReports);
     });
   }, [allReports, searchQuery, statusFilter]);
 
+  // Determine if a report is eligible for deletion
+  // Admins can delete any report; students can delete only if a worker has NOT been assigned yet
+  const isReportDeletable = (report) => {
+    if (!report) return false;
+    if (isAdmin) return true;
+    const rawStatus = (report.status || '').toLowerCase();
+    const hasWorker = Boolean(
+      report.worker_name ||
+      report.worker_id ||
+      report.assignedWorker ||
+      rawStatus === 'assigned' ||
+      rawStatus === 'in_progress' ||
+      rawStatus === 'resolved' ||
+      rawStatus === 'closed' ||
+      report.statusLabel === 'Worker Assigned' ||
+      report.statusLabel === 'Repair Ongoing' ||
+      report.statusLabel === 'Fixed'
+    );
+    return !hasWorker;
+  };
+
   // If a report is currently selected, render the dedicated Report Details Progress view
   if (selectedReport) {
     return (
       <ReportDetailsView
         report={selectedReport}
         onBack={() => setSelectedReport(null)}
+        onDelete={onDeleteReport}
+        isAdmin={isAdmin}
       />
     );
   }
@@ -211,89 +300,106 @@ setLocalReports(liveReports);
               />
             </div>
 
+            {/* Filter Dropdown Button */}
+            <div className="myreports-filter-dropdown-wrap" ref={filterDropdownRef}>
+              <button
+                type="button"
+                className={`myreports-filter-btn ${isFilterOpen ? 'open' : ''} ${statusFilter !== 'all' ? 'has-active' : ''}`}
+                title="Filter reports by status"
+                aria-label="Filter reports by status"
+                aria-expanded={isFilterOpen}
+                onClick={() => setIsFilterOpen((prev) => !prev)}
+                id="myreports-filter-toggle-btn"
+              >
+                <SlidersHorizontal size={16} />
+                {statusFilter !== 'all' && <span className="myreports-filter-active-dot" />}
+              </button>
+
+              {isFilterOpen && (
+                <div className="myreports-filter-dropdown-menu" role="menu" aria-label="Filter by status">
+                  <div className="myreports-filter-dropdown-header">
+                    <span>Filter by Status</span>
+                    {statusFilter !== 'all' && (
+                      <button
+                        type="button"
+                        className="myreports-filter-reset-link"
+                        onClick={() => {
+                          setStatusFilter('all');
+                        }}
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+                  <div className="myreports-filter-dropdown-list">
+                    {STATUS_CONFIG.map((opt) => (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        className={`myreports-filter-dropdown-item ${statusFilter === opt.key ? 'active' : ''}`}
+                        onClick={() => {
+                          setStatusFilter(opt.key);
+                          setIsFilterOpen(false);
+                        }}
+                        role="menuitem"
+                      >
+                        <span
+                          className={`myreports-filter-item-dot dot-${opt.key}`}
+                          style={{ backgroundColor: opt.dotColor }}
+                        />
+                        <span className="myreports-filter-item-label">{opt.label}</span>
+                        <span className="myreports-filter-item-count">
+                          {statusCounts[opt.key] ?? 0}
+                        </span>
+                        {statusFilter === opt.key && (
+                          <Check size={14} className="myreports-filter-item-check" />
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Export to Excel Button */}
             <button
               type="button"
-              className="myreports-filter-btn"
-              title="Filter reports"
-              aria-label="Filter reports"
-              onClick={() => {
-                if (statusFilter !== 'all') {
-                  setStatusFilter('all');
-                }
-              }}
+              className="myreports-export-excel-btn"
+              title="Export my reports to Microsoft Excel (.xlsx)"
+              onClick={() => exportReportsToExcel(filteredReports.length > 0 ? filteredReports : allReports, 'My_FixMyCampus_Reports')}
+              disabled={allReports.length === 0}
+              id="myreports-export-excel-btn"
             >
-              <SlidersHorizontal size={16} />
+              <FileSpreadsheet size={16} />
+              <span>Export</span>
             </button>
           </div>
         </div>
 
-        {/* ------------------------------------------------------------------
-            Filter Tabs Navigation Bar
-            ------------------------------------------------------------------ */}
-        <div className="myreports-tabs-bar" role="tablist" aria-label="Report Status Filter">
-          <button
-            type="button"
-            className={`myreports-tab ${statusFilter === 'all' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('all')}
-            role="tab"
-            aria-selected={statusFilter === 'all'}
-          >
-            All
-          </button>
-
-          <button
-            type="button"
-            className={`myreports-tab ${statusFilter === 'reported' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('reported')}
-            role="tab"
-            aria-selected={statusFilter === 'reported'}
-          >
-            Reported
-          </button>
-
-          <button
-            type="button"
-            className={`myreports-tab ${statusFilter === 'verified' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('verified')}
-            role="tab"
-            aria-selected={statusFilter === 'verified'}
-          >
-            Verified
-          </button>
-
-          <button
-            type="button"
-            className={`myreports-tab ${statusFilter === 'worker_assigned' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('worker_assigned')}
-            role="tab"
-            aria-selected={statusFilter === 'worker_assigned'}
-          >
-            Worker Assigned
-          </button>
-
-          <button
-            type="button"
-            className={`myreports-tab ${statusFilter === 'in_progress' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('in_progress')}
-            role="tab"
-            aria-selected={statusFilter === 'in_progress'}
-          >
-            Repair Ongoing
-          </button>
-
-          <button
-            type="button"
-            className={`myreports-tab ${statusFilter === 'resolved' ? 'active' : ''}`}
-            onClick={() => setStatusFilter('resolved')}
-            role="tab"
-            aria-selected={statusFilter === 'resolved'}
-          >
-            Fixed
-          </button>
-        </div>
-
-        {/* Divider line underneath the tabs */}
-        <div className="myreports-divider" />
+        {/* Active Filter Pill Row (if not 'all') */}
+        {statusFilter !== 'all' && (
+          <div className="myreports-active-filter-row">
+            <span className="myreports-active-filter-label">Active Filter:</span>
+            <span className="myreports-active-filter-pill">
+              <span
+                className="myreports-active-filter-dot"
+                style={{
+                  backgroundColor: STATUS_CONFIG.find((s) => s.key === statusFilter)?.dotColor || '#059669',
+                }}
+              />
+              {STATUS_CONFIG.find((s) => s.key === statusFilter)?.label}
+              <button
+                type="button"
+                className="myreports-active-filter-clear-btn"
+                onClick={() => setStatusFilter('all')}
+                title="Clear filter"
+                aria-label="Clear status filter"
+              >
+                <X size={12} />
+              </button>
+            </span>
+          </div>
+        )}
 
         {/* ------------------------------------------------------------------
             Report Cards List
@@ -396,7 +502,7 @@ setLocalReports(liveReports);
                   </div>
                 </div>
 
-                {/* Right Side: Priority Pill + Status Pill + Arrow Button */}
+                {/* Right Side: Priority Pill + Status Pill + Delete Button + Arrow Button */}
                 <div className="myreports-card-right">
                   <span className={`myreports-priority-badge priority-${report.priority.toLowerCase()}`}>
                     {report.priority}
@@ -405,6 +511,21 @@ setLocalReports(liveReports);
                   <span className={`myreports-status-badge status-${report.status.toLowerCase()}`}>
                     {report.statusLabel}
                   </span>
+
+                  {isReportDeletable(report) && onDeleteReport && (
+                    <button
+                      type="button"
+                      className="myreports-delete-btn"
+                      title="Delete report"
+                      aria-label="Delete report"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onDeleteReport(report);
+                      }}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
 
                   <button
                     type="button"

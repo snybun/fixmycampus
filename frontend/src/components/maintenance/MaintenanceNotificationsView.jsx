@@ -20,13 +20,16 @@ import {
   Sparkles,
   Inbox,
   Eye,
+  Trash2,
 } from 'lucide-react';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
+  deleteNotification,
+  deleteAllNotifications,
 } from '../../services/api';
-
+import ConfirmationModal from '../common/ConfirmationModal';
 
 export default function MaintenanceNotificationsView({
   onViewJob,
@@ -41,12 +44,13 @@ export default function MaintenanceNotificationsView({
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
+  const [isDeletingAll, setIsDeletingAll] = useState(false);
 
   // Sync notifications from API if available
   const loadNotifications = async () => {
-    setLoading(true);
     try {
-      const res = await fetchNotifications();
+      const res = await fetchNotifications(currentUser?.id);
       if (res && res.success && Array.isArray(res.data)) {
         // Map API notifications and merge with linked job details
         const mapped = res.data.map((item) => {
@@ -63,9 +67,10 @@ export default function MaintenanceNotificationsView({
           if (!item.badge_label) {
             if (type === 'emergency') badgeLabel = 'Safety Emergency';
             else if (type === 'work_order' || type === 'assignment') badgeLabel = 'Work Order Dispatch';
+            else if (type === 'in_progress') badgeLabel = 'Repair In Progress';
             else if (type === 'parts') badgeLabel = 'Requisition Ready';
             else if (type === 'sla_warning') badgeLabel = 'SLA Notice';
-            else if (type === 'verified' || type === 'fixed') badgeLabel = 'Supervisor Verified';
+            else if (type === 'verified' || type === 'fixed' || type === 'resolved') badgeLabel = 'Issue Fixed';
             else if (type === 'schedule') badgeLabel = 'Maintenance Schedule';
           }
 
@@ -91,8 +96,11 @@ export default function MaintenanceNotificationsView({
   };
 
   useEffect(() => {
+    setLoading(true);
     loadNotifications();
-  }, []);
+    const interval = setInterval(loadNotifications, 15000);
+    return () => clearInterval(interval);
+  }, [currentUser?.id]);
 
   // Compute unread count and propagate to parent
   const unreadCount = useMemo(() => {
@@ -155,6 +163,42 @@ export default function MaintenanceNotificationsView({
     }
   };
 
+  // Delete individual notification
+  const handleDeleteSingle = async (notif, e) => {
+    if (e) e.stopPropagation();
+    const targetId = notif.id;
+
+    // Optimistically remove from state
+    setNotifications((prev) => prev.filter((n) => n.id !== targetId));
+
+    if (typeof showToast === 'function') {
+      showToast('Notification deleted.');
+    }
+
+    try {
+      await deleteNotification(targetId);
+    } catch (err) {
+      console.error('Error deleting notification:', err);
+    }
+  };
+
+  // Delete all notifications
+  const handleConfirmDeleteAll = async () => {
+    setIsDeletingAll(true);
+    try {
+      await deleteAllNotifications();
+      setNotifications([]);
+      if (typeof showToast === 'function') {
+        showToast('All notifications deleted.');
+      }
+    } catch (err) {
+      console.error('Error deleting all notifications:', err);
+    } finally {
+      setIsDeletingAll(false);
+      setShowDeleteAllModal(false);
+    }
+  };
+
   // Handle click on "View Job" or card
   const handleOpenJob = (notif) => {
     // If not read, mark as read
@@ -184,9 +228,10 @@ export default function MaintenanceNotificationsView({
       // Status/Type filter
       if (filterType === 'unread' && item.is_read) return false;
       if (filterType === 'emergency' && item.type !== 'emergency' && item.priority !== 'emergency') return false;
-      if (filterType === 'work_order' && item.type !== 'work_order') return false;
+      if (filterType === 'work_order' && item.type !== 'work_order' && item.type !== 'assignment') return false;
+      if (filterType === 'in_progress' && item.type !== 'in_progress') return false;
       if (filterType === 'parts' && item.type !== 'parts') return false;
-      if (filterType === 'verified' && item.type !== 'verified') return false;
+      if (filterType === 'verified' && item.type !== 'verified' && item.type !== 'fixed' && item.type !== 'resolved') return false;
 
       // Query filter
       if (searchQuery.trim()) {
@@ -212,6 +257,13 @@ export default function MaintenanceNotificationsView({
           iconBoxClass: 'emergency',
           borderClass: 'border-emergency',
         };
+      case 'in_progress':
+        return {
+          icon: <Clock size={20} />,
+          badgeClass: 'in-progress',
+          iconBoxClass: 'in-progress',
+          borderClass: 'border-in-progress',
+        };
       case 'work_order':
       case 'assignment':
         return {
@@ -236,6 +288,7 @@ export default function MaintenanceNotificationsView({
         };
       case 'verified':
       case 'fixed':
+      case 'resolved':
         return {
           icon: <CheckCircle2 size={20} />,
           badgeClass: 'verified',
@@ -295,6 +348,18 @@ export default function MaintenanceNotificationsView({
           >
             <CheckCheck size={16} />
             <span>Mark All as Read</span>
+          </button>
+
+          <button
+            type="button"
+            id="maint-notif-delete-all-btn"
+            className="maint-notif-btn-delete-all"
+            onClick={() => setShowDeleteAllModal(true)}
+            disabled={notifications.length === 0}
+            title={notifications.length === 0 ? 'No notifications to delete' : 'Delete all notifications'}
+          >
+            <Trash2 size={15} />
+            <span>Delete All</span>
           </button>
         </div>
       </div>
@@ -381,6 +446,13 @@ export default function MaintenanceNotificationsView({
             onClick={() => setFilterType('work_order')}
           >
             Work Orders
+          </button>
+          <button
+            type="button"
+            className={`maint-filter-tab ${filterType === 'in_progress' ? 'active' : ''}`}
+            onClick={() => setFilterType('in_progress')}
+          >
+            In Progress
           </button>
           <button
             type="button"
@@ -528,6 +600,16 @@ export default function MaintenanceNotificationsView({
                     <Check size={14} />
                     <span>{isUnread ? 'Mark Read' : 'Read'}</span>
                   </button>
+
+                  {/* Delete Single Notification */}
+                  <button
+                    type="button"
+                    className="maint-notif-btn-delete"
+                    onClick={(e) => handleDeleteSingle(item, e)}
+                    title="Delete notification"
+                  >
+                    <Trash2 size={14} />
+                  </button>
                 </div>
               </div>
             );
@@ -562,6 +644,15 @@ export default function MaintenanceNotificationsView({
           </div>
         )}
       </div>
+
+      {/* Delete All Confirmation Modal */}
+      <ConfirmationModal
+        isOpen={showDeleteAllModal}
+        presetId="delete_notifications"
+        onConfirm={handleConfirmDeleteAll}
+        onCancel={() => setShowDeleteAllModal(false)}
+        isLoading={isDeletingAll}
+      />
     </div>
   );
 }

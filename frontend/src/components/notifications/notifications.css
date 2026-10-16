@@ -78,6 +78,36 @@
   opacity: 0.7;
 }
 
+.notif-delete-all-btn {
+  background: transparent;
+  border: 1px solid #fee2e2;
+  color: #dc2626;
+  font-size: 0.8125rem;
+  font-weight: 550;
+  padding: 6px 12px;
+  cursor: pointer;
+  border-radius: 8px;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.notif-delete-all-btn:hover:not(:disabled) {
+  background-color: #fef2f2;
+  border-color: #fca5a5;
+  color: #b91c1c;
+}
+
+.notif-delete-all-btn:disabled {
+  color: #d1d5db;
+  border-color: #f3f4f6;
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+
 /* -----------------------------------------------------------------------------
    Notifications List & Cards
    ----------------------------------------------------------------------------- */
@@ -139,18 +169,41 @@
   transform: scale(1.04);
 }
 
+/* Red Emergency Badge */
+.notif-badge-emergency {
+  background-color: #fef2f2;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+}
+
+/* Amber In-Progress Badge */
+.notif-badge-in-progress {
+  background-color: #fff7ed;
+  border: 1px solid #fed7aa;
+  color: #ea580c;
+}
+
+/* Soft Blue Assignment Badge */
+.notif-badge-assignment,
+.notif-badge-work_order {
+  background-color: #eff6ff;
+  border: 1px solid #bfdbfe;
+  color: #2563eb;
+}
+
 /* Gray Info Badge */
 .notif-badge-info,
-.notif-badge-verified,
-.notif-badge-assignment {
-  background-color: #f3f4f6;
-  border: 1px solid #e5e7eb;
-  color: #4b5563;
+.notif-badge-submitted,
+.notif-badge-new_report {
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #475569;
 }
 
 /* Soft Emerald Green Success Badge */
 .notif-badge-fixed,
-.notif-badge-resolved {
+.notif-badge-resolved,
+.notif-badge-verified {
   background-color: #ecfdf5;
   border: 1px solid #a7f3d0;
   color: #059669;
@@ -162,6 +215,60 @@
   background-color: #fffbeb;
   border: 1px solid #fde68a;
   color: #d97706;
+}
+
+/* Status Pill */
+.notif-status-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 9999px;
+  letter-spacing: 0.02em;
+  display: inline-flex;
+  align-items: center;
+  white-space: nowrap;
+}
+
+.notif-status-pill.notif-status-in_progress {
+  background-color: #fff7ed;
+  color: #c2410c;
+  border: 1px solid #fed7aa;
+}
+
+.notif-status-pill.notif-status-assignment,
+.notif-status-pill.notif-status-work_order {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.notif-status-pill.notif-status-verified,
+.notif-status-pill.notif-status-resolved,
+.notif-status-pill.notif-status-fixed {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.notif-status-pill.notif-status-emergency {
+  background-color: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+}
+
+.notif-status-pill.notif-status-update,
+.notif-status-pill.notif-status-warning {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.notif-status-pill.notif-status-submitted,
+.notif-status-pill.notif-status-new_report,
+.notif-status-pill.notif-status-info {
+  background-color: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
 }
 
 /* -----------------------------------------------------------------------------
@@ -227,6 +334,7 @@
   display: flex;
   align-items: center;
   justify-content: flex-end;
+  gap: 12px;
   flex-shrink: 0;
   min-width: 16px;
 }
@@ -237,6 +345,31 @@
   border-radius: 50%;
   background-color: #059669;
   box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.22);
+}
+
+.notif-card-delete-btn {
+  background: transparent;
+  border: 1px solid transparent;
+  color: #94a3b8;
+  width: 30px;
+  height: 30px;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.15s ease;
+  opacity: 0.6;
+}
+
+.notif-card:hover .notif-card-delete-btn {
+  opacity: 1;
+}
+
+.notif-card-delete-btn:hover {
+  background-color: #fee2e2;
+  border-color: #fca5a5;
+  color: #dc2626;
 }
 
 /* -----------------------------------------------------------------------------

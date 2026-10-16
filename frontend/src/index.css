@@ -431,7 +431,7 @@ body {
 .hero-mockup-wrapper {
   position: relative;
   z-index: 2;
-  max-width: 1040px;
+  max-width: 1080px;
   margin: 0 auto;
   padding: 0 1rem;
   animation: heroMockupIn 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.44s both;

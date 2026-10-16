@@ -88,9 +88,12 @@ export async function deleteReport(reportId) {
   }
 }
 
-export async function fetchNotifications() {
+export async function fetchNotifications(userId = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php`, {
+    const url = userId
+      ? `${API_BASE}/notifications.php?user_id=${encodeURIComponent(userId)}`
+      : `${API_BASE}/notifications.php`;
+    const res = await fetch(url, {
       credentials: 'include',
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
@@ -126,6 +129,35 @@ export async function markAllNotificationsRead() {
     return await res.json();
   } catch (err) {
     console.error('Error marking all notifications as read:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function deleteNotification(id) {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php?action=delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting notification:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function deleteAllNotifications() {
+  try {
+    const res = await fetch(`${API_BASE}/notifications.php?action=delete_all`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting all notifications:', err);
     return { success: false, message: err.message };
   }
 }
@@ -167,6 +199,35 @@ export async function addBuilding(data) {
   }
 }
 
+export async function updateBuilding(id, data) {
+  try {
+    const res = await fetch(`${API_BASE}/buildings.php?action=update&id=${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify(data),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating building:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function deleteBuilding(id) {
+  try {
+    const res = await fetch(`${API_BASE}/buildings.php?action=delete&id=${id}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting building:', err);
+    return { success: false, message: err.message };
+  }
+}
+
 export async function fetchStaff() {
   try {
     const res = await fetch(`${API_BASE}/staff.php`, {
@@ -177,6 +238,19 @@ export async function fetchStaff() {
   } catch (err) {
     console.error('Error fetching staff:', err);
     return { success: false, data: [] };
+  }
+}
+
+export async function fetchStaffStats(staffId) {
+  try {
+    const res = await fetch(`${API_BASE}/staff.php?action=stats&id=${staffId}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching staff stats:', err);
+    return { success: false, message: err.message };
   }
 }
 
@@ -473,6 +547,16 @@ export async function createReport(reportData) {
   }
 }
 
+export function getExportReportsUrl(filters = {}) {
+  const params = new URLSearchParams();
+  params.append('action', 'export');
+  Object.entries(filters).forEach(([key, val]) => {
+    if (val !== undefined && val !== null && val !== 'all' && val !== '') {
+      params.append(key, val);
+    }
+  });
+  return `${API_BASE}/reports.php?${params.toString()}`;
+}
 
 export async function checkDuplicateReport({ buildingId, buildingName, categoryId, categorySlug, roomNumber }) {
   try {
