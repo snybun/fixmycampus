@@ -17,8 +17,10 @@ import {
   CheckCircle,
   X,
   RefreshCw,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { fetchReports, updateReportStatus, assignReport, fetchNotifications } from '../../services/api';
+import { exportReportsToExcel } from '../../utils/exportToExcel';
 import ConfirmationModal from '../common/ConfirmationModal';
 import MaintenanceNotificationsView from './MaintenanceNotificationsView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
@@ -878,34 +880,48 @@ export default function MaintenanceStaffDashboard({
                 Your Assigned Jobs ({displayedJobs.length})
               </h3>
 
-              <div className="maint-filter-tabs">
+              <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+                <div className="maint-filter-tabs">
+                  <button
+                    type="button"
+                    className={`maint-filter-tab ${priorityFilter === 'all' ? 'active' : ''}`}
+                    onClick={() => setPriorityFilter('all')}
+                  >
+                    All Priorities
+                  </button>
+                  <button
+                    type="button"
+                    className={`maint-filter-tab ${priorityFilter === 'high' ? 'active' : ''}`}
+                    onClick={() => setPriorityFilter('high')}
+                  >
+                    High
+                  </button>
+                  <button
+                    type="button"
+                    className={`maint-filter-tab ${priorityFilter === 'medium' ? 'active' : ''}`}
+                    onClick={() => setPriorityFilter('medium')}
+                  >
+                    Medium
+                  </button>
+                  <button
+                    type="button"
+                    className={`maint-filter-tab ${priorityFilter === 'low' ? 'active' : ''}`}
+                    onClick={() => setPriorityFilter('low')}
+                  >
+                    Low
+                  </button>
+                </div>
+
                 <button
                   type="button"
-                  className={`maint-filter-tab ${priorityFilter === 'all' ? 'active' : ''}`}
-                  onClick={() => setPriorityFilter('all')}
+                  className="maint-btn-export-excel"
+                  title="Export assigned work orders to Microsoft Excel (.xlsx)"
+                  onClick={() => exportReportsToExcel(displayedJobs.length > 0 ? displayedJobs : jobs, 'FixMyCampus_Work_Orders')}
+                  disabled={jobs.length === 0}
+                  id="maint-export-excel-btn"
                 >
-                  All Priorities
-                </button>
-                <button
-                  type="button"
-                  className={`maint-filter-tab ${priorityFilter === 'high' ? 'active' : ''}`}
-                  onClick={() => setPriorityFilter('high')}
-                >
-                  High
-                </button>
-                <button
-                  type="button"
-                  className={`maint-filter-tab ${priorityFilter === 'medium' ? 'active' : ''}`}
-                  onClick={() => setPriorityFilter('medium')}
-                >
-                  Medium
-                </button>
-                <button
-                  type="button"
-                  className={`maint-filter-tab ${priorityFilter === 'low' ? 'active' : ''}`}
-                  onClick={() => setPriorityFilter('low')}
-                >
-                  Low
+                  <FileSpreadsheet size={15} />
+                  <span>Export to Excel</span>
                 </button>
               </div>
             </div>

@@ -316,6 +316,45 @@
   transform: translateY(1px);
 }
 
+.admin-btn-excel {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background: #ffffff;
+  color: #047857;
+  border: 1.5px solid #10b981;
+  padding: 9px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 2px 8px rgba(16, 185, 129, 0.12);
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.admin-btn-excel:hover {
+  background: #ecfdf5;
+  border-color: #059669;
+  color: #065f46;
+  box-shadow: 0 4px 14px rgba(16, 185, 129, 0.22);
+  transform: translateY(-1px);
+}
+
+.admin-btn-excel:active {
+  transform: translateY(1px);
+}
+
+.admin-btn-excel:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.admin-btn-excel svg {
+  color: #059669;
+}
+
 /* --------------------------------------------------------------------------
    4 Top Stat Cards
    -------------------------------------------------------------------------- */

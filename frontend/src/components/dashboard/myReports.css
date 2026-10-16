@@ -132,6 +132,46 @@
   border-radius: 50%;
 }
 
+.myreports-export-excel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  background-color: #ffffff;
+  color: #047857;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.myreports-export-excel-btn:hover {
+  background-color: #ecfdf5;
+  border-color: #059669;
+  color: #065f46;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.16);
+  transform: translateY(-1px);
+}
+
+.myreports-export-excel-btn:active {
+  transform: translateY(1px);
+}
+
+.myreports-export-excel-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.myreports-export-excel-btn svg {
+  color: #059669;
+}
+
 /* --------------------------------------------------------------------------
    Filter Dropdown Menu (Glassmorphism & Apple-grade Popover)
    -------------------------------------------------------------------------- */

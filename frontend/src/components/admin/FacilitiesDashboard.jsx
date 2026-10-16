@@ -6,7 +6,9 @@ import {
   Hourglass,
   BarChart2,
   ArrowUpRight,
+  FileSpreadsheet,
 } from 'lucide-react';
+import { exportReportsToExcel } from '../../utils/exportToExcel';
 
 export default function FacilitiesDashboard({
   stats,
@@ -68,6 +70,17 @@ export default function FacilitiesDashboard({
             Monitor and manage campus maintenance reports.
           </p>
         </div>
+        <button
+          type="button"
+          className="admin-btn-excel"
+          onClick={() => exportReportsToExcel(recentReports, 'FixMyCampus_Facilities_Reports')}
+          disabled={!recentReports || recentReports.length === 0}
+          title="Export all defect tickets to Microsoft Excel (.xlsx)"
+          id="facilities-export-excel-btn"
+        >
+          <FileSpreadsheet size={16} />
+          <span>Export to Excel</span>
+        </button>
       </div>
 
       {/* ------------------------------------------------------------------

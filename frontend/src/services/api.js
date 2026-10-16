@@ -547,6 +547,13 @@ export async function createReport(reportData) {
   }
 }
 
-
-
-
+export function getExportReportsUrl(filters = {}) {
+  const params = new URLSearchParams();
+  params.append('action', 'export');
+  Object.entries(filters).forEach(([key, val]) => {
+    if (val !== undefined && val !== null && val !== 'all' && val !== '') {
+      params.append(key, val);
+    }
+  });
+  return `${API_BASE}/reports.php?${params.toString()}`;
+}

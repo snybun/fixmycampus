@@ -708,7 +708,7 @@ try {
     $buildingFilter = $_GET['building_id'] ?? null;
     $categoryFilter = $_GET['category_id'] ?? null;
     $search         = trim($_GET['search'] ?? '');
-    $limit          = min((int)($_GET['limit'] ?? 50), 200);
+    $limit = ($action === 'export') ? 5000 : min((int)($_GET['limit'] ?? 50), 200);
     $myOnly         = isset($_GET['my_reports']) && $_GET['my_reports'] === '1';
 
     $sql = "
@@ -800,6 +800,69 @@ try {
     $sql .= " ORDER BY r.reported_at DESC LIMIT " . $limit;
 
     $reports = db_fetch_all($sql, $params);
+
+    // If Excel/CSV export requested, output directly as an attachment stream
+    if ($action === 'export') {
+        $filename = 'FixMyCampus_Defect_Reports_' . date('Y-m-d_His') . '.csv';
+        header('Content-Type: text/csv; charset=UTF-8');
+        header('Content-Disposition: attachment; filename="' . $filename . '"');
+        header('Cache-Control: no-cache, no-store, must-revalidate');
+        header('Pragma: no-cache');
+        header('Expires: 0');
+
+        $out = fopen('php://output', 'w');
+        // UTF-8 BOM for Excel compatibility
+        fprintf($out, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+        fputcsv($out, [
+            'Ticket Number',
+            'Issue Title',
+            'Category',
+            'Priority',
+            'Status',
+            'Building',
+            'Floor',
+            'Room / Area',
+            'Reporter Name',
+            'Reporter Email',
+            'Reporter ID',
+            'Assigned Worker',
+            'Worker Department',
+            'Date Reported',
+            'Last Updated',
+            'Description / Notes'
+        ]);
+
+        foreach ($reports as $r) {
+            $formattedStatus = ucwords(str_replace('_', ' ', strtolower($r['status'] ?? 'submitted')));
+            $formattedPriority = ucfirst(strtolower($r['priority'] ?? 'medium'));
+            if (strtolower($r['priority'] ?? '') === 'emergency') {
+                $formattedPriority = 'Emergency';
+            }
+
+            fputcsv($out, [
+                $r['ticket_number'] ?? "FMC-{$r['id']}",
+                $r['title'] ?? '',
+                $r['category_name'] ?? 'General',
+                $formattedPriority,
+                $formattedStatus,
+                $r['building_name'] ?? 'Campus Wide',
+                $r['floor_name'] ?? '—',
+                $r['room_number'] ?? $r['location_name'] ?? $r['specific_area'] ?? '—',
+                $r['reporter_name'] ?? 'Campus User',
+                $r['reporter_email'] ?? '—',
+                $r['reporter_identifier'] ?? '—',
+                $r['worker_name'] ?? 'Unassigned',
+                $r['worker_department'] ?? '—',
+                $r['reported_at'] ?? '—',
+                $r['updated_at'] ?? '—',
+                $r['description'] ?? ''
+            ]);
+        }
+
+        fclose($out);
+        exit;
+    }
 
     foreach ($reports as &$item) {
         if (!empty($item['primary_photo'])) {

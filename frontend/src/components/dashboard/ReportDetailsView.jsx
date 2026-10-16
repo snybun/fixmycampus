@@ -369,7 +369,7 @@ export default function ReportDetailsView({
                   <span className="rep-desc-label" style={{ display: 'block', marginBottom: 6 }}>
                     Notes / Description
                   </span>
-                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#374151', lineHeight: 1.5 }}>
+                  <p style={{ margin: 0, fontSize: '0.88rem', color: '#374151', lineHeight: 1.5, wordBreak: 'break-word', overflowWrap: 'anywhere', whiteSpace: 'pre-wrap' }}>
                     {detailedReport.description}
                   </p>
                 </div>

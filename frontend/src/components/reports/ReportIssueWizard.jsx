@@ -906,6 +906,7 @@ export default function ReportIssueWizard({
                     rows={4}
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
+                    style={{ resize: 'none', overflowY: 'auto' }}
                     id="rw-desc-input"
                   />
                 </div>
@@ -1053,7 +1054,13 @@ export default function ReportIssueWizard({
 
                 <div className="rw-review-field-group">
                   <div className="rw-review-field-label">Additional Description</div>
-                  <div className="rw-review-desc-box">{description}</div>
+                  <div className="rw-review-desc-box">
+                    {description && description.trim() ? (
+                      description
+                    ) : (
+                      <span className="rw-review-desc-empty">No additional description provided.</span>
+                    )}
+                  </div>
                 </div>
               </div>
             </div>

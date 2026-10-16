@@ -8,8 +8,10 @@ import {
   Trash2,
   Check,
   X,
+  FileSpreadsheet,
 } from 'lucide-react';
 import { fetchReports } from '../../services/api';
+import { exportReportsToExcel } from '../../utils/exportToExcel';
 import ReportDetailsView from './ReportDetailsView';
 import './myReports.css';
 
@@ -355,6 +357,19 @@ export default function MyReportsView({
                 </div>
               )}
             </div>
+
+            {/* Export to Excel Button */}
+            <button
+              type="button"
+              className="myreports-export-excel-btn"
+              title="Export my reports to Microsoft Excel (.xlsx)"
+              onClick={() => exportReportsToExcel(filteredReports.length > 0 ? filteredReports : allReports, 'My_FixMyCampus_Reports')}
+              disabled={allReports.length === 0}
+              id="myreports-export-excel-btn"
+            >
+              <FileSpreadsheet size={16} />
+              <span>Export</span>
+            </button>
           </div>
         </div>
 
