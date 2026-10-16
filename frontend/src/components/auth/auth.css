@@ -208,6 +208,26 @@
   gap: 0.35rem;
 }
 
+.auth-name-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+@media (max-width: 540px) {
+  .auth-name-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
+.auth-optional-tag {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: 0.25rem;
+}
+
 .auth-label {
   font-size: 0.8125rem;
   font-weight: 600;

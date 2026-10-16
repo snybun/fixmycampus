@@ -344,13 +344,23 @@ export async function loginUser({ email, password, remember = false }) {
   }
 }
 
-export async function registerUser({ identifier, fullName, email, department, password }) {
+export async function registerUser({ identifier, lastName, firstName, middleName, fullName, email, department, password }) {
+  const computedFullName = fullName || [firstName, middleName, lastName].filter(Boolean).join(' ');
   try {
     const res = await fetch(`${API_BASE}/auth.php?action=register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ identifier, full_name: fullName, email, department, password }),
+      body: JSON.stringify({
+        identifier,
+        last_name: lastName,
+        first_name: firstName,
+        middle_name: middleName,
+        full_name: computedFullName,
+        email,
+        department,
+        password,
+      }),
     });
     const data = await res.json();
     return data;

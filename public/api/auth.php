@@ -580,7 +580,31 @@ try {
     if ($action === 'register' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $identifier = trim($input['identifier'] ?? '');
+        $firstName = trim($input['first_name'] ?? '');
+        $lastName = trim($input['last_name'] ?? '');
+        $middleName = trim($input['middle_name'] ?? '');
         $fullName = trim($input['full_name'] ?? '');
+
+        // If full_name is empty but first_name and/or last_name provided, compute full_name
+        if (empty($fullName) && (!empty($firstName) || !empty($lastName))) {
+            $fullName = trim($firstName . ' ' . ($middleName !== '' ? $middleName . ' ' : '') . $lastName);
+        }
+
+        // If first_name / last_name not passed separately but full_name was, extract them
+        if (empty($firstName) && empty($lastName) && !empty($fullName)) {
+            $parts = preg_split('/\s+/', $fullName);
+            if (count($parts) === 1) {
+                $firstName = $parts[0];
+            } elseif (count($parts) === 2) {
+                $firstName = $parts[0];
+                $lastName = $parts[1];
+            } else {
+                $firstName = $parts[0];
+                $lastName = end($parts);
+                $middleName = implode(' ', array_slice($parts, 1, -1));
+            }
+        }
+
         $email = trim($input['email'] ?? '');
         $department = trim($input['department'] ?? '');
         $password = $input['password'] ?? '';
@@ -623,6 +647,9 @@ try {
         $newId = db_insert('users', [
             'role_id'         => $roleId,
             'user_identifier' => $identifier,
+            'first_name'      => $firstName ?: null,
+            'middle_name'     => $middleName ?: null,
+            'last_name'       => $lastName ?: null,
             'full_name'       => $fullName,
             'email'           => $email,
             'password_hash'   => $passwordHash,
@@ -636,6 +663,9 @@ try {
             'role_name'       => 'student',
             'role_display'    => 'Student',
             'user_identifier' => $identifier,
+            'first_name'      => $firstName,
+            'middle_name'     => $middleName,
+            'last_name'       => $lastName,
             'full_name'       => $fullName,
             'email'           => $email,
             'department'      => $department,
