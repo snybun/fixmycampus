@@ -3,15 +3,14 @@ import {
   Search,
   SlidersHorizontal,
   ChevronRight,
+  ChevronLeft,
   FileQuestion,
   Plus,
   Trash2,
   Check,
   X,
-  FileSpreadsheet,
 } from 'lucide-react';
 import { fetchReports } from '../../services/api';
-import { exportReportsToExcel } from '../../utils/exportToExcel';
 import ReportDetailsView from './ReportDetailsView';
 import './myReports.css';
 
@@ -30,6 +29,8 @@ export default function MyReportsView({
   const [selectedReport, setSelectedReport] = useState(initialSelectedReport);
   const [localReports, setLocalReports] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   const STATUS_CONFIG = [
     { key: 'all', label: 'All Reports', dotColor: '#9ca3af' },
@@ -247,6 +248,25 @@ export default function MyReportsView({
     });
   }, [allReports, searchQuery, statusFilter]);
 
+  // Reset pagination to page 1 whenever search query or status filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
+
+  // Ensure currentPage does not exceed totalPages if reports list shrinks
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedReports = useMemo(() => {
+    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredReports.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+  }, [filteredReports, currentPage]);
+
   // Determine if a report is eligible for deletion
   // Admins can delete any report; students can delete only if a worker has NOT been assigned yet
   const isReportDeletable = (report) => {
@@ -367,19 +387,6 @@ export default function MyReportsView({
                 </div>
               )}
             </div>
-
-            {/* Export to Excel Button */}
-            <button
-              type="button"
-              className="myreports-export-excel-btn"
-              title="Export my reports to Microsoft Excel (.xlsx)"
-              onClick={() => exportReportsToExcel(filteredReports.length > 0 ? filteredReports : allReports, 'My_FixMyCampus_Reports')}
-              disabled={allReports.length === 0}
-              id="myreports-export-excel-btn"
-            >
-              <FileSpreadsheet size={16} />
-              <span>Export</span>
-            </button>
           </div>
         </div>
 
@@ -454,7 +461,7 @@ export default function MyReportsView({
           </div>
         ) : (
           <div className="myreports-list" role="list">
-            {filteredReports.map((report) => (
+            {paginatedReports.map((report) => (
               <div
                 key={report.id}
                 className="myreports-card"
@@ -548,6 +555,54 @@ export default function MyReportsView({
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls */}
+        {filteredReports.length > 0 && (
+          <div className="myreports-pagination" aria-label="Reports pagination">
+            <div className="myreports-pagination-info">
+              Showing <strong>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</strong>–
+              <strong>{Math.min(currentPage * ITEMS_PER_PAGE, filteredReports.length)}</strong> of{' '}
+              <strong>{filteredReports.length}</strong> {filteredReports.length === 1 ? 'report' : 'reports'}
+            </div>
+
+            <div className="myreports-pagination-controls">
+              <button
+                type="button"
+                className="myreports-page-btn myreports-page-arrow"
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+                title="Previous page"
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`myreports-page-btn ${pageNum === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                  aria-current={pageNum === currentPage ? 'page' : undefined}
+                  aria-label={`Go to page ${pageNum}`}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                className="myreports-page-btn myreports-page-arrow"
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+                title="Next page"
+                aria-label="Next page"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Wrench,
   Bell,
@@ -55,17 +55,21 @@ export default function DashboardPage({
   const [unreadCount, setUnreadCount] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
-  const recentReportsRef = useRef(null);
+  const [recentPage, setRecentPage] = useState(1);
+  const RECENT_ITEMS_PER_PAGE = 3;
+  const totalRecentPages = Math.max(1, Math.ceil(reports.length / RECENT_ITEMS_PER_PAGE));
 
-  const scrollReports = (direction) => {
-    if (recentReportsRef.current) {
-      const scrollAmount = 370;
-      recentReportsRef.current.scrollBy({
-        left: direction === 'left' ? -scrollAmount : scrollAmount,
-        behavior: 'smooth',
-      });
+  // Ensure recentPage stays within valid bounds
+  useEffect(() => {
+    if (recentPage > totalRecentPages) {
+      setRecentPage(totalRecentPages);
     }
-  };
+  }, [recentPage, totalRecentPages]);
+
+  const paginatedRecentReports = useMemo(() => {
+    const startIdx = (recentPage - 1) * RECENT_ITEMS_PER_PAGE;
+    return reports.slice(startIdx, startIdx + RECENT_ITEMS_PER_PAGE);
+  }, [reports, recentPage]);
 
   useEffect(() => {
     if (initialTab) {
@@ -776,34 +780,49 @@ export default function DashboardPage({
         </section>
 
         {/* ------------------------------------------------------------------
-            Recent Reports Section (Scrollable horizontally when 3+ reports)
+            Recent Reports Section (Paginated: 3 cards per page)
             ------------------------------------------------------------------ */}
         <section className="dash-section" aria-labelledby="recent-reports-heading">
           <div className="dash-section-header">
             <div className="dash-section-title-wrap">
               <h2 id="recent-reports-heading">Recent Reports</h2>
-              {reports.length >= 3 && (
+              {reports.length > 0 && (
                 <span className="dash-reports-count-pill">{reports.length} Reports</span>
               )}
             </div>
 
-            {reports.length >= 3 && (
-              <div className="dash-scroll-arrows" aria-label="Scroll recent reports">
+            {totalRecentPages > 1 && (
+              <div className="dash-pagination-controls" aria-label="Recent reports pagination">
                 <button
                   type="button"
                   className="dash-scroll-btn"
-                  onClick={() => scrollReports('left')}
-                  title="Scroll Left"
-                  aria-label="Scroll reports left"
+                  onClick={() => setRecentPage((p) => Math.max(1, p - 1))}
+                  disabled={recentPage === 1}
+                  title="Previous Page"
+                  aria-label="Previous reports page"
                 >
                   <ChevronLeft size={16} />
                 </button>
+                <div className="dash-page-numbers">
+                  {Array.from({ length: totalRecentPages }, (_, i) => i + 1).map((pg) => (
+                    <button
+                      key={pg}
+                      type="button"
+                      className={`dash-page-num-btn ${pg === recentPage ? 'active' : ''}`}
+                      onClick={() => setRecentPage(pg)}
+                      aria-label={`Go to page ${pg}`}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                </div>
                 <button
                   type="button"
                   className="dash-scroll-btn"
-                  onClick={() => scrollReports('right')}
-                  title="Scroll Right"
-                  aria-label="Scroll reports right"
+                  onClick={() => setRecentPage((p) => Math.min(totalRecentPages, p + 1))}
+                  disabled={recentPage === totalRecentPages}
+                  title="Next Page"
+                  aria-label="Next reports page"
                 >
                   <ChevronRight size={16} />
                 </button>
@@ -856,11 +875,8 @@ export default function DashboardPage({
               </button>
             </div>
           ) : (
-            <div 
-              ref={recentReportsRef}
-              className={`dash-reports-grid ${reports.length >= 3 ? 'dash-reports-horizontal' : ''}`}
-            >
-              {reports.map((report) => (
+            <div className="dash-reports-grid">
+              {paginatedRecentReports.map((report) => (
                 <article
                   key={report.id}
                   className="dash-report-card"
