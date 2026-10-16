@@ -998,6 +998,125 @@
   cursor: not-allowed;
 }
 
+/* Visibility helpers for responsive views */
+.admin-desktop-only {
+  display: block;
+}
+
+.admin-mobile-only {
+  display: none !important;
+}
+
+/* Touch-friendly card list styling (used by ReportManagement, FacilitiesDashboard, etc.) */
+.admin-mobile-reports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-report-mobile-card {
+  background: #ffffff;
+  border: 1px solid var(--admin-border);
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: all 0.15s ease;
+}
+
+.admin-report-mobile-card:hover {
+  border-color: #cbd5e1;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.05);
+}
+
+.admin-report-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding-bottom: 10px;
+  border-bottom: 1px solid var(--admin-border-subtle);
+  flex-wrap: wrap;
+}
+
+.admin-report-card-top .admin-ticket-id {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.86rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: -0.01em;
+}
+
+.admin-report-card-badges {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.admin-report-card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.admin-report-card-title {
+  font-size: 0.98rem;
+  font-weight: 600;
+  color: #0f172a;
+  line-height: 1.35;
+  margin: 0;
+}
+
+.admin-report-card-loc {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  color: var(--admin-text-muted);
+}
+
+.admin-report-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  font-size: 0.78rem;
+  color: #475569;
+  background: #f8fafc;
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--admin-border-subtle);
+  flex-wrap: wrap;
+}
+
+.admin-report-card-actions {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid var(--admin-border-subtle);
+}
+
+.admin-report-card-actions button {
+  width: 100%;
+  justify-content: center;
+  padding: 8px 4px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  min-height: 38px;
+  box-sizing: border-box;
+}
+
+/* Horizontal scroll container helper */
+.admin-table-scroll {
+  width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* --------------------------------------------------------------------------
    Report Details Screen (2 Columns)
    -------------------------------------------------------------------------- */
@@ -1716,12 +1835,24 @@
 
   .admin-header {
     flex-direction: column;
-    align-items: flex-start;
+    align-items: stretch;
     gap: 14px;
+    margin-bottom: 20px;
   }
 
   .admin-header-title {
     font-size: 1.45rem;
+    line-height: 1.25;
+  }
+
+  .admin-header-subtitle {
+    font-size: 0.88rem;
+  }
+
+  .admin-btn-excel {
+    width: 100%;
+    justify-content: center;
+    height: 42px;
   }
 
   .admin-btn-black {
@@ -1733,6 +1864,183 @@
     width: 95% !important;
     max-width: 95% !important;
     margin: 16px auto;
+  }
+}
+
+@media (max-width: 768px) {
+  /* Toggle desktop table vs mobile touch cards */
+  .admin-desktop-only {
+    display: none !important;
+  }
+
+  .admin-mobile-only {
+    display: flex !important;
+  }
+
+  .admin-main {
+    padding: 16px 12px 40px 12px;
+  }
+
+  .admin-filter-card {
+    padding: 16px 14px;
+    border-radius: 12px;
+    gap: 14px;
+    margin-bottom: 20px;
+  }
+
+  /* Search row */
+  .admin-search-row {
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .admin-search-input-wrap {
+    width: 100%;
+  }
+
+  .admin-search-input {
+    width: 100%;
+    height: 42px;
+    font-size: 0.92rem;
+  }
+
+  .admin-search-row .admin-btn-black,
+  .admin-search-row .admin-btn-secondary {
+    width: 100%;
+    height: 42px;
+    justify-content: center;
+    font-size: 0.9rem;
+  }
+
+  /* 5 Filter Selects: Clean, structured 2-column grid */
+  .admin-filters-row {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 10px;
+    width: 100%;
+  }
+
+  .admin-filter-select {
+    width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+    height: 42px;
+    padding: 8px 10px;
+    font-size: 0.82rem;
+  }
+
+  /* 5th filter (Date Range) spans full 2-columns */
+  .admin-filters-row .admin-filter-select:last-child {
+    grid-column: span 2;
+  }
+
+  /* Table Card Padding */
+  .admin-table-card {
+    padding: 16px 14px;
+    border-radius: 12px;
+  }
+
+  /* Pagination Bar */
+  .admin-pagination-bar {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    padding-top: 14px;
+  }
+
+  .admin-pagination-btns {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .admin-page-btn {
+    min-width: 38px;
+    height: 38px;
+    padding: 6px 12px;
+    font-size: 0.84rem;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* History Logs Controls */
+  .history-controls-card {
+    padding: 14px 12px;
+  }
+
+  .history-pills-row {
+    gap: 6px;
+  }
+
+  .history-pill {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+  }
+
+  .history-pagination-bar {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+    text-align: center;
+    padding: 14px 12px;
+  }
+
+  .history-page-nav {
+    width: 100%;
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 6px;
+  }
+
+  .history-page-btn {
+    min-width: 38px;
+    height: 38px;
+  }
+}
+
+@media (max-width: 480px) {
+  .admin-main {
+    padding: 12px 10px 36px 10px;
+  }
+
+  .admin-header-title {
+    font-size: 1.35rem;
+  }
+
+  /* 1-column filter selects on very small mobile screens */
+  .admin-filters-row {
+    grid-template-columns: 1fr;
+    gap: 8px;
+  }
+
+  .admin-filters-row .admin-filter-select:last-child {
+    grid-column: auto;
+  }
+
+  /* 2x2 grid for mobile report card action buttons */
+  .admin-report-card-actions {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+
+  .admin-report-card-meta {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 4px;
+  }
+
+  .admin-specs-grid {
+    grid-template-columns: 1fr;
+    row-gap: 8px;
+  }
+
+  .admin-spec-label {
+    font-size: 0.78rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
   }
 }
 

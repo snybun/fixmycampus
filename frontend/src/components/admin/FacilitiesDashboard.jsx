@@ -6,6 +6,7 @@ import {
   Hourglass,
   BarChart2,
   ArrowUpRight,
+  MapPin,
 } from 'lucide-react';
 
 export default function FacilitiesDashboard({
@@ -313,7 +314,9 @@ export default function FacilitiesDashboard({
           ------------------------------------------------------------------ */}
       <div className="admin-table-card">
         <h3 className="admin-table-title">Recent Incident Reports</h3>
-        <div className="admin-table-responsive">
+        
+        {/* Desktop / Tablet Table */}
+        <div className="admin-table-responsive admin-desktop-only">
           <table className="admin-table">
             <thead>
               <tr>
@@ -339,6 +342,8 @@ export default function FacilitiesDashboard({
                 const locationStr = report.building_name
                   ? `${report.building_code || report.building_name} • ${report.room_number || report.location_name || ''}`
                   : 'Campus';
+
+                const isResolved = report.status === 'resolved' || report.status === 'closed';
 
                 return (
                   <tr key={report.id}>
@@ -376,12 +381,12 @@ export default function FacilitiesDashboard({
                           type="button"
                           className="admin-btn-action-assign"
                           onClick={() => {
-                            if (report.status === 'resolved' || report.status === 'closed') return;
+                            if (isResolved) return;
                             onAssignReport(report);
                           }}
-                          disabled={report.status === 'resolved' || report.status === 'closed'}
-                          style={(report.status === 'resolved' || report.status === 'closed') ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
-                          title={(report.status === 'resolved' || report.status === 'closed') ? 'Assignment locked: Issue already fixed' : 'Assign maintenance technician'}
+                          disabled={isResolved}
+                          style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                          title={isResolved ? 'Assignment locked: Issue already fixed' : 'Assign maintenance technician'}
                         >
                           Assign
                         </button>
@@ -402,6 +407,94 @@ export default function FacilitiesDashboard({
               })}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile-Optimized Reports Card List (<= 768px) */}
+        <div className="admin-mobile-reports-list admin-mobile-only">
+          {recentReports.slice(0, 6).map((report) => {
+            const dateStr = report.reported_at
+              ? new Date(report.reported_at).toLocaleDateString('en-US', {
+                  month: 'short',
+                  day: 'numeric',
+                  year: 'numeric',
+                })
+              : 'Recent';
+
+            const locationStr = report.building_name
+              ? `${report.building_code || report.building_name} • ${report.room_number || report.location_name || ''}`
+              : 'Campus';
+
+            const isResolved = report.status === 'resolved' || report.status === 'closed';
+
+            return (
+              <div key={report.id} className="admin-report-mobile-card">
+                <div className="admin-report-card-top">
+                  <span className="admin-ticket-id">
+                    {report.ticket_number || `FM-${report.id}`}
+                  </span>
+                  <div className="admin-report-card-badges">
+                    <span className={`admin-badge ${report.priority}`}>
+                      {report.priority}
+                    </span>
+                    <span className={`admin-badge ${report.status}`}>
+                      {report.status.replace('_', ' ')}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="admin-report-card-body">
+                  <h4 className="admin-report-card-title">{report.title}</h4>
+                  {locationStr && (
+                    <div className="admin-report-card-loc">
+                      <MapPin size={13} style={{ flexShrink: 0 }} />
+                      <span>{locationStr}</span>
+                    </div>
+                  )}
+                  <div className="admin-report-card-meta">
+                    <span>
+                      <strong>Reporter:</strong> {report.reporter_name || 'Reporter'}
+                    </span>
+                    <span>
+                      <strong>Date:</strong> {dateStr}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="admin-report-card-actions">
+                  <button
+                    type="button"
+                    className="admin-btn-action-view"
+                    onClick={() => onViewReport(report)}
+                  >
+                    View
+                  </button>
+                  <button
+                    type="button"
+                    className="admin-btn-action-assign"
+                    onClick={() => {
+                      if (isResolved) return;
+                      onAssignReport(report);
+                    }}
+                    disabled={isResolved}
+                    style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                    title={isResolved ? 'Assignment locked: Issue already fixed' : 'Assign maintenance technician'}
+                  >
+                    Assign
+                  </button>
+                  {isResolved && (onArchiveReport || onDeleteReport) && (
+                    <button
+                      type="button"
+                      className="admin-btn-action-archive"
+                      onClick={() => (onArchiveReport || onDeleteReport)(report)}
+                      title="Archive fixed report into History Logs"
+                    >
+                      Archive
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
         </div>
       </div>
     </div>

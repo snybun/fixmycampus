@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Search, FileSpreadsheet } from 'lucide-react';
+import { Search, FileSpreadsheet, MapPin } from 'lucide-react';
 import { exportReportsToExcel } from '../../utils/exportToExcel';
 
 export default function ReportManagement({
@@ -178,9 +178,10 @@ export default function ReportManagement({
         </div>
       </div>
 
-      {/* Reports Table */}
+      {/* Reports Table & Mobile Cards */}
       <div className="admin-table-card">
-        <div className="admin-table-responsive">
+        {/* Desktop / Tablet Table View */}
+        <div className="admin-table-responsive admin-desktop-only">
           <table className="admin-table">
             <thead>
               <tr>
@@ -213,6 +214,8 @@ export default function ReportManagement({
                   const locSub = report.building_name
                     ? `${report.building_code || report.building_name} • ${report.room_number || report.location_name || ''}`
                     : '';
+
+                  const isResolved = report.status === 'resolved' || report.status === 'closed';
 
                   return (
                     <tr key={report.id}>
@@ -250,12 +253,12 @@ export default function ReportManagement({
                             type="button"
                             className="admin-btn-action-assign"
                             onClick={() => {
-                              if (report.status === 'resolved' || report.status === 'closed') return;
+                              if (isResolved) return;
                               onAssignReport(report);
                             }}
-                            disabled={report.status === 'resolved' || report.status === 'closed'}
-                            style={(report.status === 'resolved' || report.status === 'closed') ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
-                            title={(report.status === 'resolved' || report.status === 'closed') ? 'Assignment locked: Issue already fixed' : 'Assign maintenance technician'}
+                            disabled={isResolved}
+                            style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                            title={isResolved ? 'Assignment locked: Issue already fixed' : 'Assign maintenance technician'}
                           >
                             Assign
                           </button>
@@ -266,7 +269,7 @@ export default function ReportManagement({
                           >
                             Update
                           </button>
-                          {(report.status === 'resolved' || report.status === 'closed') && (onArchiveReport || onDeleteReport) && (
+                          {isResolved && (onArchiveReport || onDeleteReport) && (
                             <button
                               type="button"
                               className="admin-btn-action-archive"
@@ -284,6 +287,110 @@ export default function ReportManagement({
               )}
             </tbody>
           </table>
+        </div>
+
+        {/* Mobile-Optimized Reports Card List (Shown on screens <= 768px) */}
+        <div className="admin-mobile-reports-list admin-mobile-only">
+          {paginatedReports.length === 0 ? (
+            <div style={{ textAlign: 'center', padding: '36px 16px', color: '#94a3b8' }}>
+              No incident reports match your active filters.
+            </div>
+          ) : (
+            paginatedReports.map((report) => {
+              const dateStr = report.reported_at
+                ? new Date(report.reported_at).toLocaleDateString('en-US', {
+                    month: 'short',
+                    day: 'numeric',
+                    year: 'numeric',
+                  })
+                : 'Recent';
+
+              const locSub = report.building_name
+                ? `${report.building_code || report.building_name} • ${report.room_number || report.location_name || ''}`
+                : '';
+
+              const isResolved = report.status === 'resolved' || report.status === 'closed';
+
+              return (
+                <div key={report.id} className="admin-report-mobile-card">
+                  {/* Top Bar: Ticket ID + Priority/Status Badges */}
+                  <div className="admin-report-card-top">
+                    <span className="admin-ticket-id">
+                      {report.ticket_number || `FM-${report.id}`}
+                    </span>
+                    <div className="admin-report-card-badges">
+                      <span className={`admin-badge ${report.priority}`}>
+                        {report.priority}
+                      </span>
+                      <span className={`admin-badge ${report.status}`}>
+                        {report.status.replace('_', ' ')}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Body: Title, Location, Reporter & Date */}
+                  <div className="admin-report-card-body">
+                    <h4 className="admin-report-card-title">{report.title}</h4>
+                    {locSub && (
+                      <div className="admin-report-card-loc">
+                        <MapPin size={13} style={{ flexShrink: 0 }} />
+                        <span>{locSub}</span>
+                      </div>
+                    )}
+                    <div className="admin-report-card-meta">
+                      <span>
+                        <strong>Reporter:</strong> {report.reporter_name || 'Reporter'}
+                      </span>
+                      <span>
+                        <strong>Date:</strong> {dateStr}
+                      </span>
+                    </div>
+                  </div>
+
+                  {/* Bottom Action Grid: Touch-Friendly Buttons */}
+                  <div className="admin-report-card-actions">
+                    <button
+                      type="button"
+                      className="admin-btn-action-view"
+                      onClick={() => onViewReport(report)}
+                    >
+                      View
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-btn-action-assign"
+                      onClick={() => {
+                        if (isResolved) return;
+                        onAssignReport(report);
+                      }}
+                      disabled={isResolved}
+                      style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                      title={isResolved ? 'Assignment locked: Issue already fixed' : 'Assign maintenance technician'}
+                    >
+                      Assign
+                    </button>
+                    <button
+                      type="button"
+                      className="admin-btn-action-update"
+                      onClick={() => onUpdateStatus(report)}
+                    >
+                      Update
+                    </button>
+                    {isResolved && (onArchiveReport || onDeleteReport) && (
+                      <button
+                        type="button"
+                        className="admin-btn-action-archive"
+                        onClick={() => (onArchiveReport || onDeleteReport)(report)}
+                        title="Archive fixed report into History Logs"
+                      >
+                        Archive
+                      </button>
+                    )}
+                  </div>
+                </div>
+              );
+            })
+          )}
         </div>
 
         {/* Pagination */}
