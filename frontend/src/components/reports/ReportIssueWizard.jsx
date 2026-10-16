@@ -527,9 +527,6 @@ export default function ReportIssueWizard({
             className={`rw-step-node ${
               currentStep === 1 ? 'active' : currentStep > 1 ? 'completed' : 'upcoming'
             }`}
-            onClick={() => setCurrentStep(1)}
-            style={{ cursor: 'pointer' }}
-            title="Step 1: Category & Photo"
           >
             <div className="rw-step-circle">
               {currentStep > 1 ? <Check size={14} strokeWidth={3} /> : '01'}
@@ -544,10 +541,6 @@ export default function ReportIssueWizard({
             className={`rw-step-node ${
               currentStep === 2 ? 'active' : currentStep > 2 ? 'completed' : 'upcoming'
             }`}
-            onClick={() => setCurrentStep(2)}
-            style={{ cursor: 'pointer' }}
-            title="Step 2: Defect Location"
-            id="rw-stepper-node-2"
           >
             <div className="rw-step-circle">
               {currentStep > 2 ? <Check size={14} strokeWidth={3} /> : '02'}
@@ -562,9 +555,6 @@ export default function ReportIssueWizard({
             className={`rw-step-node ${
               currentStep === 3 ? 'active' : currentStep > 3 ? 'completed' : 'upcoming'
             }`}
-            onClick={() => setCurrentStep(3)}
-            style={{ cursor: 'pointer' }}
-            title="Step 3: Details & Priority"
           >
             <div className="rw-step-circle">
               {currentStep > 3 ? <Check size={14} strokeWidth={3} /> : '03'}
@@ -579,9 +569,6 @@ export default function ReportIssueWizard({
             className={`rw-step-node ${
               currentStep === 4 ? 'active' : 'upcoming'
             }`}
-            onClick={() => setCurrentStep(4)}
-            style={{ cursor: 'pointer' }}
-            title="Step 4: Review & Submit"
           >
             <div className="rw-step-circle">04</div>
             <span className="rw-step-label">Review</span>
