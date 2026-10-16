@@ -55,6 +55,8 @@ export default function DashboardPage({
   const [unreadCount, setUnreadCount] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Initial reports - start empty until reported as requested
+  const [reports, setReports] = useState([]);
   const [recentPage, setRecentPage] = useState(1);
   const RECENT_ITEMS_PER_PAGE = 3;
   const totalRecentPages = Math.max(1, Math.ceil(reports.length / RECENT_ITEMS_PER_PAGE));
@@ -91,9 +93,6 @@ export default function DashboardPage({
     window.addEventListener('hashchange', handleHash);
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
-
-  // Initial reports - start empty until reported as requested
-  const [reports, setReports] = useState([]);
 
   // Load stats, real reports, and notifications from backend
   useEffect(() => {
