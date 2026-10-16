@@ -27,7 +27,7 @@ import {
   PlusCircle,
   User,
 } from 'lucide-react';
-import { fetchBuildings, fetchCategories, createReport } from '../../services/api';
+import { fetchBuildings, fetchCategories, createReport, fetchNotifications } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import CampusMapPlacement from './CampusMapPlacement';
@@ -162,6 +162,15 @@ export default function ReportIssueWizard({
         setBuildings(mapped);
       }
     });
+
+    fetchNotifications()
+      .then((res) => {
+        if (res && res.success && Array.isArray(res.notifications)) {
+          const unread = res.notifications.filter((n) => !n.is_read).length;
+          setUnreadCount(unread);
+        }
+      })
+      .catch(() => {});
   }, []);
 
   // Update floor options when building changes
@@ -356,7 +365,7 @@ export default function ReportIssueWizard({
               <button
                 type="button"
                 className="rw-nav-link"
-                onClick={() => handleRequestExit(() => onNavigate('dashboard'))}
+                onClick={() => handleRequestExit(() => onNavigate('my-reports'))}
                 id="rw-nav-my-reports-btn"
               >
                 My Reports
@@ -382,8 +391,9 @@ export default function ReportIssueWizard({
             <button
               type="button"
               className="rw-notif-btn"
-              onClick={() => setUnreadCount(0)}
+              onClick={() => handleRequestExit(() => onNavigate('notifications'))}
               title="Notifications"
+              id="rw-notif-btn"
             >
               <Bell size={18} />
               {unreadCount > 0 && <span className="rw-notif-badge">{unreadCount}</span>}
@@ -438,12 +448,33 @@ export default function ReportIssueWizard({
                   className="rw-mobile-nav-item"
                   onClick={() => {
                     setMobileMenuOpen(false);
-                    handleRequestExit(() => onNavigate('dashboard'));
+                    handleRequestExit(() => onNavigate('my-reports'));
                   }}
                   id="rw-mobile-nav-my-reports"
                 >
                   <FileText size={18} className="rw-mobile-nav-icon" />
                   <span>My Reports</span>
+                </button>
+
+                <button
+                  type="button"
+                  className="rw-mobile-nav-item"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    handleRequestExit(() => onNavigate('notifications'));
+                  }}
+                  id="rw-mobile-nav-notifications"
+                >
+                  <Bell size={18} className="rw-mobile-nav-icon" />
+                  <span>Notifications</span>
+                  {unreadCount > 0 && (
+                    <span
+                      className="rw-notif-badge"
+                      style={{ position: 'static', marginLeft: 'auto' }}
+                    >
+                      {unreadCount}
+                    </span>
+                  )}
                 </button>
 
                 <button
