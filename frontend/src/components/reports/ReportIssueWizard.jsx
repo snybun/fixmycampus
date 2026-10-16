@@ -717,6 +717,7 @@ export default function ReportIssueWizard({
               <div>
                 <label className="rw-section-label" style={{ marginBottom: '0.75rem', display: 'block' }}>
                   Primary Defect Photo
+                  {!primaryPhoto && <span className="rw-required-asterisk" title="Required">*</span>}
                 </label>
                 <input
                   type="file"
@@ -774,17 +775,6 @@ export default function ReportIssueWizard({
                       </div>
                       <h4 className="rw-upload-prompt-title">Add Primary Photo</h4>
                       <p className="rw-upload-prompt-sub">Drag & drop or browse device</p>
-                      <span className="rw-upload-required-badge">Required to continue</span>
-                      <button
-                        type="button"
-                        className="rw-sample-photo-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPrimaryPhoto('/images/hero_ac_defect.jpg');
-                        }}
-                      >
-                        Use Sample Photo
-                      </button>
                     </div>
                   )}
                 </div>
