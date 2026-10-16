@@ -77,7 +77,7 @@ export default function ReportIssueWizard({
     }
     return 1;
   });
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -171,15 +171,18 @@ export default function ReportIssueWizard({
       }
     });
 
-    fetchNotifications()
+    fetchNotifications(currentUser?.id)
       .then((res) => {
-        if (res && res.success && Array.isArray(res.notifications)) {
-          const unread = res.notifications.filter((n) => !n.is_read).length;
-          setUnreadCount(unread);
+        if (res && res.success) {
+          if (typeof res.unread_count === 'number') {
+            setUnreadCount(res.unread_count);
+          } else if (Array.isArray(res.data)) {
+            setUnreadCount(res.data.filter((n) => !n.is_read).length);
+          }
         }
       })
       .catch(() => {});
-  }, []);
+  }, [currentUser?.id]);
 
   // Update floor options when building changes
   const activeBuildingObj = buildings.find((b) => b.name === selectedBuilding) || buildings[0];
