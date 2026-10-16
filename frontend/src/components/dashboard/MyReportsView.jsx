@@ -558,25 +558,22 @@ export default function MyReportsView({
           </div>
         )}
 
-        {/* Pagination Controls */}
+        {/* Pagination Controls (Matching Admin Report Management) */}
         {filteredReports.length > 0 && (
           <div className="myreports-pagination" aria-label="Reports pagination">
-            <div className="myreports-pagination-info">
-              Showing <strong>{(currentPage - 1) * ITEMS_PER_PAGE + 1}</strong>–
-              <strong>{Math.min(currentPage * ITEMS_PER_PAGE, filteredReports.length)}</strong> of{' '}
-              <strong>{filteredReports.length}</strong> {filteredReports.length === 1 ? 'report' : 'reports'}
-            </div>
+            <span className="myreports-pagination-info">
+              Showing {filteredReports.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}-
+              {Math.min(filteredReports.length, currentPage * ITEMS_PER_PAGE)} of {filteredReports.length} results
+            </span>
 
             <div className="myreports-pagination-controls">
               <button
                 type="button"
-                className="myreports-page-btn myreports-page-arrow"
+                className="myreports-page-btn"
+                disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-                title="Previous page"
-                aria-label="Previous page"
               >
-                <ChevronLeft size={16} />
+                Previous
               </button>
 
               {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
@@ -586,7 +583,6 @@ export default function MyReportsView({
                   className={`myreports-page-btn ${pageNum === currentPage ? 'active' : ''}`}
                   onClick={() => setCurrentPage(pageNum)}
                   aria-current={pageNum === currentPage ? 'page' : undefined}
-                  aria-label={`Go to page ${pageNum}`}
                 >
                   {pageNum}
                 </button>
@@ -594,13 +590,11 @@ export default function MyReportsView({
 
               <button
                 type="button"
-                className="myreports-page-btn myreports-page-arrow"
+                className="myreports-page-btn"
+                disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-                title="Next page"
-                aria-label="Next page"
               >
-                <ChevronRight size={16} />
+                Next
               </button>
             </div>
           </div>
