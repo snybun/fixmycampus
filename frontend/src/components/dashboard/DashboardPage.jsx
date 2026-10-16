@@ -332,8 +332,13 @@ export default function DashboardPage({
             <button
               type="button"
               className="dash-logo-btn"
-              onClick={() => onNavigate('landing')}
+              onClick={() => {
+                setActiveTab('home');
+                setSelectedReportForDetails(null);
+                window.location.hash = 'dashboard';
+              }}
               title="FixMyCampus Home"
+              id="dash-logo-btn"
             >
               <div className="dash-logo-icon">
                 <Wrench size={18} strokeWidth={2.2} />
