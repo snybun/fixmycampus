@@ -15,6 +15,7 @@ require_once SRC_PATH . '/Core/RateLimiter.php';
 require_once SRC_PATH . '/helpers/session.php';
 require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
+require_once SRC_PATH . '/helpers/history_logs.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -557,6 +558,23 @@ try {
                 'status'          => 'active',
             ]);
 
+            record_history_log(
+                'user_registration',
+                "New User Signed In via Google: {$googleUser['name']}",
+                "{$googleUser['name']} ({$email}) signed in via Google institutional login (Student ID: {$identifier}).",
+                $newId,
+                null,
+                $googleUser['name'],
+                'Student',
+                $department ?: 'PHINMA University of Pangasinan',
+                [
+                    'email'           => $email,
+                    'user_identifier' => $identifier,
+                    'department'      => $department,
+                    'method'          => 'google_oauth',
+                ]
+            );
+
             $user = db_fetch_one("
                 SELECT u.*, r.name as role_name, r.display_name as role_display
                 FROM `users` u
@@ -656,6 +674,23 @@ try {
             'department'      => $department,
             'status'          => 'active',
         ]);
+
+        record_history_log(
+            'user_registration',
+            "User Registration: {$fullName} (Student)",
+            "New student account created for {$fullName} ({$email}) • ID: {$identifier} • Department: " . ($department ?: 'General'),
+            $newId,
+            null,
+            $fullName,
+            'Student',
+            $department ?: 'PHINMA University of Pangasinan',
+            [
+                'email'           => $email,
+                'user_identifier' => $identifier,
+                'department'      => $department,
+                'role'            => 'student',
+            ]
+        );
 
         $createdUser = [
             'id'              => $newId,

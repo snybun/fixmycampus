@@ -9,6 +9,7 @@ export default function ReportManagement({
   onViewReport,
   onAssignReport,
   onUpdateStatus,
+  onArchiveReport,
   onDeleteReport,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -259,14 +260,14 @@ export default function ReportManagement({
                           >
                             Update
                           </button>
-                          {(report.status === 'resolved' || report.status === 'closed') && onDeleteReport && (
+                          {(report.status === 'resolved' || report.status === 'closed') && (onArchiveReport || onDeleteReport) && (
                             <button
                               type="button"
-                              className="admin-btn-action-delete"
-                              onClick={() => onDeleteReport(report)}
-                              title="Delete fixed report from database"
+                              className="admin-btn-action-archive"
+                              onClick={() => (onArchiveReport || onDeleteReport)(report)}
+                              title="Archive fixed report into History Logs"
                             >
-                              Delete
+                              Archive
                             </button>
                           )}
                         </div>

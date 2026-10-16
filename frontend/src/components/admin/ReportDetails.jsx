@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, UploadCloud, CheckCircle2, Trash2 } from 'lucide-react';
+import { ArrowLeft, UploadCloud, CheckCircle2, Archive, Trash2 } from 'lucide-react';
 import ConfirmationModal from '../common/ConfirmationModal';
 
 export default function ReportDetails({
@@ -8,6 +8,7 @@ export default function ReportDetails({
   onBack,
   onAssignSubmit,
   onStatusSubmit,
+  onArchive,
   onDelete,
 }) {
   const [selectedStaffId, setSelectedStaffId] = useState(
@@ -102,15 +103,16 @@ export default function ReportDetails({
           </span>
         </div>
 
-        {(report.status === 'resolved' || report.status === 'closed') && onDelete && (
+        {(report.status === 'resolved' || report.status === 'closed') && (onArchive || onDelete) && (
           <button
             type="button"
-            className="admin-btn-delete-report"
-            onClick={() => onDelete(report)}
-            title="Delete fixed report from database"
+            className="admin-btn-archive-report"
+            onClick={() => (onArchive || onDelete)(report)}
+            title="Archive fixed report into History Logs"
+            id="admin-archive-report-header-btn"
           >
-            <Trash2 size={16} />
-            <span>Delete Fixed Report</span>
+            <Archive size={16} />
+            <span>Archive Fixed Report</span>
           </button>
         )}
       </div>
@@ -254,21 +256,22 @@ export default function ReportDetails({
             </form>
           </div>
 
-          {/* Card 3: Delete Fixed Report (Database Clean Up) */}
-          {(report.status === 'resolved' || report.status === 'closed') && onDelete && (
-            <div className="admin-action-card admin-action-card-delete">
-              <h3 className="admin-action-card-title">Clean Up Database</h3>
+          {/* Card 3: Archive Fixed Report */}
+          {(report.status === 'resolved' || report.status === 'closed') && (onArchive || onDelete) && (
+            <div className="admin-action-card admin-action-card-archive">
+              <h3 className="admin-action-card-title">Archive Incident</h3>
               <p style={{ fontSize: '0.84rem', color: '#64748b', marginBottom: 14 }}>
-                This report is marked as fixed. You can delete it from the database to keep reports organized and avoid clutter.
+                This report is marked as fixed. You can archive it to safely remove it from active lists and store it in History Logs.
               </p>
               <button
                 type="button"
-                className="admin-btn-delete-report"
+                className="admin-btn-archive-report"
                 style={{ width: '100%', justifyContent: 'center' }}
-                onClick={() => onDelete(report)}
+                onClick={() => (onArchive || onDelete)(report)}
+                id="admin-archive-report-card-btn"
               >
-                <Trash2 size={16} />
-                <span>Delete Fixed Report</span>
+                <Archive size={16} />
+                <span>Archive Fixed Report</span>
               </button>
             </div>
           )}

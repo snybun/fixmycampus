@@ -13,6 +13,7 @@ export default function FacilitiesDashboard({
   recentReports = [],
   onViewReport,
   onAssignReport,
+  onArchiveReport,
   onDeleteReport,
 }) {
   const total = stats?.total_reports || 0;
@@ -378,14 +379,14 @@ export default function FacilitiesDashboard({
                         >
                           Assign
                         </button>
-                        {(report.status === 'resolved' || report.status === 'closed') && onDeleteReport && (
+                        {(report.status === 'resolved' || report.status === 'closed') && (onArchiveReport || onDeleteReport) && (
                           <button
                             type="button"
-                            className="admin-btn-action-delete"
-                            onClick={() => onDeleteReport(report)}
-                            title="Delete fixed report from database"
+                            className="admin-btn-action-archive"
+                            onClick={() => (onArchiveReport || onDeleteReport)(report)}
+                            title="Archive fixed report into History Logs"
                           >
-                            Delete
+                            Archive
                           </button>
                         )}
                       </div>

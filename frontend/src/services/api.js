@@ -92,6 +92,91 @@ export async function deleteReport(reportId) {
   }
 }
 
+export async function archiveReport(reportId) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=archive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ report_id: reportId }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error archiving report:', err);
+    return { success: false, message: 'Connection error while archiving report.' };
+  }
+}
+
+export async function restoreReport(reportId) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=unarchive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ report_id: reportId }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error restoring report:', err);
+    return { success: false, message: 'Connection error while restoring report.' };
+  }
+}
+
+export async function fetchHistoryLogs({ page = 1, limit = 10, type = 'all', search = '' } = {}) {
+  try {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      type,
+    });
+    if (search) params.append('search', search);
+
+    const res = await fetch(`${API_BASE}/history_logs.php?${params.toString()}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching history logs:', err);
+    return {
+      success: false,
+      data: [],
+      summary: { all: 0, user_registration: 0, report_submitted: 0, status_change: 0, report_archived: 0 },
+      pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
+    };
+  }
+}
+
+export async function deleteHistoryLog(id) {
+  try {
+    const res = await fetch(`${API_BASE}/history_logs.php?action=delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting history log:', err);
+    return { success: false, message: 'Connection error while deleting history log.' };
+  }
+}
+
+export async function deleteMultipleHistoryLogs(ids = [], { clearAll = false, type = 'all' } = {}) {
+  try {
+    const res = await fetch(`${API_BASE}/history_logs.php?action=delete_multiple`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ ids, clear_all: clearAll, type }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting multiple history logs:', err);
+    return { success: false, message: 'Connection error while clearing history logs.' };
+  }
+}
+
 export async function fetchNotifications(userId = null, dashboard = null) {
   try {
     const params = new URLSearchParams();
