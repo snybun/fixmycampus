@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import {
   History,
   Search,
@@ -15,11 +15,6 @@ import {
   ChevronRight,
   Shield,
   User,
-  Filter,
-  Check,
-  ChevronDown,
-  SlidersHorizontal,
-  X,
 } from 'lucide-react';
 import { fetchHistoryLogs, deleteHistoryLog } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
@@ -49,29 +44,6 @@ export default function HistoryLogView({ onViewReport }) {
   const [logToDelete, setLogToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
-  const filterDropdownRef = useRef(null);
-
-  useEffect(() => {
-    function handleClickOutside(event) {
-      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
-        setIsFilterOpen(false);
-      }
-    }
-    function handleKeyDown(event) {
-      if (event.key === 'Escape') {
-        setIsFilterOpen(false);
-      }
-    }
-    if (isFilterOpen) {
-      document.addEventListener('mousedown', handleClickOutside);
-      document.addEventListener('keydown', handleKeyDown);
-    }
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('keydown', handleKeyDown);
-    };
-  }, [isFilterOpen]);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -327,8 +299,8 @@ export default function HistoryLogView({ onViewReport }) {
 
       {/* Filter and Search Controls */}
       <div className="history-controls-card">
-        {/* Search Row */}
-        <form onSubmit={handleSearchSubmit} className="admin-search-row">
+        {/* Search & Filter Row */}
+        <form onSubmit={handleSearchSubmit} className="admin-search-row" style={{ flexWrap: 'wrap' }}>
           <div className="admin-search-input-wrap">
             <Search size={18} />
             <input
@@ -339,6 +311,7 @@ export default function HistoryLogView({ onViewReport }) {
               onChange={(e) => setSearchInput(e.target.value)}
             />
           </div>
+
           <button type="submit" className="admin-btn-black">
             Search
           </button>
@@ -356,123 +329,38 @@ export default function HistoryLogView({ onViewReport }) {
             </button>
           )}
 
-          {/* Filter Symbol button with Popover */}
-          <div className="history-filter-wrap" ref={filterDropdownRef}>
-            <button
-              type="button"
-              className={`history-filter-trigger-btn ${isFilterOpen ? 'active' : ''}`}
-              onClick={() => setIsFilterOpen((prev) => !prev)}
-              title="Filter & Pagination settings"
-              id="history-filter-symbol-btn"
-              aria-expanded={isFilterOpen}
-              aria-haspopup="true"
+          <select
+            className="admin-filter-select"
+            value={activeType}
+            onChange={(e) => handleTypeChange(e.target.value)}
+            title="Filter by log category"
+          >
+            <option value="all">All Logs ({summary.all})</option>
+            <option value="user_registration">User Sign-ups ({summary.user_registration})</option>
+            <option value="report_submitted">Reports Logged ({summary.report_submitted})</option>
+            <option value="status_change">Status Updates ({summary.status_change})</option>
+            <option value="report_archived">Archived Reports ({summary.report_archived})</option>
+          </select>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
+              Limit:
+            </span>
+            <select
+              className="admin-filter-select"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              title="Items per page limit"
             >
-              <Filter size={17} className="history-filter-icon" />
-              <span>Filter</span>
-              <span className="history-filter-active-badge">{pageSize} / page</span>
-              <ChevronDown size={14} className={`history-filter-chevron ${isFilterOpen ? 'open' : ''}`} />
-            </button>
-
-            {isFilterOpen && (
-              <div className="history-filter-dropdown" role="dialog" aria-label="Filter and Pagination settings">
-                <div className="history-filter-dropdown-header">
-                  <div className="history-filter-dropdown-title">
-                    <Filter size={15} style={{ color: '#059669' }} />
-                    <span>Filter &amp; Pagination</span>
-                  </div>
-                  <button
-                    type="button"
-                    className="history-filter-dropdown-close"
-                    onClick={() => setIsFilterOpen(false)}
-                    aria-label="Close filter options"
-                  >
-                    <X size={15} />
-                  </button>
-                </div>
-
-                {/* Pagination Section: 5, 10, 20, 50, 100 per page */}
-                <div className="history-filter-group">
-                  <div className="history-filter-group-header">
-                    <SlidersHorizontal size={13} />
-                    <span>Pagination (Per Page)</span>
-                  </div>
-                  <div className="history-filter-page-options">
-                    {[5, 10, 20, 50, 100].map((size) => (
-                      <button
-                        key={size}
-                        type="button"
-                        className={`history-filter-page-option ${pageSize === size ? 'selected' : ''}`}
-                        onClick={() => {
-                          setPageSize(size);
-                          setCurrentPage(1);
-                        }}
-                      >
-                        <span className="history-filter-page-label">
-                          <strong>{size}</strong> per page
-                        </span>
-                        {pageSize === size && <Check size={14} className="history-filter-check-icon" />}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Filter by Category Section */}
-                <div className="history-filter-group">
-                  <div className="history-filter-group-header">
-                    <History size={13} />
-                    <span>Filter by Log Category</span>
-                  </div>
-                  <div className="history-filter-type-options">
-                    {[
-                      { key: 'all', label: 'All Logs', count: summary.all },
-                      { key: 'user_registration', label: 'User Sign-ups', count: summary.user_registration },
-                      { key: 'report_submitted', label: 'Reports Logged', count: summary.report_submitted },
-                      { key: 'status_change', label: 'Status Updates', count: summary.status_change },
-                      { key: 'report_archived', label: 'Archived Reports', count: summary.report_archived },
-                    ].map((item) => (
-                      <button
-                        key={item.key}
-                        type="button"
-                        className={`history-filter-type-option ${activeType === item.key ? 'selected' : ''}`}
-                        onClick={() => {
-                          handleTypeChange(item.key);
-                        }}
-                      >
-                        <span className="history-filter-type-label">{item.label}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          <span className="history-filter-badge-count">{item.count}</span>
-                          {activeType === item.key && <Check size={14} className="history-filter-check-icon" />}
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* Actions Footer */}
-                <div className="history-filter-dropdown-footer">
-                  <button
-                    type="button"
-                    className="history-filter-reset-btn"
-                    onClick={() => {
-                      setPageSize(10);
-                      handleTypeChange('all');
-                      setSearchInput('');
-                      setAppliedSearch('');
-                      setCurrentPage(1);
-                    }}
-                  >
-                    Reset Defaults
-                  </button>
-                  <button
-                    type="button"
-                    className="history-filter-done-btn"
-                    onClick={() => setIsFilterOpen(false)}
-                  >
-                    Done
-                  </button>
-                </div>
-              </div>
-            )}
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+              <option value={100}>100 per page</option>
+            </select>
           </div>
         </form>
 
