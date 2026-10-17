@@ -30,6 +30,7 @@ import {
   deleteReport,
   archiveReport,
   addStaffMember,
+  removeStaffMember,
   addBuilding,
   updateBuilding,
   deleteBuilding,
@@ -268,6 +269,19 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       await refreshData();
     } else {
       alert(res?.message || res?.error || 'Failed to add staff member.');
+    }
+  };
+
+  // Remove Maintenance Staff Member from Database
+  const handleRemoveStaff = async (staffId, details) => {
+    const res = await removeStaffMember(staffId, details);
+    if (res?.success) {
+      showToast(res.message || 'Staff member removed successfully.');
+      await refreshData();
+      return true;
+    } else {
+      alert(res?.message || res?.error || 'Failed to remove staff member.');
+      return false;
     }
   };
 
@@ -607,6 +621,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <MaintenanceStaff
             staff={staff}
             onAddStaff={handleAddStaff}
+            onRemoveStaff={handleRemoveStaff}
           />
         )}
 

@@ -13,10 +13,13 @@ import {
   Layers,
   ChevronRight,
   TrendingUp,
+  Trash2,
+  UserX,
+  AlertTriangle,
 } from 'lucide-react';
 import { fetchStaffStats } from '../../services/api';
 
-export default function MaintenanceStaff({ staff = [], onAddStaff }) {
+export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff }) {
   const [showAddModal, setShowAddModal] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
@@ -29,6 +32,35 @@ export default function MaintenanceStaff({ staff = [], onAddStaff }) {
   const [selectedStaffForStats, setSelectedStaffForStats] = useState(null);
   const [staffStatsLoading, setStaffStatsLoading] = useState(false);
   const [staffStatsData, setStaffStatsData] = useState(null);
+
+  // Deletion / Removal Modal State
+  const [staffToDelete, setStaffToDelete] = useState(null);
+  const [deleteReason, setDeleteReason] = useState('Resignation');
+  const [deleteNotes, setDeleteNotes] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleOpenDeleteModal = (member) => {
+    setStaffToDelete(member);
+    setDeleteReason('Resignation');
+    setDeleteNotes('');
+  };
+
+  const handleConfirmDelete = async () => {
+    if (!staffToDelete || !onRemoveStaff) return;
+    setIsDeleting(true);
+    try {
+      const ok = await onRemoveStaff(staffToDelete.id, {
+        reason: deleteReason,
+        notes: deleteNotes,
+      });
+      if (ok) {
+        setStaffToDelete(null);
+        setDeleteNotes('');
+      }
+    } finally {
+      setIsDeleting(false);
+    }
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -149,19 +181,37 @@ export default function MaintenanceStaff({ staff = [], onAddStaff }) {
                   </div>
                 </div>
 
-                {/* View Stats Button (Replaces removed 'Available' badge as requested) */}
-                <button
-                  type="button"
-                  className="admin-staff-view-stats-btn"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    handleOpenStats(member);
-                  }}
-                  title={`View stats for ${member.full_name}`}
-                >
-                  <BarChart2 size={13} />
-                  <span>View Stats</span>
-                </button>
+                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  {/* View Stats Button */}
+                  <button
+                    type="button"
+                    className="admin-staff-view-stats-btn"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleOpenStats(member);
+                    }}
+                    title={`View stats for ${member.full_name}`}
+                  >
+                    <BarChart2 size={13} />
+                    <span>View Stats</span>
+                  </button>
+
+                  {/* Remove Staff Button */}
+                  {onRemoveStaff && (
+                    <button
+                      type="button"
+                      className="admin-staff-remove-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenDeleteModal(member);
+                      }}
+                      title={`Remove ${member.full_name} (Resignation / Departure)`}
+                      aria-label={`Remove ${member.full_name}`}
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div
@@ -534,7 +584,33 @@ export default function MaintenanceStaff({ staff = [], onAddStaff }) {
             )}
 
             {/* Modal Footer */}
-            <div className="admin-modal-footer" style={{ marginTop: '1.5rem' }}>
+            <div
+              className="admin-modal-footer"
+              style={{
+                marginTop: '1.5rem',
+                display: 'flex',
+                justifyContent: onRemoveStaff ? 'space-between' : 'flex-end',
+                alignItems: 'center',
+                flexWrap: 'wrap',
+                gap: '10px',
+              }}
+            >
+              {onRemoveStaff && (
+                <button
+                  type="button"
+                  className="admin-staff-modal-remove-btn"
+                  onClick={() => {
+                    const target = staffStatsData?.staff || selectedStaffForStats;
+                    setSelectedStaffForStats(null);
+                    handleOpenDeleteModal(target);
+                  }}
+                  title="Remove this staff member from active roster"
+                >
+                  <Trash2 size={14} />
+                  <span>Remove Staff Member</span>
+                </button>
+              )}
+
               <button
                 type="button"
                 className="admin-btn-black"
@@ -640,6 +716,228 @@ export default function MaintenanceStaff({ staff = [], onAddStaff }) {
                   disabled={isSubmitting}
                 >
                   {isSubmitting ? 'Saving...' : 'Add Personnel'}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* --------------------------------------------------------------------
+          REMOVE MAINTENANCE STAFF MODAL (Resignation & Circumstances)
+          -------------------------------------------------------------------- */}
+      {staffToDelete && (
+        <div
+          className="admin-modal-backdrop"
+          onClick={() => {
+            if (!isDeleting) setStaffToDelete(null);
+          }}
+          role="dialog"
+          aria-modal="true"
+        >
+          <div
+            className="admin-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+            style={{ maxWidth: '520px' }}
+          >
+            <div className="admin-modal-header" style={{ marginBottom: '1rem' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: '10px' }}>
+                <div
+                  style={{
+                    width: '38px',
+                    height: '38px',
+                    borderRadius: '10px',
+                    backgroundColor: '#fee2e2',
+                    border: '1px solid #fecaca',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    color: '#dc2626',
+                    flexShrink: 0,
+                  }}
+                >
+                  <UserX size={20} strokeWidth={2.2} />
+                </div>
+                <div>
+                  <h3 className="admin-modal-title" style={{ fontSize: '1.1rem', margin: 0 }}>
+                    Remove Maintenance Staff
+                  </h3>
+                  <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--admin-text-muted)' }}>
+                    Record resignation or personnel departure
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={() => {
+                  if (!isDeleting) setStaffToDelete(null);
+                }}
+                disabled={isDeleting}
+                aria-label="Close modal"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <form
+              onSubmit={(e) => {
+                e.preventDefault();
+                handleConfirmDelete();
+              }}
+            >
+              <div style={{ padding: '4px 0 16px 0' }}>
+                {/* Staff Member Info Banner */}
+                <div
+                  style={{
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '12px',
+                    padding: '12px 14px',
+                    backgroundColor: '#f8fafc',
+                    border: '1px solid #e2e8f0',
+                    borderRadius: '10px',
+                    marginBottom: '14px',
+                  }}
+                >
+                  <div
+                    style={{
+                      width: '42px',
+                      height: '42px',
+                      borderRadius: '50%',
+                      backgroundColor: '#e2e8f0',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontWeight: 700,
+                      color: '#334155',
+                      fontSize: '0.95rem',
+                      flexShrink: 0,
+                    }}
+                  >
+                    {staffToDelete.full_name
+                      ? staffToDelete.full_name.split(' ').map((n) => n[0]).slice(0, 2).join('')
+                      : 'MC'}
+                  </div>
+                  <div style={{ flex: 1, minWidth: 0 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '8px', flexWrap: 'wrap' }}>
+                      <span style={{ fontWeight: 600, color: '#0f172a', fontSize: '0.95rem' }}>
+                        {staffToDelete.full_name}
+                      </span>
+                      {staffToDelete.user_identifier && (
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            padding: '2px 7px',
+                            borderRadius: '4px',
+                            background: '#e0e7ff',
+                            color: '#3730a3',
+                            fontWeight: 600,
+                          }}
+                        >
+                          {staffToDelete.user_identifier}
+                        </span>
+                      )}
+                    </div>
+                    <p style={{ margin: '2px 0 0', fontSize: '0.8rem', color: '#64748b' }}>
+                      {staffToDelete.department || 'General Maintenance'} · {staffToDelete.email}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Work Order Warning Callout if active jobs */}
+                {staffToDelete.active_jobs > 0 && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '10px',
+                      padding: '12px 14px',
+                      backgroundColor: '#fffbeb',
+                      border: '1px solid #fde68a',
+                      borderRadius: '10px',
+                      marginBottom: '16px',
+                      fontSize: '0.83rem',
+                      color: '#92400e',
+                      lineHeight: '1.45',
+                    }}
+                  >
+                    <AlertTriangle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
+                    <div>
+                      <strong>{staffToDelete.active_jobs} Active Work Order(s) Assigned:</strong>
+                      <p style={{ margin: '4px 0 0 0' }}>
+                        Removing this personnel will automatically unassign their active repair tickets and return them to
+                        {' '}<em>Under Review</em> so they can be reassigned to other workers.
+                      </p>
+                    </div>
+                  </div>
+                )}
+
+                {/* Reason Selection */}
+                <div className="admin-form-group">
+                  <label className="admin-form-label" style={{ fontWeight: 600 }}>
+                    Circumstance / Reason for Removal *
+                  </label>
+                  <select
+                    className="admin-select-input"
+                    value={deleteReason}
+                    onChange={(e) => setDeleteReason(e.target.value)}
+                    required
+                  >
+                    <option value="Resignation">Staff Resignation (Notice Tendered)</option>
+                    <option value="End of Contract">Contract Concluded / End of Term</option>
+                    <option value="Transferred">Transferred to Another Department / Branch</option>
+                    <option value="Disciplinary Action">Administrative / Disciplinary Circumstances</option>
+                    <option value="Other">Other Operational Circumstances</option>
+                  </select>
+                </div>
+
+                {/* Optional Notes */}
+                <div className="admin-form-group" style={{ marginBottom: 0 }}>
+                  <label className="admin-form-label">
+                    Additional Notes / Handover Remarks (Optional)
+                  </label>
+                  <textarea
+                    className="admin-select-input"
+                    rows={3}
+                    placeholder="e.g. Effective immediately; physical access keys surrendered to facilities office."
+                    value={deleteNotes}
+                    onChange={(e) => setDeleteNotes(e.target.value)}
+                    style={{ resize: 'vertical' }}
+                  />
+                </div>
+              </div>
+
+              <div
+                className="admin-modal-footer"
+                style={{
+                  borderTop: '1px solid #f1f5f9',
+                  paddingTop: '14px',
+                  display: 'flex',
+                  justifyContent: 'flex-end',
+                  gap: '10px',
+                }}
+              >
+                <button
+                  type="button"
+                  className="admin-btn-secondary"
+                  onClick={() => setStaffToDelete(null)}
+                  disabled={isDeleting}
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="admin-btn-danger"
+                  disabled={isDeleting}
+                  style={{
+                    display: 'inline-flex',
+                    alignItems: 'center',
+                    gap: '6px',
+                  }}
+                >
+                  <Trash2 size={15} />
+                  <span>{isDeleting ? 'Removing Staff...' : 'Confirm & Remove Staff'}</span>
                 </button>
               </div>
             </form>

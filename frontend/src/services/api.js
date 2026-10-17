@@ -387,6 +387,25 @@ export async function addStaffMember(data) {
   }
 }
 
+export async function removeStaffMember(staffId, details = {}) {
+  try {
+    const res = await fetch(`${API_BASE}/staff.php?action=delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        staff_id: staffId,
+        reason: details.reason || 'Resignation',
+        notes: details.notes || '',
+      }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error removing staff member:', err);
+    return { success: false, message: err.message };
+  }
+}
+
 export async function fetchUsers(filters = {}) {
   try {
     const query = new URLSearchParams(filters).toString();
