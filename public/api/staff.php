@@ -289,26 +289,33 @@ try {
                 (
                     SELECT COUNT(*) 
                     FROM `report_assignments` ra 
+                    JOIN `reports` rep ON ra.report_id = rep.id
                     WHERE ra.assigned_to = u.id 
                       AND ra.status IN ('pending', 'accepted', 'in_progress')
+                      AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected')
                 ) AS active_jobs,
                 (
                     SELECT COUNT(*) 
                     FROM `report_assignments` ra 
+                    JOIN `reports` rep ON ra.report_id = rep.id
                     WHERE ra.assigned_to = u.id 
-                      AND ra.status = 'in_progress'
+                      AND (ra.status = 'in_progress' OR rep.status = 'in_progress')
+                      AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected')
                 ) AS in_progress_jobs,
                 (
                     SELECT COUNT(*) 
                     FROM `report_assignments` ra 
+                    JOIN `reports` rep ON ra.report_id = rep.id
                     WHERE ra.assigned_to = u.id 
                       AND ra.status = 'pending'
+                      AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected', 'in_progress')
                 ) AS pending_jobs,
                 (
                     SELECT COUNT(*) 
                     FROM `report_assignments` ra 
+                    JOIN `reports` rep ON ra.report_id = rep.id
                     WHERE ra.assigned_to = u.id 
-                      AND ra.status = 'completed'
+                      AND (ra.status = 'completed' OR rep.status IN ('resolved', 'closed'))
                 ) AS completed_jobs
             FROM `users` u
             JOIN `roles` r ON u.role_id = r.id
@@ -336,7 +343,12 @@ try {
         $jobs = db_fetch_all("
             SELECT 
                 ra.id AS assignment_id,
-                ra.status AS assignment_status,
+                CASE 
+                    WHEN r.status IN ('resolved', 'closed') THEN 'completed'
+                    WHEN r.status = 'in_progress' THEN 'in_progress'
+                    WHEN r.status = 'assigned' THEN 'accepted'
+                    ELSE ra.status 
+                END AS assignment_status,
                 ra.assigned_at,
                 ra.assignment_notes,
                 r.id AS report_id,
@@ -399,25 +411,30 @@ try {
                 JOIN `reports` rep ON ra.report_id = rep.id
                 WHERE ra.assigned_to = u.id 
                   AND ra.status IN ('pending', 'accepted', 'in_progress')
-                  AND rep.status NOT IN ('resolved', 'closed', 'archived')
+                  AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected')
             ) AS active_jobs,
             (
                 SELECT COUNT(*) 
                 FROM `report_assignments` ra 
+                JOIN `reports` rep ON ra.report_id = rep.id
                 WHERE ra.assigned_to = u.id 
-                  AND ra.status = 'in_progress'
+                  AND (ra.status = 'in_progress' OR rep.status = 'in_progress')
+                  AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected')
             ) AS in_progress_jobs,
             (
                 SELECT COUNT(*) 
                 FROM `report_assignments` ra 
+                JOIN `reports` rep ON ra.report_id = rep.id
                 WHERE ra.assigned_to = u.id 
                   AND ra.status = 'pending'
+                  AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected', 'in_progress')
             ) AS pending_jobs,
             (
                 SELECT COUNT(*) 
                 FROM `report_assignments` ra 
+                JOIN `reports` rep ON ra.report_id = rep.id
                 WHERE ra.assigned_to = u.id 
-                  AND ra.status = 'completed'
+                  AND (ra.status = 'completed' OR rep.status IN ('resolved', 'closed'))
             ) AS completed_jobs
         FROM `users` u
         JOIN `roles` r ON u.role_id = r.id

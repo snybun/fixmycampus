@@ -265,7 +265,13 @@ export default function ReportManagement({
                           <button
                             type="button"
                             className="admin-btn-action-update"
-                            onClick={() => onUpdateStatus(report)}
+                            onClick={() => {
+                              if (isResolved) return;
+                              onUpdateStatus(report);
+                            }}
+                            disabled={isResolved}
+                            style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                            title={isResolved ? 'Status locked: Issue already fixed' : 'Update report status'}
                           >
                             Update
                           </button>
@@ -372,7 +378,13 @@ export default function ReportManagement({
                     <button
                       type="button"
                       className="admin-btn-action-update"
-                      onClick={() => onUpdateStatus(report)}
+                      onClick={() => {
+                        if (isResolved) return;
+                        onUpdateStatus(report);
+                      }}
+                      disabled={isResolved}
+                      style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                      title={isResolved ? 'Status locked: Issue already fixed' : 'Update report status'}
                     >
                       Update
                     </button>

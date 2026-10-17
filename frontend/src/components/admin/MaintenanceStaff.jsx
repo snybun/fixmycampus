@@ -23,7 +23,8 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
   const [showAddModal, setShowAddModal] = useState(false);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
-  const [department, setDepartment] = useState('');
+  const [selectedDepartment, setSelectedDepartment] = useState('');
+  const [customDepartment, setCustomDepartment] = useState('');
   const [phone, setPhone] = useState('');
   const [roleId, setRoleId] = useState('3'); // 3 = technician
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -66,20 +67,31 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
     e.preventDefault();
     if (!fullName || !email) return;
 
+    const resolvedDept =
+      selectedDepartment === 'Others'
+        ? (customDepartment.trim() || 'General Maintenance')
+        : (selectedDepartment || 'General Maintenance');
+
     setIsSubmitting(true);
     await onAddStaff({
       full_name: fullName,
       email,
-      department: department || 'General Maintenance',
+      department: resolvedDept,
       phone_number: phone,
       role_id: Number(roleId),
     });
     setIsSubmitting(false);
+    handleCloseAddModal();
+  };
+
+  const handleCloseAddModal = () => {
     setShowAddModal(false);
     setFullName('');
     setEmail('');
-    setDepartment('');
+    setSelectedDepartment('');
+    setCustomDepartment('');
     setPhone('');
+    setRoleId('3');
   };
 
   const handleOpenStats = async (member) => {
@@ -152,10 +164,10 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
           // Initials
           const initials = member.full_name
             ? member.full_name
-                .split(' ')
-                .map((n) => n[0])
-                .slice(0, 2)
-                .join('')
+              .split(' ')
+              .map((n) => n[0])
+              .slice(0, 2)
+              .join('')
             : 'MC';
 
           const totalAssigned =
@@ -278,10 +290,10 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                 >
                   {selectedStaffForStats.full_name
                     ? selectedStaffForStats.full_name
-                        .split(' ')
-                        .map((n) => n[0])
-                        .slice(0, 2)
-                        .join('')
+                      .split(' ')
+                      .map((n) => n[0])
+                      .slice(0, 2)
+                      .join('')
                     : 'MC'}
                 </div>
 
@@ -547,14 +559,14 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                                   job.assignment_status === 'completed'
                                     ? '#ecfdf5'
                                     : job.assignment_status === 'in_progress'
-                                    ? '#fffbeb'
-                                    : '#f1f5f9',
+                                      ? '#fffbeb'
+                                      : '#f1f5f9',
                                 color:
                                   job.assignment_status === 'completed'
                                     ? '#065f46'
                                     : job.assignment_status === 'in_progress'
-                                    ? '#92400e'
-                                    : '#475569',
+                                      ? '#92400e'
+                                      : '#475569',
                               }}
                             >
                               {(job.assignment_status || 'pending').replace('_', ' ')}
@@ -627,7 +639,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
           ADD STAFF MEMBER MODAL
           -------------------------------------------------------------------- */}
       {showAddModal && (
-        <div className="admin-modal-backdrop" onClick={() => setShowAddModal(false)}>
+        <div className="admin-modal-backdrop" onClick={handleCloseAddModal}>
           <div
             className="admin-modal-dialog"
             onClick={(e) => e.stopPropagation()}
@@ -637,7 +649,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
               <button
                 type="button"
                 className="admin-modal-close-btn"
-                onClick={() => setShowAddModal(false)}
+                onClick={handleCloseAddModal}
               >
                 <X size={18} />
               </button>
@@ -662,21 +674,52 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                   type="email"
                   required
                   className="admin-select-input"
-                  placeholder="e.g. worker.juan@fixmycampus.edu"
+                  placeholder="e.g. worker.juan@phinmaed.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                 />
               </div>
 
               <div className="admin-form-group">
-                <label className="admin-form-label">Department / Specialization</label>
-                <input
-                  type="text"
+                <label className="admin-form-label">Department / Specialization *</label>
+                <select
                   className="admin-select-input"
-                  placeholder="e.g. Electrical, HVAC, Plumbing, Carpentry"
-                  value={department}
-                  onChange={(e) => setDepartment(e.target.value)}
-                />
+                  value={selectedDepartment}
+                  onChange={(e) => {
+                    setSelectedDepartment(e.target.value);
+                    if (e.target.value !== 'Others') {
+                      setCustomDepartment('');
+                    }
+                  }}
+                  required
+                >
+                  <option value="">Select Specialization / Role</option>
+                  <option value="Electrical">Electrical (Lighting, Wiring, Power)</option>
+                  <option value="HVAC / Air Conditioning">HVAC / Air Conditioning (Cooling & Ventilation)</option>
+                  <option value="Plumbing">Plumbing (Water Systems, Restroom & Drainage)</option>
+                  <option value="Carpentry & Woodwork">Carpentry & Woodwork (Furniture, Doors & Locks)</option>
+                  <option value="Painting & Masonry">Painting & Masonry (Walls, Floors & Finishes)</option>
+                  <option value="Audio-Visual & Classroom Tech">Audio-Visual & Classroom Tech (Projectors, Sounds)</option>
+                  <option value="Network & Telecommunications">Network & Telecommunications (Wi-Fi & Cabling)</option>
+                  <option value="Janitorial & Sanitation">Janitorial & Sanitation (Cleaning & Waste)</option>
+                  <option value="Grounds & Landscaping">Grounds & Landscaping (Campus Grounds)</option>
+                  <option value="General Maintenance">General Maintenance (Physical Plant)</option>
+                  <option value="Others">Others</option>
+                </select>
+
+                {selectedDepartment === 'Others' && (
+                  <div style={{ marginTop: '8px' }}>
+                    <input
+                      type="text"
+                      required
+                      className="admin-select-input"
+                      placeholder="Please specify role / specialization..."
+                      value={customDepartment}
+                      onChange={(e) => setCustomDepartment(e.target.value)}
+                      autoFocus
+                    />
+                  </div>
+                )}
               </div>
 
               <div className="admin-form-group">
@@ -706,7 +749,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                 <button
                   type="button"
                   className="admin-btn-secondary"
-                  onClick={() => setShowAddModal(false)}
+                  onClick={handleCloseAddModal}
                 >
                   Cancel
                 </button>

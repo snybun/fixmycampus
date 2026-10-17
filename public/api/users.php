@@ -57,8 +57,8 @@ try {
     }
 
     if (!empty($search)) {
-        $sql .= " AND (u.full_name LIKE :s OR u.email LIKE :s OR u.user_identifier LIKE :s OR u.department LIKE :s)";
-        $params[':s'] = "%{$search}%";
+        $sql .= " AND CONCAT_WS(' ', u.user_identifier, u.full_name, u.email, u.department) LIKE :search";
+        $params[':search'] = "%{$search}%";
     }
 
     $sql .= " ORDER BY u.role_id ASC, u.full_name ASC";

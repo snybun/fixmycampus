@@ -631,6 +631,14 @@ try {
             ], 404);
         }
 
+        $currentRawStatus = strtolower($report['status'] ?? '');
+        if (in_array($currentRawStatus, ['resolved', 'closed', 'fixed'], true)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'This incident is already resolved and locked. Worker cannot be reassigned.'
+            ], 400);
+        }
+
         $pdo = \FixMyCampus\Core\Database::getConnection();
         $pdo->beginTransaction();
 
@@ -749,6 +757,14 @@ try {
             ], 404);
         }
 
+        $currentRawStatus = strtolower($report['status'] ?? '');
+        if (in_array($currentRawStatus, ['resolved', 'closed', 'fixed'], true)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'This incident is already resolved and locked. Status cannot be modified.'
+            ], 400);
+        }
+
         $pdo = \FixMyCampus\Core\Database::getConnection();
         $pdo->beginTransaction();
 
@@ -757,6 +773,15 @@ try {
                 ':status' => $newStatus,
                 ':id'     => $reportId
             ]);
+
+            // Synchronize work order assignment status with report status transition
+            if (in_array($newStatus, ['resolved', 'closed'], true)) {
+                db_execute("UPDATE `report_assignments` SET `status` = 'completed', `updated_at` = NOW() WHERE `report_id` = :id", [':id' => $reportId]);
+            } elseif ($newStatus === 'in_progress') {
+                db_execute("UPDATE `report_assignments` SET `status` = 'in_progress', `updated_at` = NOW() WHERE `report_id` = :id", [':id' => $reportId]);
+            } elseif ($newStatus === 'assigned') {
+                db_execute("UPDATE `report_assignments` SET `status` = 'accepted', `updated_at` = NOW() WHERE `report_id` = :id", [':id' => $reportId]);
+            }
 
             db_execute("
                 INSERT INTO `report_status_history` (`report_id`, `changed_by`, `previous_status`, `new_status`, `remarks`)
@@ -1246,8 +1271,8 @@ try {
     }
 
     if (!empty($search)) {
-        $sql .= " AND (r.title LIKE :s OR r.ticket_number LIKE :s OR u.full_name LIKE :s OR b.name LIKE :s OR l.room_number LIKE :s)";
-        $params[':s'] = "%{$search}%";
+        $sql .= " AND CONCAT_WS(' ', r.ticket_number, r.title, u.full_name, b.name, l.room_number, r.description) LIKE :search";
+        $params[':search'] = "%{$search}%";
     }
 
     $includeArchived = isset($_GET['include_archived']) && ($_GET['include_archived'] === '1' || $_GET['include_archived'] === 'true');

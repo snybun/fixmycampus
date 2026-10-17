@@ -5,7 +5,8 @@ import { fetchUsers } from '../../services/api';
 export default function UsersView() {
   const [users, setUsers] = useState([]);
   const [roleFilter, setRoleFilter] = useState('all');
-  const [search, setSearch] = useState('');
+  const [searchInput, setSearchInput] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
   const [loading, setLoading] = useState(true);
 
   // Pagination & limit selection state
@@ -15,16 +16,20 @@ export default function UsersView() {
   useEffect(() => {
     let isMounted = true;
     setLoading(true);
-    fetchUsers({ role: roleFilter !== 'all' ? roleFilter : '', search }).then((res) => {
-      if (isMounted && res.success && res.data) {
-        setUsers(res.data);
+    fetchUsers({ role: roleFilter !== 'all' ? roleFilter : '', search: appliedSearch }).then((res) => {
+      if (isMounted) {
+        if (res?.success && Array.isArray(res?.data)) {
+          setUsers(res.data);
+        } else {
+          setUsers([]);
+        }
+        setLoading(false);
       }
-      if (isMounted) setLoading(false);
     });
     return () => {
       isMounted = false;
     };
-  }, [roleFilter, search]);
+  }, [roleFilter, appliedSearch]);
 
   // Reset to page 1 whenever search, role filter, or limit changes
   const handleRoleChange = (e) => {
@@ -33,7 +38,23 @@ export default function UsersView() {
   };
 
   const handleSearchChange = (e) => {
-    setSearch(e.target.value);
+    const val = e.target.value;
+    setSearchInput(val);
+    if (val === '' && appliedSearch !== '') {
+      setAppliedSearch('');
+      setCurrentPage(1);
+    }
+  };
+
+  const handleSearchSubmit = (e) => {
+    e?.preventDefault();
+    setAppliedSearch(searchInput.trim());
+    setCurrentPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setAppliedSearch('');
     setCurrentPage(1);
   };
 
@@ -92,17 +113,30 @@ export default function UsersView() {
       </div>
 
       <div className="admin-filter-card">
-        <div className="admin-search-row" style={{ flexWrap: 'wrap' }}>
+        <form onSubmit={handleSearchSubmit} className="admin-search-row" style={{ flexWrap: 'wrap' }}>
           <div className="admin-search-input-wrap">
             <Search size={18} />
             <input
               type="text"
               className="admin-search-input"
               placeholder="Search user name, email, or institutional ID..."
-              value={search}
+              value={searchInput}
               onChange={handleSearchChange}
             />
           </div>
+
+          <button type="submit" className="admin-btn-black">
+            Search
+          </button>
+          {appliedSearch && (
+            <button
+              type="button"
+              className="admin-btn-secondary"
+              onClick={handleClearSearch}
+            >
+              Clear
+            </button>
+          )}
 
           <select
             className="admin-filter-select"
@@ -134,7 +168,7 @@ export default function UsersView() {
               <option value={100}>100 per page</option>
             </select>
           </div>
-        </div>
+        </form>
       </div>
 
       <div className="admin-table-card">

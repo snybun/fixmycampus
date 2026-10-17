@@ -126,8 +126,8 @@ try {
     }
 
     if (!empty($search)) {
-        $where[] = "(hl.title LIKE :s OR hl.description LIKE :s OR hl.actor_name LIKE :s OR hl.location_info LIKE :s OR r.ticket_number LIKE :s)";
-        $params[':s'] = "%{$search}%";
+        $where[] = "CONCAT_WS(' ', hl.title, hl.description, hl.actor_name, hl.location_info, r.ticket_number) LIKE :search";
+        $params[':search'] = "%{$search}%";
     }
 
     $whereSql = implode(' AND ', $where);

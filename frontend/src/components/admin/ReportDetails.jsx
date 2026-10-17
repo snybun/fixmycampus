@@ -48,6 +48,7 @@ export default function ReportDetails({
 
   const handleUpdate = (e) => {
     e.preventDefault();
+    if (isFixed) return;
     setShowConfirmModal(true);
   };
 
@@ -219,16 +220,24 @@ export default function ReportDetails({
           </div>
 
           {/* Card 2: Update Incident Status */}
-          <div className="admin-action-card">
+          <div
+            className="admin-action-card"
+            style={isFixed ? { opacity: 0.85, backgroundColor: '#f8fafc', borderColor: '#e2e8f0' } : {}}
+          >
             <h3 className="admin-action-card-title">Update Incident Status</h3>
 
             <form onSubmit={handleUpdate}>
               <div className="admin-form-group">
-                <label className="admin-form-label">Select New Status</label>
+                <label className="admin-form-label">
+                  {isFixed ? 'Incident Status' : 'Select New Status'}
+                </label>
                 <select
                   className="admin-select-input"
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
+                  disabled={isFixed || isUpdating}
+                  style={isFixed ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
+                  title={isFixed ? 'Status is locked because this report is already fixed / resolved' : ''}
                 >
                   <option value="submitted">Submitted</option>
                   <option value="under_review">Under Review</option>
@@ -242,25 +251,41 @@ export default function ReportDetails({
               {/* Completion Evidence Dropzone */}
               <div
                 className="admin-upload-dropzone"
-                onClick={() => setUploadProofDone(!uploadProofDone)}
-                title="Click to simulate completion proof photo upload"
+                onClick={() => {
+                  if (!isFixed) setUploadProofDone(!uploadProofDone);
+                }}
+                style={isFixed ? { cursor: 'not-allowed', opacity: 0.65, borderColor: '#cbd5e1', backgroundColor: '#f8fafc' } : {}}
+                title={isFixed ? 'Completion photo is locked for resolved incidents' : 'Click to simulate completion proof photo upload'}
               >
                 <UploadCloud size={28} />
                 <span className="admin-upload-label">
-                  {uploadProofDone ? 'Photo Attached: proof_repair.jpg' : 'Upload Completion Photo'}
+                  {isFixed
+                    ? 'Completion Evidence Attached & Verified'
+                    : uploadProofDone
+                    ? 'Photo Attached: proof_repair.jpg'
+                    : 'Upload Completion Photo'}
                 </span>
                 <span className="admin-upload-subtext">
-                  Completion Evidence Required
+                  {isFixed ? 'Verified Fixed & Resolved' : 'Completion Evidence Required'}
                 </span>
               </div>
 
               <button
                 type="submit"
                 className="admin-btn-black"
-                style={{ width: '100%', justifyContent: 'center' }}
-                disabled={isUpdating}
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  ...(isFixed ? { opacity: 0.5, cursor: 'not-allowed', backgroundColor: '#94a3b8' } : {}),
+                }}
+                disabled={isFixed || isUpdating}
+                title={isFixed ? 'Status is locked because this report is already fixed / resolved' : ''}
               >
-                {isUpdating ? 'Updating...' : 'Update Report'}
+                {isFixed
+                  ? 'Status Locked (Issue Fixed)'
+                  : isUpdating
+                  ? 'Updating...'
+                  : 'Update Report'}
               </button>
             </form>
           </div>

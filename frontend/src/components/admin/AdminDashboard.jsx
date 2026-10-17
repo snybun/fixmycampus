@@ -197,12 +197,25 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
   // Open Quick Update Status
   const handleOpenUpdate = (report) => {
+    if (!report) return;
+    const rawStatus = (report.status || '').toLowerCase();
+    const isResolved = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
+    if (isResolved) {
+      showToast('Status updates are locked because this report is already fixed / resolved.');
+      return;
+    }
     setQuickUpdateModal(report);
     setSelectedNewStatus(report.status || 'in_progress');
   };
 
   // Submit Status Update
   const handleStatusSubmit = async ({ report_id, status, remarks }) => {
+    const targetReport = reports.find((r) => r.id === report_id) || quickUpdateModal || selectedReport;
+    const rawStatus = (targetReport?.status || '').toLowerCase();
+    if (rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed') {
+      showToast('Status updates are locked because this report is already fixed / resolved.');
+      return;
+    }
     const res = await updateReportStatus({
       report_id,
       status,
