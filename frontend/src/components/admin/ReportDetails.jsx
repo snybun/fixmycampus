@@ -175,24 +175,7 @@ export default function ReportDetails({
             className="admin-action-card"
             style={isFixed ? { opacity: 0.85, backgroundColor: '#f8fafc', borderColor: '#e2e8f0' } : {}}
           >
-            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 14 }}>
-              <h3 className="admin-action-card-title" style={{ marginBottom: 0 }}>Assign Maintenance Worker</h3>
-              {isFixed && (
-                <span
-                  style={{
-                    fontSize: '0.72rem',
-                    background: '#ecfdf5',
-                    color: '#047857',
-                    border: '1px solid #a7f3d0',
-                    padding: '2px 8px',
-                    borderRadius: 999,
-                    fontWeight: 600,
-                  }}
-                >
-                  Locked (Fixed)
-                </span>
-              )}
-            </div>
+            <h3 className="admin-action-card-title">Assign Maintenance Worker</h3>
 
             <form onSubmit={handleAssign}>
               <div className="admin-form-group">
