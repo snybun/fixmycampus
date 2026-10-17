@@ -93,6 +93,16 @@ export const MODAL_PRESETS = {
     confirmText: 'Delete All',
     confirmClass: 'modal-btn-danger',
   },
+  archive_notifications: {
+    id: 'archive_notifications',
+    title: 'Archive All Notifications?',
+    message: 'Are you sure you want to archive all notifications? Archived alerts can be viewed anytime by filtering by Archived.',
+    icon: Archive,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Archive All',
+    confirmClass: 'modal-btn-primary',
+  },
   start_repair: {
     id: 'start_repair',
     title: 'Start Repair?',

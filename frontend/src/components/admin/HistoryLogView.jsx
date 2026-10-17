@@ -363,59 +363,6 @@ export default function HistoryLogView({ onViewReport }) {
             </select>
           </div>
         </form>
-
-        {/* Category Pills */}
-        <div className="history-pills-row">
-          <button
-            type="button"
-            className={`history-pill ${activeType === 'all' ? 'active' : ''}`}
-            onClick={() => handleTypeChange('all')}
-          >
-            <History size={14} />
-            <span>All Logs</span>
-            <span className="history-pill-badge">{summary.all}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`history-pill ${activeType === 'user_registration' ? 'active' : ''}`}
-            onClick={() => handleTypeChange('user_registration')}
-          >
-            <UserPlus size={14} />
-            <span>User Sign-ups</span>
-            <span className="history-pill-badge">{summary.user_registration}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`history-pill ${activeType === 'report_submitted' ? 'active' : ''}`}
-            onClick={() => handleTypeChange('report_submitted')}
-          >
-            <AlertCircle size={14} />
-            <span>Reports Logged</span>
-            <span className="history-pill-badge">{summary.report_submitted}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`history-pill ${activeType === 'status_change' ? 'active' : ''}`}
-            onClick={() => handleTypeChange('status_change')}
-          >
-            <RefreshCcw size={14} />
-            <span>Status Updates</span>
-            <span className="history-pill-badge">{summary.status_change}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`history-pill ${activeType === 'report_archived' ? 'active' : ''}`}
-            onClick={() => handleTypeChange('report_archived')}
-          >
-            <Archive size={14} />
-            <span>Archived Reports</span>
-            <span className="history-pill-badge">{summary.report_archived}</span>
-          </button>
-        </div>
       </div>
 
       {/* Main Table */}

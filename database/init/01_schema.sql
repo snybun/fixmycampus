@@ -278,6 +278,7 @@ CREATE TABLE `notifications` (
     `title` VARCHAR(150) NOT NULL,
     `message` TEXT NOT NULL,
     `is_read` TINYINT(1) NOT NULL DEFAULT 0,
+    `is_archived` TINYINT(1) NOT NULL DEFAULT 0,
     `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
     PRIMARY KEY (`id`),
     KEY `idx_notifications_user_id` (`user_id`),

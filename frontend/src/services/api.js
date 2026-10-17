@@ -239,9 +239,9 @@ export async function markAllNotificationsRead(userId = null, dashboard = null) 
   }
 }
 
-export async function deleteNotification(id, userId = null, dashboard = null) {
+export async function archiveNotification(id, userId = null, dashboard = null) {
   try {
-    const params = new URLSearchParams({ action: 'delete' });
+    const params = new URLSearchParams({ action: 'archive' });
     if (id) params.append('id', id);
     if (userId) params.append('user_id', userId);
     if (dashboard) params.append('dashboard', dashboard);
@@ -255,14 +255,35 @@ export async function deleteNotification(id, userId = null, dashboard = null) {
     });
     return await res.json();
   } catch (err) {
-    console.error('Error deleting notification:', err);
+    console.error('Error archiving notification:', err);
     return { success: false, message: err.message };
   }
 }
 
-export async function deleteAllNotifications(userId = null, dashboard = null) {
+export async function unarchiveNotification(id, userId = null, dashboard = null) {
   try {
-    const params = new URLSearchParams({ action: 'delete_all' });
+    const params = new URLSearchParams({ action: 'unarchive' });
+    if (id) params.append('id', id);
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify({ id, user_id: userId, dashboard }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error unarchiving notification:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function archiveAllNotifications(userId = null, dashboard = null) {
+  try {
+    const params = new URLSearchParams({ action: 'archive_all' });
     if (userId) params.append('user_id', userId);
     if (dashboard) params.append('dashboard', dashboard);
     const headers = { 'Content-Type': 'application/json' };
@@ -275,9 +296,17 @@ export async function deleteAllNotifications(userId = null, dashboard = null) {
     });
     return await res.json();
   } catch (err) {
-    console.error('Error deleting all notifications:', err);
+    console.error('Error archiving all notifications:', err);
     return { success: false, message: err.message };
   }
+}
+
+export async function deleteNotification(id, userId = null, dashboard = null) {
+  return archiveNotification(id, userId, dashboard);
+}
+
+export async function deleteAllNotifications(userId = null, dashboard = null) {
+  return archiveAllNotifications(userId, dashboard);
 }
 
 export async function fetchCategories() {

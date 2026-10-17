@@ -163,46 +163,56 @@ try {
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/notifications.php?action=delete -> Delete single notification
-    // STRICT ISOLATION: A user can ONLY delete their own notification!
+    // POST /api/notifications.php?action=archive -> Soft archive single notification
     // -------------------------------------------------------------------------
-    if ($action === 'delete' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE')) {
+    if (($action === 'archive' || $action === 'delete') && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE' || $_SERVER['REQUEST_METHOD'] === 'PUT')) {
         $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
         if ($notifId > 0) {
-            db_execute("DELETE FROM `notifications` WHERE `id` = :id AND `user_id` = :uid", [
+            db_execute("UPDATE `notifications` SET `is_archived` = 1 WHERE `id` = :id AND `user_id` = :uid", [
                 ':id'  => $notifId,
                 ':uid' => $userId,
             ]);
-
-            $remaining = (int)db_fetch_column("SELECT COUNT(*) FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
-            if ($remaining === 0) {
-                $_SESSION['notifs_cleared_' . $userId] = true;
-                setcookie('notifs_cleared_' . $userId, '1', time() + 86400 * 30, '/');
-            }
         }
 
         \FixMyCampus\Core\Response::json([
             'success' => true,
-            'message' => 'Notification deleted.',
+            'message' => 'Notification archived.',
             'id'      => $notifId,
         ]);
         exit;
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/notifications.php?action=delete_all -> Delete all notifications
-    // STRICT ISOLATION: Clearing notifications ONLY affects this specific user's inbox!
+    // POST /api/notifications.php?action=unarchive -> Restore single notification
     // -------------------------------------------------------------------------
-    if ($action === 'delete_all' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE')) {
-        db_execute("DELETE FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
+    if ($action === 'unarchive' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT')) {
+        $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
-        $_SESSION['notifs_cleared_' . $userId] = true;
-        setcookie('notifs_cleared_' . $userId, '1', time() + 86400 * 30, '/');
+        if ($notifId > 0) {
+            db_execute("UPDATE `notifications` SET `is_archived` = 0 WHERE `id` = :id AND `user_id` = :uid", [
+                ':id'  => $notifId,
+                ':uid' => $userId,
+            ]);
+        }
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => 'Notification restored from archive.',
+            'id'      => $notifId,
+        ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/notifications.php?action=archive_all -> Soft archive all notifications
+    // -------------------------------------------------------------------------
+    if (($action === 'archive_all' || $action === 'delete_all') && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE' || $_SERVER['REQUEST_METHOD'] === 'PUT')) {
+        db_execute("UPDATE `notifications` SET `is_archived` = 1 WHERE `user_id` = :uid AND `is_archived` = 0", [':uid' => $userId]);
 
         \FixMyCampus\Core\Response::json([
             'success'      => true,
-            'message'      => 'All notifications deleted.',
+            'message'      => 'All notifications archived.',
             'unread_count' => 0,
             'count'        => 0,
             'data'         => [],
@@ -339,6 +349,17 @@ try {
     // -------------------------------------------------------------------------
     // GET /api/notifications.php -> List database notifications
     // -------------------------------------------------------------------------
+    $includeArchived = isset($_GET['include_archived']) && ($_GET['include_archived'] === '1' || $_GET['include_archived'] === 'true');
+    $filterParam = strtolower(trim((string)($_GET['filter'] ?? $bodyData['filter'] ?? '')));
+    $isArchivedOnly = ($filterParam === 'archived' || (isset($_GET['is_archived']) && $_GET['is_archived'] === '1'));
+
+    $archivedCondition = "AND (n.is_archived = 0 OR n.is_archived IS NULL)";
+    if ($isArchivedOnly) {
+        $archivedCondition = "AND n.is_archived = 1";
+    } elseif ($includeArchived || $dashboardContext === 'admin') {
+        $archivedCondition = "";
+    }
+
     $sql = "
         SELECT 
             n.id,
@@ -348,6 +369,7 @@ try {
             n.title,
             n.message,
             n.is_read,
+            n.is_archived,
             n.created_at,
             r.ticket_number,
             r.title AS report_title,
@@ -360,7 +382,7 @@ try {
         LEFT JOIN `reports` r ON n.report_id = r.id
         LEFT JOIN `locations` l ON r.location_id = l.id
         LEFT JOIN `buildings` b ON l.building_id = b.id
-        WHERE n.user_id = :uid
+        WHERE n.user_id = :uid {$archivedCondition}
         ORDER BY n.created_at DESC
         LIMIT 100
     ";
@@ -410,17 +432,20 @@ try {
             'badge_label'   => $badgeLabel,
             'time_ago'      => get_relative_time($row['created_at']),
             'is_read'       => (int) $row['is_read'],
+            'is_archived'   => (int) ($row['is_archived'] ?? 0),
             'created_at'    => $row['created_at'],
         ];
     }
 
-    $unreadCount = count(array_filter($notifications, fn($n) => (int)$n['is_read'] === 0));
+    $unreadCount = count(array_filter($notifications, fn($n) => (int)$n['is_read'] === 0 && (int)($n['is_archived'] ?? 0) === 0));
+    $archivedCount = count(array_filter($notifications, fn($n) => (int)($n['is_archived'] ?? 0) === 1));
 
     \FixMyCampus\Core\Response::json([
-        'success'      => true,
-        'unread_count' => $unreadCount,
-        'count'        => count($notifications),
-        'data'         => $notifications,
+        'success'        => true,
+        'unread_count'   => $unreadCount,
+        'archived_count' => $archivedCount,
+        'count'          => count($notifications),
+        'data'           => $notifications,
     ]);
 } catch (\Throwable $e) {
     \FixMyCampus\Core\Response::json([

@@ -10,14 +10,14 @@ import {
   Wrench,
   AlertOctagon,
   RefreshCw,
-  Trash2,
+  Archive,
 } from 'lucide-react';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
-  deleteNotification,
-  deleteAllNotifications,
+  archiveNotification,
+  archiveAllNotifications,
 } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 import './notifications.css';
@@ -109,7 +109,7 @@ export default function NotificationsView({
     }
   };
 
-  // Delete individual notification
+  // Archive individual notification
   const handleDeleteSingle = async (item, e) => {
     if (e) e.stopPropagation();
     const targetId = item.id;
@@ -122,23 +122,23 @@ export default function NotificationsView({
     }
 
     try {
-      await deleteNotification(targetId, currentUser?.id, 'student');
+      await archiveNotification(targetId, currentUser?.id, 'student');
     } catch (err) {
-      console.error('Error deleting notification:', err);
+      console.error('Error archiving notification:', err);
     }
   };
 
-  // Delete all notifications
+  // Archive all notifications
   const handleConfirmDeleteAll = async () => {
     setIsDeletingAll(true);
     try {
-      await deleteAllNotifications(currentUser?.id, 'student');
+      await archiveAllNotifications(currentUser?.id, 'student');
       setNotifications([]);
       if (typeof setUnreadCount === 'function') {
         setUnreadCount(0);
       }
     } catch (err) {
-      console.error('Error deleting all notifications:', err);
+      console.error('Error archiving all notifications:', err);
     } finally {
       setIsDeletingAll(false);
       setShowDeleteAllModal(false);
@@ -254,10 +254,10 @@ export default function NotificationsView({
               onClick={() => setShowDeleteAllModal(true)}
               disabled={notifications.length === 0 || isDeletingAll}
               id="notif-delete-all-btn"
-              title="Delete all notifications"
+              title="Archive all notifications"
             >
-              <Trash2 size={14} />
-              <span>Delete all</span>
+              <Archive size={14} />
+              <span>Archive all</span>
             </button>
           </div>
         </div>
@@ -331,10 +331,10 @@ export default function NotificationsView({
                       type="button"
                       className="notif-card-delete-btn"
                       onClick={(e) => handleDeleteSingle(item, e)}
-                      title="Delete notification"
-                      aria-label="Delete this notification"
+                      title="Archive notification"
+                      aria-label="Archive this notification"
                     >
-                      <Trash2 size={15} />
+                      <Archive size={15} />
                     </button>
                   </div>
                 </div>
@@ -353,11 +353,11 @@ export default function NotificationsView({
           </div>
         )}
 
-        {/* Delete All Confirmation Modal */}
+        {/* Archive All Confirmation Modal */}
         {showDeleteAllModal && (
           <ConfirmationModal
             isOpen={showDeleteAllModal}
-            presetId="delete_notifications"
+            presetId="archive_notifications"
             loading={isDeletingAll}
             onClose={() => {
               if (!isDeletingAll) setShowDeleteAllModal(false);
