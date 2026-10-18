@@ -448,90 +448,105 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
         {/* Nav Items */}
         <nav className="admin-sidebar-nav">
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('dashboard')}
-          >
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </button>
+          {/* Section 1: Overview */}
+          <div className="admin-nav-section">
+            <span className="admin-nav-section-title">Overview</span>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('notifications')}
-          >
-            <Bell size={18} />
-            <span>Notifications</span>
-            {unreadNotifCount > 0 && (
-              <span className="admin-nav-badge">{unreadNotifCount}</span>
-            )}
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('dashboard')}
+            >
+              <LayoutDashboard size={18} />
+              <span>Dashboard</span>
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${['reports', 'report-details'].includes(activeTab) ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('reports')}
-          >
-            <FileText size={18} />
-            <span>Reports</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('notifications')}
+            >
+              <Bell size={18} />
+              <span>Notifications</span>
+              {unreadNotifCount > 0 && (
+                <span className="admin-nav-badge">{unreadNotifCount}</span>
+              )}
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'staff' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('staff')}
-          >
-            <Users size={18} />
-            <span>Maintenance Staff</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('analytics')}
+            >
+              <BarChart2 size={18} />
+              <span>Analytics</span>
+            </button>
+          </div>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'buildings' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('buildings')}
-          >
-            <Building2 size={18} />
-            <span>Buildings &amp; Rooms</span>
-          </button>
+          {/* Section 2: Management */}
+          <div className="admin-nav-section">
+            <span className="admin-nav-section-title">Management</span>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('analytics')}
-          >
-            <BarChart2 size={18} />
-            <span>Analytics</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${['reports', 'report-details'].includes(activeTab) ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('reports')}
+            >
+              <FileText size={18} />
+              <span>Reports</span>
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('users')}
-          >
-            <UserCheck size={18} />
-            <span>Users</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'staff' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('staff')}
+            >
+              <Users size={18} />
+              <span>Maintenance Staff</span>
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('settings')}
-          >
-            <Settings size={18} />
-            <span>Settings</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'buildings' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('buildings')}
+            >
+              <Building2 size={18} />
+              <span>Buildings &amp; Rooms</span>
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'history-logs' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('history-logs')}
-            id="admin-nav-history-logs"
-          >
-            <History size={18} />
-            <span>History Logs</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'users' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('users')}
+            >
+              <UserCheck size={18} />
+              <span>Users</span>
+            </button>
+          </div>
+
+          {/* Section 3: System */}
+          <div className="admin-nav-section">
+            <span className="admin-nav-section-title">System</span>
+
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('settings')}
+            >
+              <Settings size={18} />
+              <span>Settings</span>
+            </button>
+
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'history-logs' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('history-logs')}
+              id="admin-nav-history-logs"
+            >
+              <History size={18} />
+              <span>History Logs</span>
+            </button>
+          </div>
         </nav>
 
         {/* Bottom Profile Footer */}

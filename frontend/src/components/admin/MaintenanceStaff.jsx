@@ -158,103 +158,121 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
         </button>
       </div>
 
-      {/* Staff Grid */}
-      <div className="admin-staff-grid">
-        {staff.map((member) => {
-          // Initials
-          const initials = member.full_name
-            ? member.full_name
-              .split(' ')
-              .map((n) => n[0])
-              .slice(0, 2)
-              .join('')
-            : 'MC';
+      {/* Staff Grid or Empty State */}
+      {staff.length === 0 ? (
+        <div className="admin-staff-empty-state">
+          <div className="admin-staff-empty-icon">
+            <User size={28} strokeWidth={2} />
+          </div>
+          <h3 className="admin-staff-empty-title">No Maintenance Personnel Registered</h3>
+          <p className="admin-staff-empty-desc">
+            Add maintenance workers and technicians to start assigning repair and maintenance tasks across campus buildings.
+          </p>
+          <button
+            type="button"
+            className="admin-btn-black"
+            onClick={() => setShowAddModal(true)}
+          >
+            <Plus size={16} strokeWidth={2.5} />
+            Add First Staff Member
+          </button>
+        </div>
+      ) : (
+        <div className="admin-staff-grid">
+          {staff.map((member) => {
+            // Initials
+            const initials = member.full_name
+              ? member.full_name
+                .split(' ')
+                .map((n) => n[0])
+                .slice(0, 2)
+                .join('')
+              : 'MC';
 
-          const totalAssigned =
-            member.total_jobs ??
-            ((member.active_jobs ?? 0) + (member.completed_jobs ?? 0));
+            const totalAssigned =
+              member.total_jobs ??
+              ((member.active_jobs ?? 0) + (member.completed_jobs ?? 0));
 
-          return (
-            <div
-              key={member.id}
-              className="admin-staff-card"
-              style={{ cursor: 'pointer' }}
-              onClick={() => handleOpenStats(member)}
-              title={`Click to view performance statistics for ${member.full_name}`}
-            >
-              <div className="admin-staff-card-top">
-                <div className="admin-staff-profile">
-                  <div className="admin-staff-avatar">{initials}</div>
-                  <div>
-                    <h3 className="admin-staff-name">{member.full_name}</h3>
-                    <p className="admin-staff-spec">
-                      {member.department || 'Physical Plant'}
-                    </p>
+            return (
+              <div
+                key={member.id}
+                className="admin-staff-card"
+                onClick={() => handleOpenStats(member)}
+                title={`Click to view performance statistics for ${member.full_name}`}
+              >
+                <div className="admin-staff-card-top">
+                  <div className="admin-staff-profile">
+                    <div className="admin-staff-avatar">{initials}</div>
+                    <div className="admin-staff-info">
+                      <h3 className="admin-staff-name" title={member.full_name}>
+                        {member.full_name}
+                      </h3>
+                      <p className="admin-staff-spec" title={member.department || 'Physical Plant'}>
+                        {member.department || 'Physical Plant'}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="admin-staff-actions">
+                    {/* View Stats Button */}
+                    <button
+                      type="button"
+                      className="admin-staff-view-stats-btn"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleOpenStats(member);
+                      }}
+                      title={`View stats for ${member.full_name}`}
+                    >
+                      <BarChart2 size={13} />
+                      <span>View Stats</span>
+                    </button>
+
+                    {/* Remove Staff Button */}
+                    {onRemoveStaff && (
+                      <button
+                        type="button"
+                        className="admin-staff-remove-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleOpenDeleteModal(member);
+                        }}
+                        title={`Remove ${member.full_name} (Resignation / Departure)`}
+                        aria-label={`Remove ${member.full_name}`}
+                      >
+                        <Trash2 size={13} />
+                      </button>
+                    )}
                   </div>
                 </div>
 
-                <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                  {/* View Stats Button */}
-                  <button
-                    type="button"
-                    className="admin-staff-view-stats-btn"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleOpenStats(member);
-                    }}
-                    title={`View stats for ${member.full_name}`}
-                  >
-                    <BarChart2 size={13} />
-                    <span>View Stats</span>
-                  </button>
+                <div className="admin-staff-card-bottom">
+                  <div className="admin-staff-stat-col">
+                    <span className="admin-staff-stat-label">ACTIVE JOBS</span>
+                    <span className="admin-staff-stat-num">
+                      {member.active_jobs ?? 0}
+                    </span>
+                  </div>
 
-                  {/* Remove Staff Button */}
-                  {onRemoveStaff && (
-                    <button
-                      type="button"
-                      className="admin-staff-remove-btn"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleOpenDeleteModal(member);
-                      }}
-                      title={`Remove ${member.full_name} (Resignation / Departure)`}
-                      aria-label={`Remove ${member.full_name}`}
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  )}
+                  <div className="admin-staff-stat-col">
+                    <span className="admin-staff-stat-label">COMPLETED</span>
+                    <span className="admin-staff-stat-num" style={{ color: '#059669' }}>
+                      {member.completed_jobs ?? 0}
+                    </span>
+                  </div>
+
+                  <div className="admin-staff-stat-col">
+                    <span className="admin-staff-stat-label">TOTAL ASSIGNED</span>
+                    <span className="admin-staff-stat-num">
+                      {totalAssigned}
+                    </span>
+                  </div>
                 </div>
               </div>
-
-              <div
-                className="admin-staff-card-bottom"
-                style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}
-              >
-                <div className="admin-staff-stat-col">
-                  <span className="admin-staff-stat-label">ACTIVE JOBS</span>
-                  <span className="admin-staff-stat-num">
-                    {member.active_jobs ?? 0}
-                  </span>
-                </div>
-
-                <div className="admin-staff-stat-col">
-                  <span className="admin-staff-stat-label">COMPLETED</span>
-                  <span className="admin-staff-stat-num" style={{ color: '#059669' }}>
-                    {member.completed_jobs ?? 0}
-                  </span>
-                </div>
-
-                <div className="admin-staff-stat-col">
-                  <span className="admin-staff-stat-label">TOTAL ASSIGNED</span>
-                  <span className="admin-staff-stat-num">
-                    {totalAssigned}
-                  </span>
-                </div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* --------------------------------------------------------------------
           EMPLOYEE STATS & WORKLOAD MODAL
@@ -265,9 +283,8 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
           onClick={() => setSelectedStaffForStats(null)}
         >
           <div
-            className="admin-modal-dialog"
+            className="admin-modal-dialog admin-staff-modal-dialog"
             onClick={(e) => e.stopPropagation()}
-            style={{ maxWidth: '640px', maxHeight: '90vh', overflowY: 'auto' }}
           >
             {/* Modal Header */}
             <div className="admin-modal-header" style={{ marginBottom: '1.25rem' }}>
@@ -298,7 +315,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                 </div>
 
                 <div>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexWrap: 'wrap' }}>
                     <h3 className="admin-modal-title" style={{ margin: 0, fontSize: '1.2rem' }}>
                       {selectedStaffForStats.full_name}
                     </h3>
@@ -334,27 +351,14 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
             </div>
 
             {/* Contact Details Quick Pill */}
-            <div
-              style={{
-                display: 'flex',
-                flexWrap: 'wrap',
-                gap: '1rem',
-                padding: '0.65rem 0.9rem',
-                borderRadius: '8px',
-                background: '#f8fafc',
-                border: '1px solid #e2e8f0',
-                fontSize: '0.78rem',
-                color: '#475569',
-                marginBottom: '1.25rem',
-              }}
-            >
+            <div className="admin-staff-contact-pill">
               <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                <Mail size={14} style={{ color: '#059669' }} />
+                <Mail size={14} style={{ color: '#059669', flexShrink: 0 }} />
                 <span>{selectedStaffForStats.email || 'No email on record'}</span>
               </div>
               {selectedStaffForStats.phone_number && (
                 <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem' }}>
-                  <Phone size={14} style={{ color: '#059669' }} />
+                  <Phone size={14} style={{ color: '#059669', flexShrink: 0 }} />
                   <span>{selectedStaffForStats.phone_number}</span>
                 </div>
               )}
@@ -380,82 +384,43 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
             ) : (
               <>
                 {/* 4 KPI Metrics Strip */}
-                <div
-                  style={{
-                    display: 'grid',
-                    gridTemplateColumns: 'repeat(4, 1fr)',
-                    gap: '0.75rem',
-                    marginBottom: '1.25rem',
-                  }}
-                >
+                <div className="admin-staff-kpi-grid">
                   {/* Card 1: Total Assigned */}
-                  <div
-                    style={{
-                      background: '#ffffff',
-                      border: '1px solid #e2e8f0',
-                      borderRadius: '10px',
-                      padding: '0.85rem 0.75rem',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#64748b', textTransform: 'uppercase' }}>
+                  <div className="admin-staff-kpi-card">
+                    <div className="admin-staff-kpi-label">
                       Total Assigned
                     </div>
-                    <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#0f172a', marginTop: '0.2rem' }}>
+                    <div className="admin-staff-kpi-val">
                       {staffStatsData?.metrics?.total_jobs ?? 0}
                     </div>
                   </div>
 
                   {/* Card 2: Active Workload */}
-                  <div
-                    style={{
-                      background: '#eff6ff',
-                      border: '1px solid #bfdbfe',
-                      borderRadius: '10px',
-                      padding: '0.85rem 0.75rem',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#1e40af', textTransform: 'uppercase' }}>
+                  <div className="admin-staff-kpi-card kpi-active">
+                    <div className="admin-staff-kpi-label">
                       Active Jobs
                     </div>
-                    <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#1e40af', marginTop: '0.2rem' }}>
+                    <div className="admin-staff-kpi-val">
                       {staffStatsData?.metrics?.active_jobs ?? 0}
                     </div>
                   </div>
 
                   {/* Card 3: In Progress */}
-                  <div
-                    style={{
-                      background: '#fffbeb',
-                      border: '1px solid #fde68a',
-                      borderRadius: '10px',
-                      padding: '0.85rem 0.75rem',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#92400e', textTransform: 'uppercase' }}>
+                  <div className="admin-staff-kpi-card kpi-progress">
+                    <div className="admin-staff-kpi-label">
                       In Progress
                     </div>
-                    <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#b45309', marginTop: '0.2rem' }}>
+                    <div className="admin-staff-kpi-val">
                       {staffStatsData?.metrics?.in_progress_jobs ?? 0}
                     </div>
                   </div>
 
                   {/* Card 4: Completed */}
-                  <div
-                    style={{
-                      background: '#ecfdf5',
-                      border: '1px solid #a7f3d0',
-                      borderRadius: '10px',
-                      padding: '0.85rem 0.75rem',
-                      textAlign: 'center',
-                    }}
-                  >
-                    <div style={{ fontSize: '0.7rem', fontWeight: 600, color: '#065f46', textTransform: 'uppercase' }}>
+                  <div className="admin-staff-kpi-card kpi-completed">
+                    <div className="admin-staff-kpi-label">
                       Completed
                     </div>
-                    <div style={{ fontSize: '1.45rem', fontWeight: 700, color: '#059669', marginTop: '0.2rem' }}>
+                    <div className="admin-staff-kpi-val">
                       {staffStatsData?.metrics?.completed_jobs ?? 0}
                     </div>
                   </div>
@@ -521,24 +486,15 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                       {staffStatsData.jobs.map((job) => (
                         <div
                           key={job.assignment_id || job.report_id}
-                          style={{
-                            display: 'flex',
-                            alignItems: 'center',
-                            justifyContent: 'space-between',
-                            padding: '0.65rem 0.85rem',
-                            borderRadius: '8px',
-                            background: '#ffffff',
-                            border: '1px solid #e2e8f0',
-                            fontSize: '0.8125rem',
-                          }}
+                          className="admin-staff-ticket-row"
                         >
-                          <div>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem' }}>
+                          <div style={{ minWidth: 0, flex: 1 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
                               <span style={{ fontWeight: 700, color: '#0f172a' }}>
                                 {job.ticket_number || `FM-${job.report_id}`}
                               </span>
                               <span style={{ color: '#64748b' }}>&bull;</span>
-                              <span style={{ fontWeight: 500, color: '#334155' }}>
+                              <span style={{ fontWeight: 500, color: '#334155', wordBreak: 'break-word' }}>
                                 {job.title}
                               </span>
                             </div>
@@ -547,7 +503,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                             </div>
                           </div>
 
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
                             <span
                               style={{
                                 padding: '0.2rem 0.5rem',
@@ -555,6 +511,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                                 fontSize: '0.7rem',
                                 fontWeight: 600,
                                 textTransform: 'capitalize',
+                                whiteSpace: 'nowrap',
                                 background:
                                   job.assignment_status === 'completed'
                                     ? '#ecfdf5'
@@ -596,17 +553,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
             )}
 
             {/* Modal Footer */}
-            <div
-              className="admin-modal-footer"
-              style={{
-                marginTop: '1.5rem',
-                display: 'flex',
-                justifyContent: onRemoveStaff ? 'space-between' : 'flex-end',
-                alignItems: 'center',
-                flexWrap: 'wrap',
-                gap: '10px',
-              }}
-            >
+            <div className="admin-modal-footer admin-staff-modal-footer">
               {onRemoveStaff && (
                 <button
                   type="button"
@@ -831,18 +778,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
             >
               <div style={{ padding: '4px 0 16px 0' }}>
                 {/* Staff Member Info Banner */}
-                <div
-                  style={{
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '12px',
-                    padding: '12px 14px',
-                    backgroundColor: '#f8fafc',
-                    border: '1px solid #e2e8f0',
-                    borderRadius: '10px',
-                    marginBottom: '14px',
-                  }}
-                >
+                <div className="admin-staff-delete-banner">
                   <div
                     style={{
                       width: '42px',
