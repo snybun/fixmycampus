@@ -64,6 +64,16 @@ const isReportOverdue = (job) => {
   return Date.now() > deadlineTime;
 };
 
+// Priority display label helper: Map 'emergency' to 'Urgent' to match student view
+const getPriorityLabel = (priority) => {
+  const p = String(priority || '').toLowerCase();
+  if (p === 'emergency' || p === 'urgent') return 'Urgent';
+  if (p === 'high') return 'High';
+  if (p === 'medium') return 'Medium';
+  if (p === 'low') return 'Low';
+  return p ? p.charAt(0).toUpperCase() + p.slice(1) : 'Medium';
+};
+
 // Transform database report row into maintenance job object
 const mapApiReportToJob = (r, defaultWorkerName = 'Maintenance Staff') => {
   const buildingName = r.building_name || 'Campus Building';
@@ -356,9 +366,14 @@ export default function MaintenanceStaffDashboard({
   }
 
   if (priorityFilter !== 'all') {
-    displayedJobs = displayedJobs.filter(
-      (j) => j.priority.toLowerCase() === priorityFilter.toLowerCase()
-    );
+    displayedJobs = displayedJobs.filter((j) => {
+      const jp = (j.priority || '').toLowerCase();
+      const fp = priorityFilter.toLowerCase();
+      if (fp === 'urgent' || fp === 'emergency') {
+        return jp === 'urgent' || jp === 'emergency';
+      }
+      return jp === fp;
+    });
   }
 
   // Pagination calculation
@@ -624,7 +639,7 @@ export default function MaintenanceStaffDashboard({
                       <span className="maint-info-label">PRIORITY</span>
                       <div>
                         <span className={`maint-priority-badge ${selectedJob.priority}`}>
-                          {selectedJob.priority.charAt(0).toUpperCase() + selectedJob.priority.slice(1)}
+                          {getPriorityLabel(selectedJob.priority)}
                         </span>
                       </div>
                     </div>
@@ -1024,6 +1039,13 @@ export default function MaintenanceStaffDashboard({
                   </button>
                   <button
                     type="button"
+                    className={`maint-filter-tab ${priorityFilter === 'urgent' ? 'active' : ''}`}
+                    onClick={() => setPriorityFilter('urgent')}
+                  >
+                    Urgent
+                  </button>
+                  <button
+                    type="button"
                     className={`maint-filter-tab ${priorityFilter === 'high' ? 'active' : ''}`}
                     onClick={() => setPriorityFilter('high')}
                   >
@@ -1166,7 +1188,7 @@ export default function MaintenanceStaffDashboard({
                           <div className="maint-job-location">{job.location_summary}</div>
                           <div className="maint-job-meta-row">
                             <span className={`maint-priority-badge ${job.priority}`}>
-                              {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
+                              {getPriorityLabel(job.priority)}
                             </span>
                             {job.confirmation_count > 1 && (
                               <span className="maint-job-impact-badge" title={`${job.confirmation_count} students reported or confirmed this defect`}>

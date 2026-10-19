@@ -19,7 +19,7 @@ function formatStatus(status) {
 function formatPriority(priority) {
   if (!priority) return 'Medium';
   const p = priority.toLowerCase();
-  if (p === 'emergency') return 'Emergency';
+  if (p === 'emergency' || p === 'urgent') return 'Urgent';
   return p.charAt(0).toUpperCase() + p.slice(1);
 }
 
