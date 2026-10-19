@@ -11,6 +11,7 @@ import {
   Mail,
   Phone,
   Layers,
+  ChevronLeft,
   ChevronRight,
   TrendingUp,
   Trash2,
@@ -32,6 +33,8 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
   const [selectedStaffForStats, setSelectedStaffForStats] = useState(null);
   const [staffStatsLoading, setStaffStatsLoading] = useState(false);
   const [staffStatsData, setStaffStatsData] = useState(null);
+  const [modalJobsPage, setModalJobsPage] = useState(1);
+  const modalJobsPageSize = 4;
 
   // Deletion / Removal Modal State
   const [staffToDelete, setStaffToDelete] = useState(null);
@@ -94,6 +97,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
 
   const handleOpenStats = async (member) => {
     setSelectedStaffForStats(member);
+    setModalJobsPage(1);
     setStaffStatsLoading(true);
     setStaffStatsData(null);
 
@@ -472,64 +476,142 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                   </h4>
 
                   {staffStatsData?.jobs && staffStatsData.jobs.length > 0 ? (
-                    <div
-                      style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        gap: '0.6rem',
-                        maxHeight: '220px',
-                        overflowY: 'auto',
-                      }}
-                    >
-                      {staffStatsData.jobs.map((job) => (
-                        <div
-                          key={job.assignment_id || job.report_id}
-                          className="admin-staff-ticket-row"
-                        >
-                          <div style={{ minWidth: 0, flex: 1 }}>
-                            <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
-                              <span style={{ fontWeight: 700, color: '#0f172a' }}>
-                                {job.ticket_number || `FM-${job.report_id}`}
-                              </span>
-                              <span style={{ color: '#64748b' }}>&bull;</span>
-                              <span style={{ fontWeight: 500, color: '#334155', wordBreak: 'break-word' }}>
-                                {job.title}
-                              </span>
-                            </div>
-                            <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
-                              {job.building_name} &bull; {job.location_name || 'Campus Grounds'}
-                            </div>
-                          </div>
-
-                          <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
-                            <span
-                              style={{
-                                padding: '0.2rem 0.5rem',
-                                borderRadius: '4px',
-                                fontSize: '0.7rem',
-                                fontWeight: 600,
-                                textTransform: 'capitalize',
-                                whiteSpace: 'nowrap',
-                                background:
-                                  job.assignment_status === 'completed'
-                                    ? '#ecfdf5'
-                                    : job.assignment_status === 'in_progress'
-                                      ? '#fffbeb'
-                                      : '#f1f5f9',
-                                color:
-                                  job.assignment_status === 'completed'
-                                    ? '#065f46'
-                                    : job.assignment_status === 'in_progress'
-                                      ? '#92400e'
-                                      : '#475569',
-                              }}
+                    <>
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '0.6rem',
+                          minHeight: '120px',
+                        }}
+                      >
+                        {staffStatsData.jobs
+                          .slice((modalJobsPage - 1) * modalJobsPageSize, modalJobsPage * modalJobsPageSize)
+                          .map((job) => (
+                            <div
+                              key={job.assignment_id || job.report_id}
+                              className="admin-staff-ticket-row"
                             >
-                              {(job.assignment_status || 'pending').replace('_', ' ')}
-                            </span>
-                          </div>
+                              <div style={{ minWidth: 0, flex: 1 }}>
+                                <div style={{ display: 'flex', alignItems: 'center', gap: '0.45rem', flexWrap: 'wrap' }}>
+                                  <span style={{ fontWeight: 700, color: '#0f172a' }}>
+                                    {job.ticket_number || `FM-${job.report_id}`}
+                                  </span>
+                                  <span style={{ color: '#64748b' }}>&bull;</span>
+                                  <span style={{ fontWeight: 500, color: '#334155', wordBreak: 'break-word' }}>
+                                    {job.title}
+                                  </span>
+                                </div>
+                                <div style={{ fontSize: '0.75rem', color: '#64748b', marginTop: '0.2rem' }}>
+                                  {job.building_name} &bull; {job.location_name || 'Campus Grounds'}
+                                </div>
+                              </div>
+
+                              <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem', flexShrink: 0 }}>
+                                <span
+                                  style={{
+                                    padding: '0.2rem 0.5rem',
+                                    borderRadius: '4px',
+                                    fontSize: '0.7rem',
+                                    fontWeight: 600,
+                                    textTransform: 'capitalize',
+                                    whiteSpace: 'nowrap',
+                                    background:
+                                      job.assignment_status === 'completed'
+                                        ? '#ecfdf5'
+                                        : job.assignment_status === 'in_progress'
+                                          ? '#fffbeb'
+                                          : '#f1f5f9',
+                                    color:
+                                      job.assignment_status === 'completed'
+                                        ? '#065f46'
+                                        : job.assignment_status === 'in_progress'
+                                          ? '#92400e'
+                                          : '#475569',
+                                  }}
+                                >
+                                  {(job.assignment_status || 'pending').replace('_', ' ')}
+                                </span>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+
+                      {/* Pagination Controls for Assigned Defect & Maintenance Tickets */}
+                      <div
+                        style={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'space-between',
+                          marginTop: '0.75rem',
+                          paddingTop: '0.5rem',
+                          borderTop: '1px solid #f1f5f9',
+                          fontSize: '0.75rem',
+                          color: '#64748b',
+                        }}
+                      >
+                        <span>
+                          Showing {(modalJobsPage - 1) * modalJobsPageSize + 1}–
+                          {Math.min(staffStatsData.jobs.length, modalJobsPage * modalJobsPageSize)} of{' '}
+                          {staffStatsData.jobs.length} jobs
+                        </span>
+
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '0.35rem' }}>
+                          <button
+                            type="button"
+                            disabled={modalJobsPage <= 1}
+                            onClick={() => setModalJobsPage((p) => Math.max(1, p - 1))}
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              border: '1px solid #e2e8f0',
+                              background: modalJobsPage <= 1 ? '#f8fafc' : '#ffffff',
+                              color: modalJobsPage <= 1 ? '#94a3b8' : '#334155',
+                              cursor: modalJobsPage <= 1 ? 'not-allowed' : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 2,
+                            }}
+                          >
+                            <ChevronLeft size={13} /> Prev
+                          </button>
+                          <span style={{ fontWeight: 600, padding: '0 4px' }}>
+                            {modalJobsPage} / {Math.max(1, Math.ceil(staffStatsData.jobs.length / modalJobsPageSize))}
+                          </span>
+                          <button
+                            type="button"
+                            disabled={modalJobsPage >= Math.ceil(staffStatsData.jobs.length / modalJobsPageSize)}
+                            onClick={() =>
+                              setModalJobsPage((p) =>
+                                Math.min(Math.ceil(staffStatsData.jobs.length / modalJobsPageSize), p + 1)
+                              )
+                            }
+                            style={{
+                              padding: '2px 8px',
+                              borderRadius: 4,
+                              border: '1px solid #e2e8f0',
+                              background:
+                                modalJobsPage >= Math.ceil(staffStatsData.jobs.length / modalJobsPageSize)
+                                  ? '#f8fafc'
+                                  : '#ffffff',
+                              color:
+                                modalJobsPage >= Math.ceil(staffStatsData.jobs.length / modalJobsPageSize)
+                                  ? '#94a3b8'
+                                  : '#334155',
+                              cursor:
+                                modalJobsPage >= Math.ceil(staffStatsData.jobs.length / modalJobsPageSize)
+                                  ? 'not-allowed'
+                                  : 'pointer',
+                              display: 'inline-flex',
+                              alignItems: 'center',
+                              gap: 2,
+                            }}
+                          >
+                            Next <ChevronRight size={13} />
+                          </button>
                         </div>
-                      ))}
-                    </div>
+                      </div>
+                    </>
                   ) : (
                     <div
                       style={{

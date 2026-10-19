@@ -1006,7 +1006,11 @@ export default function MaintenanceStaffDashboard({
             {/* Section Header & Priority Filter Tabs */}
             <div className="maint-section-bar">
               <h3 className="maint-section-title">
-                Your Assigned Jobs ({displayedJobs.length})
+                {activeTab === 'completed'
+                  ? `Completed Jobs (${displayedJobs.length})`
+                  : activeTab === 'assigned'
+                  ? `Assigned Jobs (${displayedJobs.length})`
+                  : `Your Assigned Jobs (${displayedJobs.length})`}
               </h3>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -1063,23 +1067,78 @@ export default function MaintenanceStaffDashboard({
                 <p className="maint-empty-desc">Fetching assigned tasks and defect records from the database.</p>
               </div>
             ) : displayedJobs.length === 0 ? (
-              <div className="maint-empty-state">
-                <ClipboardList size={40} className="maint-empty-icon" />
-                <h4 className="maint-empty-title">
-                  {priorityFilter !== 'all'
-                    ? `No ${priorityFilter.toUpperCase()} priority tasks`
-                    : activeTab === 'completed'
-                    ? 'No completed tasks yet'
-                    : 'No assigned maintenance tasks'}
-                </h4>
-                <p className="maint-empty-desc">
-                  {priorityFilter !== 'all'
-                    ? `There are no maintenance tasks with ${priorityFilter} priority in this queue.`
-                    : activeTab === 'completed'
-                    ? 'Completed repair tickets will show up here.'
-                    : 'All campus defect reports have been resolved or are awaiting assignment.'}
-                </p>
-              </div>
+              <>
+                <div className="maint-empty-state">
+                  <ClipboardList size={40} className="maint-empty-icon" />
+                  <h4 className="maint-empty-title">
+                    {priorityFilter !== 'all'
+                      ? `No ${priorityFilter.toUpperCase()} priority tasks`
+                      : activeTab === 'completed'
+                      ? 'No completed tasks yet'
+                      : 'No assigned maintenance tasks'}
+                  </h4>
+                  <p className="maint-empty-desc">
+                    {priorityFilter !== 'all'
+                      ? `There are no maintenance tasks with ${priorityFilter} priority in this queue.`
+                      : activeTab === 'completed'
+                      ? 'Completed repair tickets will show up here.'
+                      : 'All campus defect reports have been resolved or are awaiting assignment.'}
+                  </p>
+                </div>
+
+                {/* Pagination Controls (Always present for consistent UI across Assigned and Completed Jobs) */}
+                <div className="maint-pagination" aria-label="Maintenance tasks pagination">
+                  <div className="maint-pagination-info">
+                    <span>Showing 0–0 of 0 tasks</span>
+                    <div className="maint-pagination-limit">
+                      <span>Per page:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="maint-pagination-select"
+                        aria-label="Tasks per page"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="maint-pagination-controls">
+                    <button
+                      type="button"
+                      className="maint-page-btn"
+                      disabled={true}
+                      title="Previous page"
+                    >
+                      <ChevronLeft size={15} />
+                      <span>Previous</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="maint-page-btn active"
+                      disabled={true}
+                      title="Page 1"
+                    >
+                      1
+                    </button>
+                    <button
+                      type="button"
+                      className="maint-page-btn"
+                      disabled={true}
+                      title="Next page"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              </>
             ) : (
               <>
                 <div className="maint-jobs-list">
