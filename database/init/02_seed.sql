@@ -26,8 +26,14 @@ ON DUPLICATE KEY UPDATE `display_name` = VALUES(`display_name`);
 -- -----------------------------------------------------------------------------
 INSERT INTO `users` (`id`, `role_id`, `user_identifier`, `first_name`, `last_name`, `full_name`, `email`, `password_hash`, `phone_number`, `department`, `status`) VALUES
 (1, 1, 'ADM-001', 'Campus', 'Administrator', 'Campus Administrator', 'admin@phinmaed.com', '$2y$10$pj8PZHjsujG2W2bOmTQYyetGak6xr/.YGgf2oA22ObvWAd9Sy.uPu', '+1-555-0100', 'Facilities & Administration', 'active'),
-(2, 2, 'MGT-001', 'Robert', 'Vance', 'Robert Vance', 'supervisor@phinmaed.com', '$2y$10$S.vnmWs27xkpJks4G1JnreMN7mJxkzBVkpxqPG1xjHBMJcdL7rCBC', '+63-912-345-6789', 'Physical Plant & Facilities', 'active'),
-(3, 3, 'TEC-001', 'John', 'Miller', 'John Miller', 'technician@phinmaed.com', '$2y$10$P5BB7SGNk.GmjUO/e5rrbuNGBff4Nwxh1MF2m0hc2tr0vvxgO33XS', '+63-912-345-6790', 'HVAC & Electrical Maintenance', 'active'),
+(2, 2, 'MGT-001', 'Juan', 'Dela Cruz', 'Juan Dela Cruz', 'juandelacruz@phinmaed.com', '$2y$10$S.vnmWs27xkpJks4G1JnreMN7mJxkzBVkpxqPG1xjHBMJcdL7rCBC', '09123456789', 'Plumbing', 'active'),
+(3, 3, 'TEC-HVAC-01', 'Ricardo', 'Gomez', 'Engr. Ricardo Gomez', 'ricardo.gomez@phinmaed.com', '$2y$10$P5BB7SGNk.GmjUO/e5rrbuNGBff4Nwxh1MF2m0hc2tr0vvxgO33XS', '09172345671', 'HVAC / Air Conditioning', 'active'),
+(4, 3, 'TEC-ELEC-02', 'Mateo', 'Santos', 'Mateo Santos', 'mateo.santos@phinmaed.com', '$2y$10$P5BB7SGNk.GmjUO/e5rrbuNGBff4Nwxh1MF2m0hc2tr0vvxgO33XS', '09183456782', 'Electrical', 'active'),
+(5, 3, 'TEC-CARP-03', 'Danilo', 'Reyes', 'Danilo Reyes', 'danilo.reyes@phinmaed.com', '$2y$10$P5BB7SGNk.GmjUO/e5rrbuNGBff4Nwxh1MF2m0hc2tr0vvxgO33XS', '09194567893', 'Carpentry & Woodwork', 'active'),
+(6, 3, 'TEC-AV-04', 'Christian', 'Ramos', 'Christian Ramos', 'christian.ramos@phinmaed.com', '$2y$10$P5BB7SGNk.GmjUO/e5rrbuNGBff4Nwxh1MF2m0hc2tr0vvxgO33XS', '09205678904', 'Audio-Visual & Classroom Tech', 'active'),
+(7, 3, 'TEC-NET-05', 'Alex', 'Hernandez', 'Alex Hernandez', 'alex.hernandez@phinmaed.com', '$2y$10$P5BB7SGNk.GmjUO/e5rrbuNGBff4Nwxh1MF2m0hc2tr0vvxgO33XS', '09216789015', 'Network & Telecommunications', 'active'),
+(8, 3, 'TEC-JAN-06', 'Eduardo', 'Bautista', 'Eduardo Bautista', 'eduardo.bautista@phinmaed.com', '$2y$10$P5BB7SGNk.GmjUO/e5rrbuNGBff4Nwxh1MF2m0hc2tr0vvxgO33XS', '09227890126', 'Janitorial & Sanitation', 'active'),
+(9, 3, 'TEC-GEN-07', 'Roberto', 'Cruz', 'Roberto Cruz', 'roberto.cruz@phinmaed.com', '$2y$10$P5BB7SGNk.GmjUO/e5rrbuNGBff4Nwxh1MF2m0hc2tr0vvxgO33XS', '09238901237', 'General Maintenance', 'active'),
 (11, 5, '03-01-2526-045589', 'Mark', 'Cerna', 'Mark Dyvie Cerna', 'mafe.cerna.up@phinmaed.com', '$2y$10$HulORYDbVIJ5wuRet5/r4O9Uo1RMt72/72Cvz22U.VlBghlTuxwRC', NULL, 'CITE - College of Information Technology Education', 'active')
 ON DUPLICATE KEY UPDATE `full_name` = VALUES(`full_name`), `department` = VALUES(`department`), `password_hash` = VALUES(`password_hash`);
 

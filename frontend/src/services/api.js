@@ -435,6 +435,23 @@ export async function removeStaffMember(staffId, details = {}) {
   }
 }
 
+export async function fetchSuggestedWorker({ categoryId, categorySlug } = {}) {
+  try {
+    const params = new URLSearchParams({ action: 'suggested' });
+    if (categoryId) params.append('category_id', String(categoryId));
+    if (categorySlug) params.append('category_slug', String(categorySlug));
+
+    const res = await fetch(`${API_BASE}/staff.php?${params.toString()}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching suggested worker:', err);
+    return { success: false, suggested_worker: null };
+  }
+}
+
 export async function fetchUsers(filters = {}) {
   try {
     const query = new URLSearchParams(filters).toString();
@@ -767,3 +784,4 @@ export async function confirmReport(reportId, ticketNumber = '') {
     return { success: false, message: 'Failed to confirm report' };
   }
 }
+
