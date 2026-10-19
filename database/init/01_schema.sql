@@ -305,5 +305,28 @@ CREATE TABLE `report_confirmations` (
     CONSTRAINT `fk_confirmations_user` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE ON UPDATE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+-- -----------------------------------------------------------------------------
+-- Table: history_logs
+-- Comprehensive audit logging for sign-ins, registrations, defect reports, status transitions
+-- -----------------------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS `history_logs` (
+    `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+    `log_type` VARCHAR(50) NOT NULL,
+    `user_id` INT UNSIGNED DEFAULT NULL,
+    `report_id` INT UNSIGNED DEFAULT NULL,
+    `actor_name` VARCHAR(150) DEFAULT NULL,
+    `actor_role` VARCHAR(50) DEFAULT NULL,
+    `title` VARCHAR(255) NOT NULL,
+    `description` TEXT DEFAULT NULL,
+    `location_info` VARCHAR(255) DEFAULT NULL,
+    `metadata` JSON DEFAULT NULL,
+    `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    PRIMARY KEY (`id`),
+    KEY `idx_history_type` (`log_type`),
+    KEY `idx_history_user` (`user_id`),
+    KEY `idx_history_report` (`report_id`),
+    KEY `idx_history_created` (`created_at`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 SET foreign_key_checks = 1;
 

@@ -141,7 +141,7 @@ export async function fetchHistoryLogs({ page = 1, limit = 10, type = 'all', sea
     return {
       success: false,
       data: [],
-      summary: { all: 0, user_registration: 0, report_submitted: 0, status_change: 0, report_archived: 0 },
+      summary: { all: 0, user_login: 0, user_registration: 0, report_submitted: 0, status_change: 0, report_archived: 0 },
       pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
     };
   }
