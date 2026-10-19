@@ -19,6 +19,9 @@ import {
   X,
   RefreshCw,
   FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
 } from 'lucide-react';
 import { fetchReports, updateReportStatus, assignReport, fetchNotifications } from '../../services/api';
 import { exportReportsToExcel } from '../../utils/exportToExcel';
@@ -114,6 +117,12 @@ export default function MaintenanceStaffDashboard({
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [priorityFilter, setPriorityFilter] = useState('all'); // 'all', 'high', 'medium', 'low'
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, priorityFilter]);
 
   // Live Database Reports state
   const [jobs, setJobs] = useState([]);
@@ -351,6 +360,36 @@ export default function MaintenanceStaffDashboard({
       (j) => j.priority.toLowerCase() === priorityFilter.toLowerCase()
     );
   }
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(displayedJobs.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedJobs = displayedJobs.slice(startIndex, startIndex + pageSize);
+
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages = [];
+    if (currentPage <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      pages.push(currentPage - 1);
+      pages.push(currentPage);
+      pages.push(currentPage + 1);
+      pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   // Selected job for detail view
   const selectedJob =
@@ -638,7 +677,13 @@ export default function MaintenanceStaffDashboard({
                   <button
                     type="button"
                     className={`maint-btn-action-secondary ${selectedJob.status !== 'resolved' && selectedJob.status !== 'closed' ? 'enabled' : ''}`}
-                    onClick={() => handleRequestCompletion(selectedJob)}
+                    onClick={() => {
+                      if (selectedJob.status !== 'resolved' && selectedJob.status !== 'closed') {
+                        handleRequestCompletion(selectedJob);
+                      }
+                    }}
+                    disabled={selectedJob.status === 'resolved' || selectedJob.status === 'closed'}
+                    style={selectedJob.status === 'resolved' || selectedJob.status === 'closed' ? { cursor: 'not-allowed', opacity: 0.65 } : {}}
                   >
                     {selectedJob.status === 'resolved' || selectedJob.status === 'closed'
                       ? 'Already Fixed'
@@ -652,7 +697,39 @@ export default function MaintenanceStaffDashboard({
 
                   <span className="maint-field-label">Completion Photo</span>
 
-                  {!proofPhotoPreview ? (
+                  {(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? (
+                    /* Locked View: Task is done, cannot be edited */
+                    (proofPhotoPreview || selectedJob.completion_photo) ? (
+                      <div className="maint-upload-preview-card" style={{ opacity: 0.95, pointerEvents: 'none' }}>
+                        <img
+                          src={proofPhotoPreview || selectedJob.completion_photo}
+                          alt="Proof preview"
+                          className="maint-preview-img"
+                        />
+                        <div className="maint-preview-info">
+                          <span className="maint-preview-status">
+                            <Check size={14} strokeWidth={3} /> Proof photo attached
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="maint-dropzone disabled"
+                        style={{
+                          cursor: 'not-allowed',
+                          backgroundColor: '#f8fafc',
+                          borderColor: '#e2e8f0',
+                          opacity: 0.85,
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        <div className="maint-dropzone-icon" style={{ color: '#94a3b8' }}>
+                          <Camera size={26} strokeWidth={1.75} />
+                        </div>
+                        <div className="maint-dropzone-text">Upload proof photo</div>
+                      </div>
+                    )
+                  ) : !proofPhotoPreview ? (
                     <label
                       htmlFor="maint-proof-upload"
                       className={`maint-dropzone ${isDragging ? 'drag-over' : ''}`}
@@ -717,15 +794,39 @@ export default function MaintenanceStaffDashboard({
                   <textarea
                     className="maint-textarea"
                     placeholder="Describe the repairs performed..."
-                    value={completionNotes}
-                    onChange={(e) => setCompletionNotes(e.target.value)}
+                    value={(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? (selectedJob.completion_notes || completionNotes || '') : completionNotes}
+                    onChange={(e) => {
+                      if (selectedJob.status !== 'resolved' && selectedJob.status !== 'closed') {
+                        setCompletionNotes(e.target.value);
+                      }
+                    }}
+                    disabled={selectedJob.status === 'resolved' || selectedJob.status === 'closed'}
+                    readOnly={selectedJob.status === 'resolved' || selectedJob.status === 'closed'}
+                    style={(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? {
+                      cursor: 'not-allowed',
+                      backgroundColor: '#f8fafc',
+                      color: '#64748b',
+                      borderColor: '#e2e8f0',
+                      resize: 'none',
+                    } : {}}
                   />
 
                   <button
                     type="button"
-                    className="maint-btn-confirm"
-                    onClick={() => handleRequestCompletion(selectedJob)}
+                    className={`maint-btn-confirm ${(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? 'disabled' : ''}`}
+                    onClick={() => {
+                      if (selectedJob.status !== 'resolved' && selectedJob.status !== 'closed') {
+                        handleRequestCompletion(selectedJob);
+                      }
+                    }}
                     disabled={selectedJob.status === 'resolved' || selectedJob.status === 'closed'}
+                    style={(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? {
+                      backgroundColor: '#f1f5f9',
+                      borderColor: '#e2e8f0',
+                      color: '#94a3b8',
+                      cursor: 'not-allowed',
+                      boxShadow: 'none',
+                    } : {}}
                   >
                     {selectedJob.status === 'resolved' || selectedJob.status === 'closed'
                       ? 'Report Already Completed'
@@ -980,8 +1081,9 @@ export default function MaintenanceStaffDashboard({
                 </p>
               </div>
             ) : (
-                            <div className="maint-jobs-list">
-                {displayedJobs.map((job) => {
+              <>
+                <div className="maint-jobs-list">
+                {paginatedJobs.map((job) => {
                   const isOngoing = job.status === 'in_progress';
                   const isFixed = job.status === 'resolved' || job.status === 'closed';
 
@@ -1047,7 +1149,78 @@ export default function MaintenanceStaffDashboard({
                   );
                 })}
               </div>
-            )}
+
+              {/* Pagination Controls */}
+              {displayedJobs.length > 0 && (
+                <div className="maint-pagination" aria-label="Maintenance tasks pagination">
+                  <div className="maint-pagination-info">
+                    <span>
+                      Showing {startIndex + 1}–{Math.min(displayedJobs.length, startIndex + pageSize)} of {displayedJobs.length} {displayedJobs.length === 1 ? 'task' : 'tasks'}
+                    </span>
+                    <div className="maint-pagination-limit">
+                      <span>Per page:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="maint-pagination-select"
+                        aria-label="Tasks per page"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="maint-pagination-controls">
+                    <button
+                      type="button"
+                      className="maint-page-btn"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      title="Previous page"
+                    >
+                      <ChevronLeft size={15} />
+                      <span>Previous</span>
+                    </button>
+
+                    {getPageNumbers().map((item, idx) =>
+                      item === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="maint-page-ellipsis">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={item}
+                          type="button"
+                          className={`maint-page-btn ${currentPage === item ? 'active' : ''}`}
+                          onClick={() => setCurrentPage(item)}
+                          title={`Page ${item}`}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
+
+                    <button
+                      type="button"
+                      className="maint-page-btn"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      title="Next page"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
           </div>
         )}
       </main>
