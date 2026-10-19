@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Wrench,
   Bell,
@@ -12,6 +12,7 @@ import {
   Trash2,
   SlidersHorizontal,
   ChevronRight,
+  ChevronLeft,
   ChevronDown,
   User,
   Menu,
@@ -54,6 +55,23 @@ export default function DashboardPage({
   const [unreadCount, setUnreadCount] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  // Initial reports - start empty until reported as requested
+  const [reports, setReports] = useState([]);
+  const [recentPage, setRecentPage] = useState(1);
+  const RECENT_ITEMS_PER_PAGE = 3;
+  const totalRecentPages = Math.max(1, Math.ceil(reports.length / RECENT_ITEMS_PER_PAGE));
+
+  // Ensure recentPage stays within valid bounds
+  useEffect(() => {
+    if (recentPage > totalRecentPages) {
+      setRecentPage(totalRecentPages);
+    }
+  }, [recentPage, totalRecentPages]);
+
+  const paginatedRecentReports = useMemo(() => {
+    const startIdx = (recentPage - 1) * RECENT_ITEMS_PER_PAGE;
+    return reports.slice(startIdx, startIdx + RECENT_ITEMS_PER_PAGE);
+  }, [reports, recentPage]);
 
   useEffect(() => {
     if (initialTab) {
@@ -76,15 +94,91 @@ export default function DashboardPage({
     return () => window.removeEventListener('hashchange', handleHash);
   }, []);
 
-  // Initial reports - start empty until reported as requested
-  const [reports, setReports] = useState([]);
-
   // Load stats, real reports, and notifications from backend
   useEffect(() => {
     let isMounted = true;
 
+    const mapReport = (r) => {
+      const rawStatus = (r.status || 'submitted').toLowerCase();
+      let statusLabel = 'Reported';
+      let stepIdx = 0;
+      if (rawStatus === 'resolved' || rawStatus === 'closed') {
+        statusLabel = 'Fixed';
+        stepIdx = 4;
+      } else if (rawStatus === 'in_progress') {
+        statusLabel = 'Repair Ongoing';
+        stepIdx = 3;
+      } else if (rawStatus === 'assigned') {
+        statusLabel = 'Worker Assigned';
+        stepIdx = 2;
+      } else if (rawStatus === 'under_review') {
+        statusLabel = 'Verified';
+        stepIdx = 1;
+      }
+
+      const rawPriority = (r.priority || 'medium').toLowerCase();
+      let priorityLabel = 'Medium';
+      if (rawPriority === 'emergency') priorityLabel = 'Urgent';
+      else if (rawPriority === 'high') priorityLabel = 'High';
+      else if (rawPriority === 'low') priorityLabel = 'Low';
+
+      const repDate = r.reported_at
+        ? new Date(r.reported_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })
+        : 'Recently';
+
+      const building = r.building_name || 'Campus';
+      const room = r.room_number || r.specific_area || r.location_name || 'Facility Area';
+      const location = `${building} • ${room}`;
+
+      return {
+        ...r,
+        id: r.id,
+        ticket_number: r.ticket_number || `FMC-${r.id}`,
+        title: r.title,
+        description: r.description || '',
+        location,
+        building,
+        room,
+        date: repDate,
+        reportedDate: repDate,
+        formattedDateReported: r.reported_at
+          ? new Date(r.reported_at).toLocaleString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+            })
+          : `${repDate} at 2:14 PM`,
+        image: r.primary_photo || r.image_url || '/images/hero_ac_defect.jpg',
+        priority: priorityLabel,
+        status: rawStatus,
+        statusLabel,
+        category: r.category_name || 'General Facility Defect',
+        stepIndex: stepIdx,
+        assignedWorker: r.worker_name
+          ? {
+              name: r.worker_name,
+              role: r.worker_department ? `${r.worker_department} Staff` : 'Assigned Technician',
+            }
+          : null,
+        badgeClass:
+          rawStatus === 'resolved' || rawStatus === 'closed'
+            ? 'badge-fixed'
+            : rawStatus === 'assigned'
+            ? 'badge-worker'
+            : 'badge-pending',
+        modalTrigger: 'update_status',
+      };
+    };
+
     const loadData = () => {
-      fetchStats().then((res) => {
+      const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+      fetchStats(statsParams).then((res) => {
         if (isMounted && res && res.success) {
           const statsData = res.data || res;
           setStats({
@@ -96,106 +190,35 @@ export default function DashboardPage({
         }
       }).catch(() => {});
 
-      fetchNotifications(currentUser?.id).then((res) => {
+      fetchNotifications(currentUser?.id, 'student').then((res) => {
         if (isMounted && res && res.success && typeof res.unread_count === 'number') {
           setUnreadCount(res.unread_count);
         }
       }).catch(() => {});
+
+      const reportsParams = currentUser?.id 
+        ? { limit: 100, my_reports: 1, user_id: currentUser.id } 
+        : { limit: 100, my_reports: 1 };
+
+      fetchReports(reportsParams).then((res) => {
+        if (isMounted && res && res.success && Array.isArray(res.data)) {
+          setReports(res.data.map(mapReport));
+        } else if (isMounted) {
+          setReports([]);
+        }
+      }).catch(() => {
+        if (isMounted) setReports([]);
+      });
     };
 
     loadData();
     const interval = setInterval(loadData, 15000);
 
-    fetchReports({ limit: 100 }).then((res) => {
-      if (isMounted && res.success && Array.isArray(res.data)) {
-        setReports(
-          res.data.map((r) => {
-            const rawStatus = (r.status || 'submitted').toLowerCase();
-            let statusLabel = 'Reported';
-            let stepIdx = 0;
-            if (rawStatus === 'resolved' || rawStatus === 'closed') {
-              statusLabel = 'Fixed';
-              stepIdx = 4;
-            } else if (rawStatus === 'in_progress') {
-              statusLabel = 'Repair Ongoing';
-              stepIdx = 3;
-            } else if (rawStatus === 'assigned') {
-              statusLabel = 'Worker Assigned';
-              stepIdx = 2;
-            } else if (rawStatus === 'under_review') {
-              statusLabel = 'Verified';
-              stepIdx = 1;
-            }
-
-            const rawPriority = (r.priority || 'medium').toLowerCase();
-            let priorityLabel = 'Medium';
-            if (rawPriority === 'emergency') priorityLabel = 'Urgent';
-            else if (rawPriority === 'high') priorityLabel = 'High';
-            else if (rawPriority === 'low') priorityLabel = 'Low';
-
-            const repDate = r.reported_at
-              ? new Date(r.reported_at).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : 'Recently';
-
-            const building = r.building_name || 'Campus';
-            const room = r.room_number || r.specific_area || r.location_name || 'Facility Area';
-            const location = `${building} • ${room}`;
-
-            return {
-              ...r,
-              id: r.id,
-              ticket_number: r.ticket_number || `FMC-${r.id}`,
-              title: r.title,
-              description: r.description || '',
-              location,
-              building,
-              room,
-              date: repDate,
-              reportedDate: repDate,
-              formattedDateReported: r.reported_at
-                ? new Date(r.reported_at).toLocaleString('en-US', {
-                    month: 'long',
-                    day: 'numeric',
-                    year: 'numeric',
-                    hour: 'numeric',
-                    minute: '2-digit',
-                  })
-                : `${repDate} at 2:14 PM`,
-              image: r.primary_photo || r.image_url || '/images/hero_ac_defect.jpg',
-              priority: priorityLabel,
-              status: rawStatus,
-              statusLabel,
-              category: r.category_name || 'General Facility Defect',
-              stepIndex: stepIdx,
-              assignedWorker: r.worker_name
-                ? {
-                    name: r.worker_name,
-                    role: r.worker_department ? `${r.worker_department} Staff` : 'Assigned Technician',
-                  }
-                : null,
-              badgeClass:
-                rawStatus === 'resolved' || rawStatus === 'closed'
-                  ? 'badge-fixed'
-                  : rawStatus === 'assigned'
-                  ? 'badge-worker'
-                  : 'badge-pending',
-              modalTrigger: 'update_status',
-            };
-          })
-        );
-      } else {
-        setReports([]);
-      }
-    });
-
     return () => {
       isMounted = false;
+      clearInterval(interval);
     };
-  }, []);
+  }, [currentUser?.id]);
 
   // Compute Greeting
   const getGreeting = () => {
@@ -270,7 +293,8 @@ export default function DashboardPage({
           setTimeout(() => setToastMessage(''), 3500);
 
           // Refresh live stats counters
-          fetchStats().then((sRes) => {
+          const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+          fetchStats(statsParams).then((sRes) => {
             if (sRes && sRes.success) {
               const statsData = sRes.data || sRes;
               setStats({
@@ -333,8 +357,13 @@ export default function DashboardPage({
             <button
               type="button"
               className="dash-logo-btn"
-              onClick={() => onNavigate('landing')}
+              onClick={() => {
+                setActiveTab('home');
+                setSelectedReportForDetails(null);
+                window.location.hash = 'dashboard';
+              }}
               title="FixMyCampus Home"
+              id="dash-logo-btn"
             >
               <div className="dash-logo-icon">
                 <Wrench size={18} strokeWidth={2.2} />
@@ -621,6 +650,7 @@ export default function DashboardPage({
             setActiveModalPreset('delete_report');
           }}
           isAdmin={isAdmin}
+          currentUser={currentUser}
         />
       ) : (
         <main className="dash-content">
@@ -692,115 +722,6 @@ export default function DashboardPage({
         </section>
 
         {/* ------------------------------------------------------------------
-            Recent Reports Section (3-card grid)
-            ------------------------------------------------------------------ */}
-        <section className="dash-section" aria-labelledby="recent-reports-heading">
-          <div className="dash-section-header">
-            <h2 id="recent-reports-heading">Recent Reports</h2>
-          </div>
-
-          {reports.length === 0 ? (
-            <div
-              style={{
-                backgroundColor: '#ffffff',
-                border: '1.5px dashed #e2e8f0',
-                borderRadius: 16,
-                padding: '3.5rem 1.5rem',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.75rem',
-              }}
-            >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: '50%',
-                  backgroundColor: '#f1f5f9',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#64748b',
-                }}
-              >
-                <Camera size={24} />
-              </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                No Defect Reports Submitted Yet
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0, maxWidth: 460 }}>
-                All campus statistics start at zero until an issue is filed. Help keep the campus safe, clean, and functional by reporting your first defect!
-              </p>
-              <button
-                type="button"
-                className="dash-btn-primary"
-                onClick={() => onNavigate('report-issue')}
-                style={{ marginTop: '0.5rem' }}
-              >
-                <Plus size={16} strokeWidth={2.6} />
-                <span>Report a Facility Issue</span>
-              </button>
-            </div>
-          ) : (
-            <div className="dash-reports-grid">
-              {reports.map((report) => (
-                <article
-                  key={report.id}
-                  className="dash-report-card"
-                  onClick={() => {
-                    setSelectedReportForDetails(report);
-                    setActiveTab('my-reports');
-                    window.location.hash = 'my-reports';
-                  }}
-                  style={{ cursor: 'pointer' }}
-                >
-                  <div className="dash-report-image">
-                    <img src={report.image} alt={report.title} loading="lazy" />
-                  </div>
-
-                  <div className="dash-report-info">
-                    <h3 className="dash-report-title">{report.title}</h3>
-                    <p className="dash-report-location">{report.location}</p>
-                    <p className="dash-report-date">{report.date}</p>
-
-                    <div className="dash-report-badge-container">
-                      <button
-                        type="button"
-                        className={`dash-badge ${report.badgeClass}`}
-                        onClick={() => setActiveModalPreset(report.modalTrigger)}
-                        title={`Click to test "${MODAL_PRESETS[report.modalTrigger]?.title}" dialog`}
-                      >
-                        {report.statusLabel}
-                      </button>
-
-                      {isReportDeletable(report) && (
-                        <div className="dash-card-actions">
-                          <button
-                            type="button"
-                            className="dash-card-action-btn"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              setReportToDelete(report);
-                              setActiveModalPreset('delete_report');
-                            }}
-                            title={`Delete report: ${report.title}`}
-                            aria-label={`Delete report: ${report.title}`}
-                          >
-                            <Trash2 size={14} />
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
-        </section>
-
-        {/* ------------------------------------------------------------------
             How It Works Card (4 horizontal steps)
             ------------------------------------------------------------------ */}
         <section className="dash-how-it-works" aria-labelledby="how-it-works-heading">
@@ -855,6 +776,158 @@ export default function DashboardPage({
               </p>
             </div>
           </div>
+        </section>
+
+        {/* ------------------------------------------------------------------
+            Recent Reports Section (Paginated: 3 cards per page)
+            ------------------------------------------------------------------ */}
+        <section className="dash-section" aria-labelledby="recent-reports-heading">
+          <div className="dash-section-header">
+            <div className="dash-section-title-wrap">
+              <h2 id="recent-reports-heading">Recent Reports</h2>
+              {reports.length > 0 && (
+                <span className="dash-reports-count-pill">{reports.length} Reports</span>
+              )}
+            </div>
+
+            {totalRecentPages > 1 && (
+              <div className="dash-pagination-controls" aria-label="Recent reports pagination">
+                <button
+                  type="button"
+                  className="dash-scroll-btn"
+                  onClick={() => setRecentPage((p) => Math.max(1, p - 1))}
+                  disabled={recentPage === 1}
+                  title="Previous Page"
+                  aria-label="Previous reports page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <div className="dash-page-numbers">
+                  {Array.from({ length: totalRecentPages }, (_, i) => i + 1).map((pg) => (
+                    <button
+                      key={pg}
+                      type="button"
+                      className={`dash-page-num-btn ${pg === recentPage ? 'active' : ''}`}
+                      onClick={() => setRecentPage(pg)}
+                      aria-label={`Go to page ${pg}`}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="dash-scroll-btn"
+                  onClick={() => setRecentPage((p) => Math.min(totalRecentPages, p + 1))}
+                  disabled={recentPage === totalRecentPages}
+                  title="Next Page"
+                  aria-label="Next reports page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {reports.length === 0 ? (
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1.5px dashed #e2e8f0',
+                borderRadius: 16,
+                padding: '3.5rem 1.5rem',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}
+            >
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  backgroundColor: '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748b',
+                }}
+              >
+                <Camera size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                No Defect Reports Submitted Yet
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0, maxWidth: 460 }}>
+                All campus statistics start at zero until an issue is filed. Help keep the campus safe, clean, and functional by reporting your first defect!
+              </p>
+              <button
+                type="button"
+                className="dash-btn-primary"
+                onClick={() => onNavigate('report-issue')}
+                style={{ marginTop: '0.5rem' }}
+              >
+                <Plus size={16} strokeWidth={2.6} />
+                <span>Report a Facility Issue</span>
+              </button>
+            </div>
+          ) : (
+            <div className="dash-reports-grid">
+              {paginatedRecentReports.map((report) => (
+                <article
+                  key={report.id}
+                  className="dash-report-card"
+                  onClick={() => {
+                    setSelectedReportForDetails(report);
+                    setActiveTab('my-reports');
+                    window.location.hash = 'my-reports';
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="dash-report-image">
+                    <img src={report.image} alt={report.title} loading="lazy" />
+                  </div>
+
+                  <div className="dash-report-info">
+                    <h3 className="dash-report-title">{report.title}</h3>
+                    <p className="dash-report-location">{report.location}</p>
+                    <p className="dash-report-date">{report.date}</p>
+
+                    <div className="dash-report-badge-container">
+                      <button
+                        type="button"
+                        className={`dash-badge ${report.badgeClass}`}
+                        onClick={() => setActiveModalPreset(report.modalTrigger)}
+                        title={`Click to test "${MODAL_PRESETS[report.modalTrigger]?.title}" dialog`}
+                      >
+                        {report.statusLabel}
+                      </button>
+
+                      {isReportDeletable(report) && (
+                        <div className="dash-card-actions">
+                          <button
+                            type="button"
+                            className="dash-card-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportToDelete(report);
+                              setActiveModalPreset('delete_report');
+                            }}
+                            title={`Delete report: ${report.title}`}
+                            aria-label={`Delete report: ${report.title}`}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
         </section>
       </main>
       )}

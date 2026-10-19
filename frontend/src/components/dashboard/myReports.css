@@ -734,3 +734,73 @@
   white-space: nowrap;
 }
 
+/* --------------------------------------------------------------------------
+   Pagination Controls
+   -------------------------------------------------------------------------- */
+.myreports-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 24px;
+  padding-top: 16px;
+  border-top: 1px solid #e5e7eb;
+  font-size: 0.86rem;
+  color: #64748b;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.myreports-pagination-info {
+  font-size: 0.86rem;
+  color: #64748b;
+  font-weight: 400;
+}
+
+.myreports-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.myreports-page-btn {
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #e2e8f0;
+  background: #ffffff;
+  font-size: 0.84rem;
+  font-weight: 500;
+  color: #0f172a;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.myreports-page-btn:hover:not(:disabled):not(.active) {
+  background-color: #f1f5f9;
+}
+
+.myreports-page-btn.active {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border-color: #059669;
+}
+
+.myreports-page-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  background-color: #ffffff;
+  color: #94a3b8;
+}
+
+@media (max-width: 640px) {
+  .myreports-pagination {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+

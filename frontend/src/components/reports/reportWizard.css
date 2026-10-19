@@ -385,6 +385,13 @@
   margin: 0;
 }
 
+.rw-required-asterisk {
+  color: #ef4444;
+  margin-left: 4px;
+  font-weight: 700;
+  font-size: 0.95rem;
+}
+
 .rw-upload-required-badge {
   font-size: 0.75rem;
   font-weight: 650;

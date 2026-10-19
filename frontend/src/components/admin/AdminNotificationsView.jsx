@@ -15,15 +15,18 @@ import {
   Layers,
   Inbox,
   ShieldAlert,
-  Trash2,
-  FileText,
+  Archive,
+  RotateCcw,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
-  deleteNotification,
-  deleteAllNotifications,
+  archiveNotification,
+  unarchiveNotification,
+  archiveAllNotifications,
 } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 
@@ -32,19 +35,24 @@ export default function AdminNotificationsView({
   onViewReport = null,
   showToast = null,
   onUnreadChange = null,
+  currentUser = null,
 }) {
+  const effectiveAdminId = currentUser?.id || 1;
   const [notifications, setNotifications] = useState([]);
-  const [filterType, setFilterType] = useState('all'); // 'all', 'unread', 'emergency', 'new_report', 'work_order'
-  const [searchQuery, setSearchQuery] = useState('');
+  const [filterType, setFilterType] = useState('all'); // 'all', 'unread', 'emergency', 'new_report', 'work_order', 'archived'
+  const [searchInput, setSearchInput] = useState('');
+  const [appliedSearch, setAppliedSearch] = useState('');
+  const [pageSize, setPageSize] = useState(5);
+  const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
-  const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
-  const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [showArchiveAllModal, setShowArchiveAllModal] = useState(false);
+  const [isArchivingAll, setIsArchivingAll] = useState(false);
 
   const loadNotifications = async () => {
     setLoading(true);
     try {
-      const res = await fetchNotifications();
+      const res = await fetchNotifications(effectiveAdminId, 'admin');
       if (res && res.success && Array.isArray(res.data)) {
         setNotifications(res.data);
       } else {
@@ -60,11 +68,19 @@ export default function AdminNotificationsView({
 
   useEffect(() => {
     loadNotifications();
-  }, []);
+  }, [effectiveAdminId]);
+
+  const activeNotifications = useMemo(() => {
+    return notifications.filter((n) => !n.is_archived);
+  }, [notifications]);
+
+  const archivedNotifications = useMemo(() => {
+    return notifications.filter((n) => Boolean(n.is_archived));
+  }, [notifications]);
 
   const unreadCount = useMemo(() => {
-    return notifications.filter((n) => !n.is_read).length;
-  }, [notifications]);
+    return activeNotifications.filter((n) => !n.is_read).length;
+  }, [activeNotifications]);
 
   useEffect(() => {
     if (typeof onUnreadChange === 'function') {
@@ -73,22 +89,43 @@ export default function AdminNotificationsView({
   }, [unreadCount, onUnreadChange]);
 
   const urgentCount = useMemo(() => {
-    return notifications.filter(
+    return activeNotifications.filter(
       (n) => n.type === 'emergency' || n.priority === 'emergency' || n.priority === 'high'
     ).length;
-  }, [notifications]);
+  }, [activeNotifications]);
 
   const newReportsCount = useMemo(() => {
-    return notifications.filter(
+    return activeNotifications.filter(
       (n) => n.type === 'new_report' || n.type === 'submitted'
     ).length;
-  }, [notifications]);
+  }, [activeNotifications]);
 
   const workOrdersCount = useMemo(() => {
-    return notifications.filter(
+    return activeNotifications.filter(
       (n) => n.type === 'work_order' || n.type === 'assignment'
     ).length;
-  }, [notifications]);
+  }, [activeNotifications]);
+
+  const filterTabsCounts = {
+    all: activeNotifications.length,
+    unread: unreadCount,
+    emergency: urgentCount,
+    new_report: newReportsCount,
+    work_order: workOrdersCount,
+    archived: archivedNotifications.length,
+  };
+
+  const handleSearchSubmit = (e) => {
+    if (e) e.preventDefault();
+    setAppliedSearch(searchInput.trim());
+    setCurrentPage(1);
+  };
+
+  const handleClearSearch = () => {
+    setSearchInput('');
+    setAppliedSearch('');
+    setCurrentPage(1);
+  };
 
   // Mark all notifications as read
   const handleMarkAllAsRead = async () => {
@@ -96,14 +133,16 @@ export default function AdminNotificationsView({
     setIsMarkingAll(true);
 
     // Optimistic UI update
-    setNotifications((prev) => prev.map((n) => ({ ...n, is_read: 1 })));
+    setNotifications((prev) =>
+      prev.map((n) => (!n.is_archived ? { ...n, is_read: 1 } : n))
+    );
 
     if (typeof showToast === 'function') {
       showToast('All notifications marked as read.');
     }
 
     try {
-      await markAllNotificationsRead();
+      await markAllNotificationsRead(effectiveAdminId, 'admin');
     } catch (err) {
       console.error('Error marking all notifications read:', err);
     } finally {
@@ -122,45 +161,67 @@ export default function AdminNotificationsView({
 
     if (newStatus === 1) {
       try {
-        await markNotificationRead(notif.id);
+        await markNotificationRead(notif.id, effectiveAdminId, 'admin');
       } catch (err) {
         console.error('Error marking notification read:', err);
       }
     }
   };
 
-  // Delete individual notification
-  const handleDeleteSingle = async (notif, e) => {
+  // Archive individual notification
+  const handleArchiveSingle = async (notif, e) => {
     if (e) e.stopPropagation();
     const targetId = notif.id;
 
-    // Optimistic removal
-    setNotifications((prev) => prev.filter((n) => n.id !== targetId));
+    // Optimistic archive update
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === targetId ? { ...n, is_archived: 1 } : n))
+    );
     if (typeof showToast === 'function') {
-      showToast('Notification deleted.');
+      showToast('Notification archived.');
     }
 
     try {
-      await deleteNotification(targetId);
+      await archiveNotification(targetId, effectiveAdminId, 'admin');
     } catch (err) {
-      console.error('Error deleting notification:', err);
+      console.error('Error archiving notification:', err);
     }
   };
 
-  // Delete all notifications
-  const handleConfirmDeleteAll = async () => {
-    setIsDeletingAll(true);
+  // Restore individual notification from archive
+  const handleUnarchiveSingle = async (notif, e) => {
+    if (e) e.stopPropagation();
+    const targetId = notif.id;
+
+    // Optimistic unarchive update
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === targetId ? { ...n, is_archived: 0 } : n))
+    );
+    if (typeof showToast === 'function') {
+      showToast('Notification restored from archive.');
+    }
+
     try {
-      await deleteAllNotifications();
-      setNotifications([]);
+      await unarchiveNotification(targetId, effectiveAdminId, 'admin');
+    } catch (err) {
+      console.error('Error restoring notification:', err);
+    }
+  };
+
+  // Archive all notifications
+  const handleConfirmArchiveAll = async () => {
+    setIsArchivingAll(true);
+    try {
+      await archiveAllNotifications(effectiveAdminId, 'admin');
+      setNotifications((prev) => prev.map((n) => ({ ...n, is_archived: 1 })));
       if (typeof showToast === 'function') {
-        showToast('All notifications deleted.');
+        showToast('All notifications archived.');
       }
     } catch (err) {
-      console.error('Error deleting all notifications:', err);
+      console.error('Error archiving all notifications:', err);
     } finally {
-      setIsDeletingAll(false);
-      setShowDeleteAllModal(false);
+      setIsArchivingAll(false);
+      setShowArchiveAllModal(false);
     }
   };
 
@@ -170,11 +231,10 @@ export default function AdminNotificationsView({
       setNotifications((prev) =>
         prev.map((n) => (n.id === notif.id ? { ...n, is_read: 1 } : n))
       );
-      markNotificationRead(notif.id).catch(() => {});
+      markNotificationRead(notif.id, effectiveAdminId, 'admin').catch(() => {});
     }
 
     if (typeof onViewReport === 'function') {
-      // Find matching report in reports state
       const matched = reports.find(
         (r) =>
           (notif.report_id && r.id === notif.report_id) ||
@@ -201,23 +261,59 @@ export default function AdminNotificationsView({
   // Filtered notifications
   const filteredNotifications = useMemo(() => {
     return notifications.filter((item) => {
-      if (filterType === 'unread' && item.is_read) return false;
-      if (filterType === 'emergency' && item.type !== 'emergency' && item.priority !== 'emergency' && item.priority !== 'high') return false;
-      if (filterType === 'new_report' && item.type !== 'new_report' && item.type !== 'submitted') return false;
-      if (filterType === 'work_order' && item.type !== 'work_order' && item.type !== 'assignment') return false;
+      if (filterType === 'archived') {
+        if (!item.is_archived) return false;
+      } else {
+        if (item.is_archived) return false;
+        if (filterType === 'unread' && item.is_read) return false;
+        if (filterType === 'emergency' && item.type !== 'emergency' && item.priority !== 'emergency' && item.priority !== 'high') return false;
+        if (filterType === 'new_report' && item.type !== 'new_report' && item.type !== 'submitted') return false;
+        if (filterType === 'work_order' && item.type !== 'work_order' && item.type !== 'assignment') return false;
+      }
 
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
+      if (appliedSearch) {
+        const q = appliedSearch.toLowerCase();
         const matchesTitle = item.title?.toLowerCase().includes(q);
         const matchesMsg = item.message?.toLowerCase().includes(q);
         const matchesLoc = item.location?.toLowerCase().includes(q);
         const matchesTicket = item.ticket_number?.toLowerCase().includes(q);
-        return matchesTitle || matchesMsg || matchesLoc || matchesTicket;
+        return Boolean(matchesTitle || matchesMsg || matchesLoc || matchesTicket);
       }
 
       return true;
     });
-  }, [notifications, filterType, searchQuery]);
+  }, [notifications, filterType, appliedSearch]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredNotifications.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedNotifications = useMemo(() => {
+    return filteredNotifications.slice(startIndex, startIndex + pageSize);
+  }, [filteredNotifications, startIndex, pageSize]);
+
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages = [];
+    if (currentPage <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      pages.push(currentPage - 1);
+      pages.push(currentPage);
+      pages.push(currentPage + 1);
+      pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   const getTypeConfig = (type) => {
     switch (type) {
@@ -267,49 +363,6 @@ export default function AdminNotificationsView({
         };
     }
   };
-
-  const filterTabs = [
-    {
-      id: 'all',
-      label: 'All Alerts',
-      icon: Layers,
-      count: notifications.length,
-      accentColor: '#059669',
-      badgeBg: '#ecfdf5',
-    },
-    {
-      id: 'unread',
-      label: 'Unread',
-      icon: Bell,
-      count: unreadCount,
-      accentColor: '#d97706',
-      badgeBg: '#fef3c7',
-    },
-    {
-      id: 'emergency',
-      label: 'Urgent & Safety',
-      icon: AlertTriangle,
-      count: urgentCount,
-      accentColor: '#dc2626',
-      badgeBg: '#fee2e2',
-    },
-    {
-      id: 'new_report',
-      label: 'New Defect Reports',
-      icon: FileText,
-      count: newReportsCount,
-      accentColor: '#059669',
-      badgeBg: '#ecfdf5',
-    },
-    {
-      id: 'work_order',
-      label: 'Dispatches & Tasks',
-      icon: Wrench,
-      count: workOrdersCount,
-      accentColor: '#2563eb',
-      badgeBg: '#dbeafe',
-    },
-  ];
 
   return (
     <div style={{ maxWidth: 1100, margin: '0 auto', paddingBottom: 60 }}>
@@ -401,27 +454,27 @@ export default function AdminNotificationsView({
 
           <button
             type="button"
-            id="admin-notif-delete-all-btn"
-            onClick={() => setShowDeleteAllModal(true)}
-            disabled={notifications.length === 0}
+            id="admin-notif-archive-all-btn"
+            onClick={() => setShowArchiveAllModal(true)}
+            disabled={activeNotifications.length === 0}
             style={{
               display: 'inline-flex',
               alignItems: 'center',
               gap: 6,
               padding: '8px 16px',
               borderRadius: 8,
-              border: '1px solid #fee2e2',
-              backgroundColor: notifications.length === 0 ? '#f8fafc' : '#fef2f2',
-              color: notifications.length === 0 ? '#cbd5e1' : '#dc2626',
+              border: '1px solid #fed7aa',
+              backgroundColor: activeNotifications.length === 0 ? '#f8fafc' : '#fff7ed',
+              color: activeNotifications.length === 0 ? '#cbd5e1' : '#c2410c',
               fontSize: '0.88rem',
               fontWeight: 600,
-              cursor: notifications.length === 0 ? 'not-allowed' : 'pointer',
+              cursor: activeNotifications.length === 0 ? 'not-allowed' : 'pointer',
               transition: 'all 0.15s ease',
             }}
-            title={notifications.length === 0 ? 'No notifications to delete' : 'Delete all notifications'}
+            title={activeNotifications.length === 0 ? 'No active notifications to archive' : 'Archive all notifications'}
           >
-            <Trash2 size={15} />
-            <span>Delete All</span>
+            <Archive size={15} />
+            <span>Archive All</span>
           </button>
         </div>
       </div>
@@ -430,10 +483,10 @@ export default function AdminNotificationsView({
       <div className="admin-stat-grid" style={{ marginBottom: 24 }}>
         <div className="admin-stat-card">
           <div className="admin-stat-meta">
-            <span className="admin-stat-title">TOTAL NOTIFICATIONS</span>
-            <span className="admin-stat-value">{notifications.length}</span>
+            <span className="admin-stat-title">TOTAL ACTIVE NOTIFICATIONS</span>
+            <span className="admin-stat-value">{activeNotifications.length}</span>
           </div>
-          <div className="admin-stat-icon indigo" title="Total Alerts">
+          <div className="admin-stat-icon indigo" title="Total Active Alerts">
             <Layers size={22} />
           </div>
         </div>
@@ -469,116 +522,69 @@ export default function AdminNotificationsView({
         </div>
       </div>
 
-      {/* Toolbar: Filters & Search */}
-      <div
-        style={{
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: 12,
-          padding: '12px 16px',
-          backgroundColor: '#ffffff',
-          borderRadius: 12,
-          border: '1px solid #e2e8f0',
-          marginBottom: 20,
-        }}
-      >
-        {/* Minimalist Filter Track */}
-        <div className="admin-minimal-filter-track" role="tablist" aria-label="Notification filters">
-          {filterTabs.map((tab) => {
-            const isActive = filterType === tab.id;
-            const Icon = tab.icon;
-            return (
-              <button
-                key={tab.id}
-                type="button"
-                role="tab"
-                aria-selected={isActive}
-                className={`admin-minimal-filter-btn ${isActive ? 'active' : ''}`}
-                onClick={() => setFilterType(tab.id)}
-                style={{
-                  '--pill-accent': tab.accentColor,
-                  '--pill-badge-bg': tab.badgeBg,
-                }}
-              >
-                <span className="filter-icon">
-                  <Icon size={14} strokeWidth={2} />
-                </span>
-                <span>{tab.label}</span>
-                <span className="filter-badge">
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
-        </div>
+      {/* Toolbar: Search input, Green Search button, Category Dropdown, Limit Dropdown */}
+      <div className="admin-filter-card" style={{ marginBottom: 20 }}>
+        <form onSubmit={handleSearchSubmit} className="admin-search-row" style={{ flexWrap: 'wrap' }}>
+          <div className="admin-search-input-wrap">
+            <Search size={18} />
+            <input
+              type="text"
+              className="admin-search-input"
+              placeholder="Search ticket, room, keyword..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+            />
+          </div>
 
-        {/* Search */}
-        <div style={{ position: 'relative', minWidth: 260 }}>
-          <Search
-            size={14}
-            style={{
-              position: 'absolute',
-              left: 12,
-              top: '50%',
-              transform: 'translateY(-50%)',
-              color: '#94a3b8',
-              pointerEvents: 'none',
-            }}
-          />
-          <input
-            type="text"
-            placeholder="Search ticket, room, keyword..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            style={{
-              width: '100%',
-              padding: '7px 32px 7px 34px',
-              borderRadius: 8,
-              border: '1px solid #e2e8f0',
-              fontSize: '0.85rem',
-              outline: 'none',
-              backgroundColor: '#f8fafc',
-              color: '#0f172a',
-              transition: 'all 0.15s ease',
-            }}
-            onFocus={(e) => {
-              e.target.style.borderColor = '#059669';
-              e.target.style.backgroundColor = '#ffffff';
-              e.target.style.boxShadow = '0 0 0 3px rgba(5,150,105,0.08)';
-            }}
-            onBlur={(e) => {
-              e.target.style.borderColor = '#e2e8f0';
-              e.target.style.backgroundColor = '#f8fafc';
-              e.target.style.boxShadow = 'none';
-            }}
-          />
-          {searchQuery && (
+          <button type="submit" className="admin-btn-black">
+            Search
+          </button>
+          {appliedSearch && (
             <button
               type="button"
-              onClick={() => setSearchQuery('')}
-              style={{
-                position: 'absolute',
-                right: 10,
-                top: '50%',
-                transform: 'translateY(-50%)',
-                background: 'transparent',
-                border: 'none',
-                color: '#94a3b8',
-                cursor: 'pointer',
-                fontSize: '0.9rem',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                padding: 2,
-              }}
-              title="Clear search"
+              className="admin-btn-secondary"
+              onClick={handleClearSearch}
             >
-              ✕
+              Clear
             </button>
           )}
-        </div>
+
+          <select
+            className="admin-filter-select"
+            value={filterType}
+            onChange={(e) => {
+              setFilterType(e.target.value);
+              setCurrentPage(1);
+            }}
+          >
+            <option value="all">All Alerts ({filterTabsCounts.all})</option>
+            <option value="unread">Unread ({filterTabsCounts.unread})</option>
+            <option value="emergency">Urgent &amp; Safety ({filterTabsCounts.emergency})</option>
+            <option value="new_report">New Defect Reports ({filterTabsCounts.new_report})</option>
+            <option value="work_order">Dispatches &amp; Tasks ({filterTabsCounts.work_order})</option>
+            <option value="archived">Archived Alerts ({filterTabsCounts.archived})</option>
+          </select>
+
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
+              Limit:
+            </span>
+            <select
+              className="admin-filter-select"
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              title="Items per page limit"
+            >
+              <option value={5}>5 per page</option>
+              <option value={10}>10 per page</option>
+              <option value={20}>20 per page</option>
+              <option value={50}>50 per page</option>
+            </select>
+          </div>
+        </form>
       </div>
 
       {/* Notifications List */}
@@ -601,8 +607,8 @@ export default function AdminNotificationsView({
               Fetching latest updates from MySQL database.
             </p>
           </div>
-        ) : filteredNotifications.length > 0 ? (
-          filteredNotifications.map((item) => {
+        ) : paginatedNotifications.length > 0 ? (
+          paginatedNotifications.map((item) => {
             const config = getTypeConfig(item.type);
             const isUnread = !item.is_read;
             const hasReport = Boolean(item.report_id || item.ticket_number);
@@ -628,6 +634,7 @@ export default function AdminNotificationsView({
                     ? '0 2px 8px rgba(0,0,0,0.03)'
                     : '0 1px 2px rgba(0,0,0,0.01)',
                   transition: 'all 0.15s ease',
+                  opacity: item.is_archived ? 0.75 : 1,
                 }}
               >
                 {/* Left Side */}
@@ -686,6 +693,26 @@ export default function AdminNotificationsView({
                           }}
                         >
                           {item.ticket_number}
+                        </span>
+                      )}
+
+                      {item.is_archived === 1 && (
+                        <span
+                          style={{
+                            fontSize: '0.72rem',
+                            fontWeight: 600,
+                            backgroundColor: '#fff7ed',
+                            color: '#c2410c',
+                            border: '1px solid #fed7aa',
+                            padding: '2px 8px',
+                            borderRadius: 6,
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                          }}
+                        >
+                          <Archive size={11} />
+                          Archived
                         </span>
                       )}
 
@@ -806,28 +833,54 @@ export default function AdminNotificationsView({
                     <span>{isUnread ? 'Mark Read' : 'Read'}</span>
                   </button>
 
-                  <button
-                    type="button"
-                    className="admin-notif-card-delete-btn"
-                    onClick={(e) => handleDeleteSingle(item, e)}
-                    style={{
-                      display: 'inline-flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      width: 32,
-                      height: 32,
-                      borderRadius: 8,
-                      border: '1px solid #fee2e2',
-                      backgroundColor: '#fef2f2',
-                      color: '#dc2626',
-                      cursor: 'pointer',
-                      transition: 'all 0.15s ease',
-                      flexShrink: 0,
-                    }}
-                    title="Delete notification"
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {item.is_archived === 1 ? (
+                    <button
+                      type="button"
+                      className="admin-notif-card-archive-btn"
+                      onClick={(e) => handleUnarchiveSingle(item, e)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 5,
+                        padding: '6px 12px',
+                        borderRadius: 8,
+                        border: '1px solid #bfdbfe',
+                        backgroundColor: '#eff6ff',
+                        color: '#1d4ed8',
+                        fontSize: '0.82rem',
+                        fontWeight: 600,
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                      }}
+                      title="Restore notification from archive"
+                    >
+                      <RotateCcw size={13} />
+                      <span>Restore</span>
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      className="admin-notif-card-archive-btn"
+                      onClick={(e) => handleArchiveSingle(item, e)}
+                      style={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        width: 32,
+                        height: 32,
+                        borderRadius: 8,
+                        border: '1px solid #fed7aa',
+                        backgroundColor: '#fff7ed',
+                        color: '#c2410c',
+                        cursor: 'pointer',
+                        transition: 'all 0.15s ease',
+                        flexShrink: 0,
+                      }}
+                      title="Archive notification"
+                    >
+                      <Archive size={14} />
+                    </button>
+                  )}
                 </div>
               </div>
             );
@@ -861,18 +914,20 @@ export default function AdminNotificationsView({
               No Notifications Found
             </h3>
             <p style={{ fontSize: '0.88rem', color: '#64748b', margin: '6px 0 0 0' }}>
-              {searchQuery
-                ? `No alerts match your search query "${searchQuery}".`
+              {appliedSearch
+                ? `No alerts match your search query "${appliedSearch}".`
                 : filterType === 'unread'
                 ? 'All caught up! There are no unread system notifications.'
+                : filterType === 'archived'
+                ? 'No archived notifications found.'
                 : 'All clear! No alerts exist in this category right now.'}
             </p>
-            {(filterType !== 'all' || searchQuery) && (
+            {(filterType !== 'all' || appliedSearch) && (
               <button
                 type="button"
                 onClick={() => {
                   setFilterType('all');
-                  setSearchQuery('');
+                  handleClearSearch();
                 }}
                 style={{
                   marginTop: 16,
@@ -893,13 +948,99 @@ export default function AdminNotificationsView({
         )}
       </div>
 
-      {/* Delete All Confirmation Modal */}
+      {/* Pagination Bar */}
+      {filteredNotifications.length > 0 && (
+        <div className="admin-pagination" style={{ marginTop: 20 }}>
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 16,
+              fontSize: '0.86rem',
+              color: 'var(--admin-text-muted)',
+            }}
+          >
+            <span>
+              Showing {startIndex + 1}–
+              {Math.min(filteredNotifications.length, startIndex + pageSize)} of {filteredNotifications.length} alert{filteredNotifications.length === 1 ? '' : 's'}
+            </span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: '0.82rem', color: 'var(--admin-text-muted)' }}>Per page:</span>
+              <select
+                className="admin-filter-select"
+                style={{ padding: '4px 8px', fontSize: '0.82rem', height: 'auto', minWidth: 'unset' }}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                aria-label="Items per page"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="admin-pagination-btns">
+            <button
+              type="button"
+              className="admin-page-btn"
+              disabled={currentPage <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              title="Previous page"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <ChevronLeft size={14} />
+              <span>Previous</span>
+            </button>
+
+            {getPageNumbers().map((item, idx) =>
+              item === '...' ? (
+                <span
+                  key={`ellipsis-${idx}`}
+                  style={{ padding: '6px 8px', color: 'var(--admin-text-muted)', fontSize: '0.84rem' }}
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={item}
+                  type="button"
+                  className={`admin-page-btn ${currentPage === item ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(item)}
+                  title={`Page ${item}`}
+                >
+                  {item}
+                </button>
+              )
+            )}
+
+            <button
+              type="button"
+              className="admin-page-btn"
+              disabled={currentPage >= totalPages}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              title="Next page"
+              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+            >
+              <span>Next</span>
+              <ChevronRight size={14} />
+            </button>
+          </div>
+        </div>
+      )}
+
+      {/* Archive All Confirmation Modal */}
       <ConfirmationModal
-        isOpen={showDeleteAllModal}
-        presetId="delete_notifications"
-        onConfirm={handleConfirmDeleteAll}
-        onCancel={() => setShowDeleteAllModal(false)}
-        isLoading={isDeletingAll}
+        isOpen={showArchiveAllModal}
+        presetId="archive_notifications"
+        onConfirm={handleConfirmArchiveAll}
+        onCancel={() => setShowArchiveAllModal(false)}
+        isLoading={isArchivingAll}
       />
     </div>
   );

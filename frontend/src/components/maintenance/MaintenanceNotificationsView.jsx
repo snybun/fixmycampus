@@ -20,14 +20,14 @@ import {
   Sparkles,
   Inbox,
   Eye,
-  Trash2,
+  Archive,
 } from 'lucide-react';
 import {
   fetchNotifications,
   markAllNotificationsRead,
   markNotificationRead,
-  deleteNotification,
-  deleteAllNotifications,
+  archiveNotification,
+  archiveAllNotifications,
 } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 
@@ -39,6 +39,7 @@ export default function MaintenanceNotificationsView({
   onUnreadChange = null,
   showToast = null,
 }) {
+  const effectiveMaintId = currentUser?.id || 17;
   const [notifications, setNotifications] = useState([]);
   const [filterType, setFilterType] = useState('all'); // 'all', 'unread', 'emergency', 'work_order', 'parts', 'verified'
   const [searchQuery, setSearchQuery] = useState('');
@@ -50,7 +51,7 @@ export default function MaintenanceNotificationsView({
   // Sync notifications from API if available
   const loadNotifications = async () => {
     try {
-      const res = await fetchNotifications(currentUser?.id);
+      const res = await fetchNotifications(effectiveMaintId, 'maintenance');
       if (res && res.success && Array.isArray(res.data)) {
         // Map API notifications and merge with linked job details
         const mapped = res.data.map((item) => {
@@ -137,7 +138,7 @@ export default function MaintenanceNotificationsView({
     }
 
     try {
-      await markAllNotificationsRead();
+      await markAllNotificationsRead(effectiveMaintId, 'maintenance');
     } catch (err) {
       console.error('Error marking all notifications read:', err);
     } finally {
@@ -156,7 +157,7 @@ export default function MaintenanceNotificationsView({
 
     if (newStatus === 1) {
       try {
-        await markNotificationRead(notif.id);
+        await markNotificationRead(notif.id, effectiveMaintId, 'maintenance');
       } catch (err) {
         console.error('Error marking notification read:', err);
       }
@@ -172,27 +173,27 @@ export default function MaintenanceNotificationsView({
     setNotifications((prev) => prev.filter((n) => n.id !== targetId));
 
     if (typeof showToast === 'function') {
-      showToast('Notification deleted.');
+      showToast('Notification archived.');
     }
 
     try {
-      await deleteNotification(targetId);
+      await archiveNotification(targetId, effectiveMaintId, 'maintenance');
     } catch (err) {
-      console.error('Error deleting notification:', err);
+      console.error('Error archiving notification:', err);
     }
   };
 
-  // Delete all notifications
+  // Archive all notifications
   const handleConfirmDeleteAll = async () => {
     setIsDeletingAll(true);
     try {
-      await deleteAllNotifications();
+      await archiveAllNotifications(effectiveMaintId, 'maintenance');
       setNotifications([]);
       if (typeof showToast === 'function') {
-        showToast('All notifications deleted.');
+        showToast('All notifications archived.');
       }
     } catch (err) {
-      console.error('Error deleting all notifications:', err);
+      console.error('Error archiving all notifications:', err);
     } finally {
       setIsDeletingAll(false);
       setShowDeleteAllModal(false);
@@ -206,7 +207,7 @@ export default function MaintenanceNotificationsView({
       setNotifications((prev) =>
         prev.map((n) => (n.id === notif.id ? { ...n, is_read: 1 } : n))
       );
-      markNotificationRead(notif.id).catch(() => {});
+      markNotificationRead(notif.id, effectiveMaintId, 'maintenance').catch(() => {});
     }
 
     if (notif.job_id && typeof onViewJob === 'function') {
@@ -356,10 +357,10 @@ export default function MaintenanceNotificationsView({
             className="maint-notif-btn-delete-all"
             onClick={() => setShowDeleteAllModal(true)}
             disabled={notifications.length === 0}
-            title={notifications.length === 0 ? 'No notifications to delete' : 'Delete all notifications'}
+            title={notifications.length === 0 ? 'No notifications to archive' : 'Archive all notifications'}
           >
-            <Trash2 size={15} />
-            <span>Delete All</span>
+            <Archive size={15} />
+            <span>Archive All</span>
           </button>
         </div>
       </div>
@@ -601,14 +602,14 @@ export default function MaintenanceNotificationsView({
                     <span>{isUnread ? 'Mark Read' : 'Read'}</span>
                   </button>
 
-                  {/* Delete Single Notification */}
+                  {/* Archive Single Notification */}
                   <button
                     type="button"
                     className="maint-notif-btn-delete"
                     onClick={(e) => handleDeleteSingle(item, e)}
-                    title="Delete notification"
+                    title="Archive notification"
                   >
-                    <Trash2 size={14} />
+                    <Archive size={14} />
                   </button>
                 </div>
               </div>
@@ -645,10 +646,10 @@ export default function MaintenanceNotificationsView({
         )}
       </div>
 
-      {/* Delete All Confirmation Modal */}
+      {/* Archive All Confirmation Modal */}
       <ConfirmationModal
         isOpen={showDeleteAllModal}
-        presetId="delete_notifications"
+        presetId="archive_notifications"
         onConfirm={handleConfirmDeleteAll}
         onCancel={() => setShowDeleteAllModal(false)}
         isLoading={isDeletingAll}

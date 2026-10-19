@@ -77,7 +77,7 @@ export default function ReportIssueWizard({
     }
     return 1;
   });
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -171,15 +171,18 @@ export default function ReportIssueWizard({
       }
     });
 
-    fetchNotifications()
+    fetchNotifications(currentUser?.id, 'student')
       .then((res) => {
-        if (res && res.success && Array.isArray(res.notifications)) {
-          const unread = res.notifications.filter((n) => !n.is_read).length;
-          setUnreadCount(unread);
+        if (res && res.success) {
+          if (typeof res.unread_count === 'number') {
+            setUnreadCount(res.unread_count);
+          } else if (Array.isArray(res.data)) {
+            setUnreadCount(res.data.filter((n) => !n.is_read).length);
+          }
         }
       })
       .catch(() => {});
-  }, []);
+  }, [currentUser?.id]);
 
   // Update floor options when building changes
   const activeBuildingObj = buildings.find((b) => b.name === selectedBuilding) || buildings[0];
@@ -717,6 +720,7 @@ export default function ReportIssueWizard({
               <div>
                 <label className="rw-section-label" style={{ marginBottom: '0.75rem', display: 'block' }}>
                   Primary Defect Photo
+                  {!primaryPhoto && <span className="rw-required-asterisk" title="Required">*</span>}
                 </label>
                 <input
                   type="file"
@@ -774,17 +778,6 @@ export default function ReportIssueWizard({
                       </div>
                       <h4 className="rw-upload-prompt-title">Add Primary Photo</h4>
                       <p className="rw-upload-prompt-sub">Drag & drop or browse device</p>
-                      <span className="rw-upload-required-badge">Required to continue</span>
-                      <button
-                        type="button"
-                        className="rw-sample-photo-btn"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          setPrimaryPhoto('/images/hero_ac_defect.jpg');
-                        }}
-                      >
-                        Use Sample Photo
-                      </button>
                     </div>
                   )}
                 </div>

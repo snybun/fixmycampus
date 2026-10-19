@@ -3,15 +3,14 @@ import {
   Search,
   SlidersHorizontal,
   ChevronRight,
+  ChevronLeft,
   FileQuestion,
   Plus,
   Trash2,
   Check,
   X,
-  FileSpreadsheet,
 } from 'lucide-react';
 import { fetchReports } from '../../services/api';
-import { exportReportsToExcel } from '../../utils/exportToExcel';
 import ReportDetailsView from './ReportDetailsView';
 import './myReports.css';
 
@@ -21,6 +20,7 @@ export default function MyReportsView({
   initialSelectedReport = null,
   onDeleteReport = null,
   isAdmin = false,
+  currentUser = null,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'reported', 'verified', 'worker_assigned', 'in_progress', 'resolved'
@@ -29,6 +29,8 @@ export default function MyReportsView({
   const [selectedReport, setSelectedReport] = useState(initialSelectedReport);
   const [localReports, setLocalReports] = useState([]);
   const [loading, setLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 5;
 
   const STATUS_CONFIG = [
     { key: 'all', label: 'All Reports', dotColor: '#9ca3af' },
@@ -71,22 +73,28 @@ export default function MyReportsView({
   useEffect(() => {
     let isMounted = true;
     if (liveReports && liveReports.length > 0) {
-setLocalReports(liveReports);
+      setLocalReports(liveReports);
     } else {
       setLoading(true);
-      fetchReports({ limit: 100 })
+      const params = currentUser?.id 
+        ? { limit: 100, my_reports: 1, user_id: currentUser.id } 
+        : { limit: 100, my_reports: 1 };
+
+      fetchReports(params)
         .then((res) => {
           if (isMounted && res && res.success && Array.isArray(res.data)) {
             setLocalReports(res.data);
+          } else if (isMounted) {
+            setLocalReports([]);
           }
         })
         .catch((err) => {
           console.error('Error fetching student reports:', err);
+          if (isMounted) setLocalReports([]);
         })
         .finally(() => {
           if (isMounted) setLoading(false);
         });
-
     }
 
     return () => {
@@ -240,6 +248,25 @@ setLocalReports(liveReports);
     });
   }, [allReports, searchQuery, statusFilter]);
 
+  // Reset pagination to page 1 whenever search query or status filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, statusFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
+
+  // Ensure currentPage does not exceed totalPages if reports list shrinks
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const paginatedReports = useMemo(() => {
+    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filteredReports.slice(startIdx, startIdx + ITEMS_PER_PAGE);
+  }, [filteredReports, currentPage]);
+
   // Determine if a report is eligible for deletion
   // Admins can delete any report; students can delete only if a worker has NOT been assigned yet
   const isReportDeletable = (report) => {
@@ -360,19 +387,6 @@ setLocalReports(liveReports);
                 </div>
               )}
             </div>
-
-            {/* Export to Excel Button */}
-            <button
-              type="button"
-              className="myreports-export-excel-btn"
-              title="Export my reports to Microsoft Excel (.xlsx)"
-              onClick={() => exportReportsToExcel(filteredReports.length > 0 ? filteredReports : allReports, 'My_FixMyCampus_Reports')}
-              disabled={allReports.length === 0}
-              id="myreports-export-excel-btn"
-            >
-              <FileSpreadsheet size={16} />
-              <span>Export</span>
-            </button>
           </div>
         </div>
 
@@ -447,7 +461,7 @@ setLocalReports(liveReports);
           </div>
         ) : (
           <div className="myreports-list" role="list">
-            {filteredReports.map((report) => (
+            {paginatedReports.map((report) => (
               <div
                 key={report.id}
                 className="myreports-card"
@@ -541,6 +555,48 @@ setLocalReports(liveReports);
                 </div>
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Pagination Controls (Matching Admin Report Management) */}
+        {filteredReports.length > 0 && (
+          <div className="myreports-pagination" aria-label="Reports pagination">
+            <span className="myreports-pagination-info">
+              Showing {filteredReports.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}-
+              {Math.min(filteredReports.length, currentPage * ITEMS_PER_PAGE)} of {filteredReports.length} results
+            </span>
+
+            <div className="myreports-pagination-controls">
+              <button
+                type="button"
+                className="myreports-page-btn"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              >
+                Previous
+              </button>
+
+              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
+                <button
+                  key={pageNum}
+                  type="button"
+                  className={`myreports-page-btn ${pageNum === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pageNum)}
+                  aria-current={pageNum === currentPage ? 'page' : undefined}
+                >
+                  {pageNum}
+                </button>
+              ))}
+
+              <button
+                type="button"
+                className="myreports-page-btn"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              >
+                Next
+              </button>
+            </div>
           </div>
         )}
       </div>

@@ -15,6 +15,7 @@ require_once SRC_PATH . '/helpers/session.php';
 require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
 require_once SRC_PATH . '/helpers/notifications.php';
+require_once SRC_PATH . '/helpers/history_logs.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
@@ -256,6 +257,24 @@ try {
             in_array($priority, ['high', 'emergency'], true) ? 'emergency' : 'new_report',
             "New Defect Report: {$ticketNumber} - {$title}",
             "Reported by {$user['full_name']} with " . ucfirst($priority) . " priority."
+        );
+
+        $logLoc = trim(($buildingName ?: 'Campus') . ' • ' . ($roomCoord ?: $specificArea ?: 'General Area'));
+        record_history_log(
+            'report_submitted',
+            "Incident Reported: {$ticketNumber} - {$title}",
+            "Submitted by {$user['full_name']} with " . ucfirst($priority) . " priority. Description: {$description}",
+            (int)$user['id'],
+            $reportId,
+            $user['full_name'],
+            'Student',
+            $logLoc,
+            [
+                'ticket_number' => $ticketNumber,
+                'priority'      => $priority,
+                'status'        => 'submitted',
+                'location'      => $logLoc,
+            ]
         );
 
         \FixMyCampus\Core\Response::json([
@@ -612,6 +631,14 @@ try {
             ], 404);
         }
 
+        $currentRawStatus = strtolower($report['status'] ?? '');
+        if (in_array($currentRawStatus, ['resolved', 'closed', 'fixed'], true)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'This incident is already resolved and locked. Worker cannot be reassigned.'
+            ], 400);
+        }
+
         $pdo = \FixMyCampus\Core\Database::getConnection();
         $pdo->beginTransaction();
 
@@ -730,6 +757,14 @@ try {
             ], 404);
         }
 
+        $currentRawStatus = strtolower($report['status'] ?? '');
+        if (in_array($currentRawStatus, ['resolved', 'closed', 'fixed'], true)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'This incident is already resolved and locked. Status cannot be modified.'
+            ], 400);
+        }
+
         $pdo = \FixMyCampus\Core\Database::getConnection();
         $pdo->beginTransaction();
 
@@ -738,6 +773,15 @@ try {
                 ':status' => $newStatus,
                 ':id'     => $reportId
             ]);
+
+            // Synchronize work order assignment status with report status transition
+            if (in_array($newStatus, ['resolved', 'closed'], true)) {
+                db_execute("UPDATE `report_assignments` SET `status` = 'completed', `updated_at` = NOW() WHERE `report_id` = :id", [':id' => $reportId]);
+            } elseif ($newStatus === 'in_progress') {
+                db_execute("UPDATE `report_assignments` SET `status` = 'in_progress', `updated_at` = NOW() WHERE `report_id` = :id", [':id' => $reportId]);
+            } elseif ($newStatus === 'assigned') {
+                db_execute("UPDATE `report_assignments` SET `status` = 'accepted', `updated_at` = NOW() WHERE `report_id` = :id", [':id' => $reportId]);
+            }
 
             db_execute("
                 INSERT INTO `report_status_history` (`report_id`, `changed_by`, `previous_status`, `new_status`, `remarks`)
@@ -859,6 +903,24 @@ try {
                 );
             }
 
+            $repLoc = trim(($report['building_name'] ?? 'Campus') . ' • ' . ($report['room_number'] ?: $report['specific_area'] ?: 'General Area'));
+            record_history_log(
+                'status_change',
+                "Status Update: {$tNum} (" . ucfirst(str_replace('_', ' ', $newStatus)) . ")",
+                "Status updated from " . ucfirst(str_replace('_', ' ', $report['status'])) . " to " . ucfirst(str_replace('_', ' ', $newStatus)) . " by {$actorUser['full_name']}." . ($remarks ? " Remarks: {$remarks}" : ''),
+                (int)$actorUser['id'],
+                $reportId,
+                $actorUser['full_name'],
+                $actorUser['role_name'] ?? 'Staff',
+                $repLoc,
+                [
+                    'ticket_number'   => $tNum,
+                    'previous_status' => $report['status'],
+                    'new_status'      => $newStatus,
+                    'remarks'         => $remarks,
+                ]
+            );
+
             \FixMyCampus\Core\Response::json([
                 'success' => true,
                 'message' => "Incident status successfully updated to {$newStatus}.",
@@ -868,6 +930,91 @@ try {
             $pdo->rollBack();
             throw $e;
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/reports.php?action=archive -> Archive defect report
+    // -------------------------------------------------------------------------
+    if ($action === 'archive' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $actorUser = auth_require();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $reportId = (int)($input['report_id'] ?? $input['id'] ?? 0);
+
+        if ($reportId <= 0) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Valid report_id required.'], 400);
+        }
+
+        $report = db_fetch_one("
+            SELECT r.id, r.title, r.ticket_number, r.reporter_id, r.status, r.specific_area,
+                   b.name AS building_name, l.room_number
+            FROM `reports` r
+            LEFT JOIN `locations` l ON r.location_id = l.id
+            LEFT JOIN `buildings` b ON l.building_id = b.id
+            WHERE r.id = :id
+            LIMIT 1
+        ", [':id' => $reportId]);
+
+        if (!$report) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Report not found.'], 404);
+        }
+
+        db_execute("UPDATE `reports` SET `is_archived` = 1, `archived_at` = NOW(), `archived_by` = :aid WHERE `id` = :id", [
+            ':aid' => (int)($actorUser['id'] ?? 1),
+            ':id'  => $reportId,
+        ]);
+
+        $location = trim(($report['building_name'] ?? 'Campus') . ' • ' . ($report['room_number'] ?: $report['specific_area'] ?: 'General Area'));
+        $tNum = $report['ticket_number'] ?: "FMC-{$reportId}";
+        $actorName = $actorUser['full_name'] ?? 'Campus Administrator';
+        $actorRole = $actorUser['role_name'] ?? 'Administrator';
+
+        record_history_log(
+            'report_archived',
+            "Report Archived: {$tNum} - {$report['title']}",
+            "Archived by {$actorName} (" . ucfirst($actorRole) . "). Incident moved to History Logs.",
+            (int)($actorUser['id'] ?? 1),
+            $reportId,
+            $actorName,
+            ucfirst($actorRole),
+            $location,
+            [
+                'ticket_number' => $tNum,
+                'title'         => $report['title'],
+                'status'        => $report['status'],
+                'archived_at'   => date('Y-m-d H:i:s'),
+            ]
+        );
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => "Report {$tNum} archived successfully and recorded in History Logs.",
+            'id'      => $reportId,
+        ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/reports.php?action=unarchive / restore -> Restore archived report
+    // -------------------------------------------------------------------------
+    if (($action === 'unarchive' || $action === 'restore') && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $actorUser = auth_require();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $reportId = (int)($input['report_id'] ?? $input['id'] ?? 0);
+
+        if ($reportId <= 0) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Valid report_id required.'], 400);
+        }
+
+        db_execute("UPDATE `reports` SET `is_archived` = 0, `archived_at` = NULL, `archived_by` = NULL WHERE `id` = :id", [
+            ':id' => $reportId,
+        ]);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => "Report #{$reportId} restored to active status.",
+            'id'      => $reportId,
+        ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
@@ -1023,6 +1170,16 @@ try {
     $limit = ($action === 'export') ? 5000 : min((int)($_GET['limit'] ?? 50), 200);
     $myOnly         = isset($_GET['my_reports']) && $_GET['my_reports'] === '1';
 
+    $user = auth_user();
+    $targetUserId = (int)($_GET['user_id'] ?? $_SERVER['HTTP_X_USER_ID'] ?? 0);
+    if ($targetUserId <= 0 && $user) {
+        $targetUserId = (int)$user['id'];
+    }
+    $roleName = $user['role_name'] ?? auth_role() ?? '';
+    $roleId = (int)($user['role_id'] ?? 0);
+    $isStudent = ($roleName === 'student' || $roleId === 5);
+    $isAdmin = ($roleName === 'admin' || $roleId === 1 || ($user && (int)$user['id'] === 1));
+
     $sql = "
         SELECT 
             r.id,
@@ -1071,12 +1228,19 @@ try {
 
     $params = [];
 
-    if ($myOnly) {
-        $user = auth_user();
-        if ($user) {
+    // Scope to user if:
+    // 1. my_reports=1 is passed, OR
+    // 2. user_id is explicitly passed in a student context, OR
+    // 3. Authenticated user is a student and campus/global/all is not requested
+    $scopeToUser = $myOnly || ($isStudent && !$isAdmin && !isset($_GET['campus']) && !isset($_GET['all']));
+    if ($scopeToUser) {
+        if ($targetUserId > 0) {
             $sql .= " AND (r.reporter_id = :reporter_id OR r.id IN (SELECT report_id FROM `report_confirmations` WHERE user_id = :confirmed_uid))";
-            $params[':reporter_id'] = $user['id'];
-            $params[':confirmed_uid'] = $user['id'];
+            $params[':reporter_id'] = $targetUserId;
+            $params[':confirmed_uid'] = $targetUserId;
+        } else {
+            // Unknown or unauthenticated user requesting personal reports -> return empty
+            $sql .= " AND 1=0";
         }
     }
 
@@ -1107,8 +1271,17 @@ try {
     }
 
     if (!empty($search)) {
-        $sql .= " AND (r.title LIKE :s OR r.ticket_number LIKE :s OR u.full_name LIKE :s OR b.name LIKE :s OR l.room_number LIKE :s)";
-        $params[':s'] = "%{$search}%";
+        $sql .= " AND CONCAT_WS(' ', r.ticket_number, r.title, u.full_name, b.name, l.room_number, r.description) LIKE :search";
+        $params[':search'] = "%{$search}%";
+    }
+
+    $includeArchived = isset($_GET['include_archived']) && ($_GET['include_archived'] === '1' || $_GET['include_archived'] === 'true');
+    $archivedOnly = isset($_GET['archived_only']) && ($_GET['archived_only'] === '1' || $_GET['archived_only'] === 'true');
+
+    if ($archivedOnly) {
+        $sql .= " AND r.is_archived = 1";
+    } elseif (!$includeArchived) {
+        $sql .= " AND (r.is_archived IS NULL OR r.is_archived = 0)";
     }
 
     $sql .= " ORDER BY r.reported_at DESC LIMIT " . $limit;

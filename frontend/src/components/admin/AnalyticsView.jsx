@@ -109,15 +109,28 @@ export default function AnalyticsView({ stats, reports = [] }) {
             HVAC maintenance and classroom electrical items constitute 55% of all campus physical work orders.
           </p>
           <div style={{ marginTop: 20 }}>
-            {(stats?.by_category || []).map((cat) => (
-              <div key={cat.id} className="admin-cat-row" style={{ marginBottom: 12 }}>
-                <span className="admin-cat-name">{cat.name}</span>
-                <div className="admin-cat-bar-bg">
-                  <div className="admin-cat-bar-fill" style={{ width: `${Math.max(10, (cat.count || 1) * 30)}%` }} />
-                </div>
-                <span className="admin-cat-count">{cat.count}</span>
-              </div>
-            ))}
+            {(() => {
+              const categoryList = stats?.by_category || [];
+              const maxCount = Math.max(1, ...categoryList.map((c) => Number(c.count) || 0));
+
+              return categoryList.map((cat) => {
+                const count = Number(cat.count) || 0;
+                const barWidth = count === 0 ? '0%' : `${Math.min(100, Math.max(8, (count / maxCount) * 100))}%`;
+
+                return (
+                  <div key={cat.id} className="admin-cat-row" style={{ marginBottom: 12 }}>
+                    <span className="admin-cat-name">{cat.name}</span>
+                    <div className="admin-cat-bar-bg">
+                      <div
+                        className="admin-cat-bar-fill"
+                        style={{ width: barWidth }}
+                      />
+                    </div>
+                    <span className={`admin-cat-count ${count > 0 ? 'has-reports' : ''}`}>{count}</span>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       </div>

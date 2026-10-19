@@ -5,9 +5,13 @@
 
 const API_BASE = '/api';
 
-export async function fetchStats() {
+export async function fetchStats(params = {}) {
   try {
-    const res = await fetch(`${API_BASE}/stats.php`);
+    const query = new URLSearchParams(params).toString();
+    const url = query ? `${API_BASE}/stats.php?${query}` : `${API_BASE}/stats.php`;
+    const res = await fetch(url, {
+      credentials: 'include',
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {
@@ -88,13 +92,103 @@ export async function deleteReport(reportId) {
   }
 }
 
-export async function fetchNotifications(userId = null) {
+export async function archiveReport(reportId) {
   try {
-    const url = userId
-      ? `${API_BASE}/notifications.php?user_id=${encodeURIComponent(userId)}`
-      : `${API_BASE}/notifications.php`;
+    const res = await fetch(`${API_BASE}/reports.php?action=archive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ report_id: reportId }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error archiving report:', err);
+    return { success: false, message: 'Connection error while archiving report.' };
+  }
+}
+
+export async function restoreReport(reportId) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=unarchive`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ report_id: reportId }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error restoring report:', err);
+    return { success: false, message: 'Connection error while restoring report.' };
+  }
+}
+
+export async function fetchHistoryLogs({ page = 1, limit = 10, type = 'all', search = '' } = {}) {
+  try {
+    const params = new URLSearchParams({
+      page: String(page),
+      limit: String(limit),
+      type,
+    });
+    if (search) params.append('search', search);
+
+    const res = await fetch(`${API_BASE}/history_logs.php?${params.toString()}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching history logs:', err);
+    return {
+      success: false,
+      data: [],
+      summary: { all: 0, user_registration: 0, report_submitted: 0, status_change: 0, report_archived: 0 },
+      pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
+    };
+  }
+}
+
+export async function deleteHistoryLog(id) {
+  try {
+    const res = await fetch(`${API_BASE}/history_logs.php?action=delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ id }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting history log:', err);
+    return { success: false, message: 'Connection error while deleting history log.' };
+  }
+}
+
+export async function deleteMultipleHistoryLogs(ids = [], { clearAll = false, type = 'all' } = {}) {
+  try {
+    const res = await fetch(`${API_BASE}/history_logs.php?action=delete_multiple`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ ids, clear_all: clearAll, type }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error deleting multiple history logs:', err);
+    return { success: false, message: 'Connection error while clearing history logs.' };
+  }
+}
+
+export async function fetchNotifications(userId = null, dashboard = null) {
+  try {
+    const params = new URLSearchParams();
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const queryString = params.toString();
+    const url = queryString ? `${API_BASE}/notifications.php?${queryString}` : `${API_BASE}/notifications.php`;
+    const headers = {};
+    if (userId) headers['X-User-ID'] = String(userId);
     const res = await fetch(url, {
       credentials: 'include',
+      headers,
     });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
@@ -104,13 +198,19 @@ export async function fetchNotifications(userId = null) {
   }
 }
 
-export async function markNotificationRead(id) {
+export async function markNotificationRead(id, userId = null, dashboard = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=mark_read`, {
+    const params = new URLSearchParams({ action: 'mark_read' });
+    if (id) params.append('id', id);
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, user_id: userId, dashboard }),
     });
     return await res.json();
   } catch (err) {
@@ -119,12 +219,18 @@ export async function markNotificationRead(id) {
   }
 }
 
-export async function markAllNotificationsRead() {
+export async function markAllNotificationsRead(userId = null, dashboard = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=mark_all_read`, {
+    const params = new URLSearchParams({ action: 'mark_all_read' });
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
+      body: JSON.stringify({ user_id: userId, dashboard }),
     });
     return await res.json();
   } catch (err) {
@@ -133,33 +239,74 @@ export async function markAllNotificationsRead() {
   }
 }
 
-export async function deleteNotification(id) {
+export async function archiveNotification(id, userId = null, dashboard = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=delete`, {
+    const params = new URLSearchParams({ action: 'archive' });
+    if (id) params.append('id', id);
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
-      body: JSON.stringify({ id }),
+      body: JSON.stringify({ id, user_id: userId, dashboard }),
     });
     return await res.json();
   } catch (err) {
-    console.error('Error deleting notification:', err);
+    console.error('Error archiving notification:', err);
     return { success: false, message: err.message };
   }
 }
 
-export async function deleteAllNotifications() {
+export async function unarchiveNotification(id, userId = null, dashboard = null) {
   try {
-    const res = await fetch(`${API_BASE}/notifications.php?action=delete_all`, {
+    const params = new URLSearchParams({ action: 'unarchive' });
+    if (id) params.append('id', id);
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
+      headers,
       credentials: 'include',
+      body: JSON.stringify({ id, user_id: userId, dashboard }),
     });
     return await res.json();
   } catch (err) {
-    console.error('Error deleting all notifications:', err);
+    console.error('Error unarchiving notification:', err);
     return { success: false, message: err.message };
   }
+}
+
+export async function archiveAllNotifications(userId = null, dashboard = null) {
+  try {
+    const params = new URLSearchParams({ action: 'archive_all' });
+    if (userId) params.append('user_id', userId);
+    if (dashboard) params.append('dashboard', dashboard);
+    const headers = { 'Content-Type': 'application/json' };
+    if (userId) headers['X-User-ID'] = String(userId);
+    const res = await fetch(`${API_BASE}/notifications.php?${params.toString()}`, {
+      method: 'POST',
+      headers,
+      credentials: 'include',
+      body: JSON.stringify({ user_id: userId, dashboard }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error archiving all notifications:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function deleteNotification(id, userId = null, dashboard = null) {
+  return archiveNotification(id, userId, dashboard);
+}
+
+export async function deleteAllNotifications(userId = null, dashboard = null) {
+  return archiveAllNotifications(userId, dashboard);
 }
 
 export async function fetchCategories() {
@@ -269,6 +416,25 @@ export async function addStaffMember(data) {
   }
 }
 
+export async function removeStaffMember(staffId, details = {}) {
+  try {
+    const res = await fetch(`${API_BASE}/staff.php?action=delete`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        staff_id: staffId,
+        reason: details.reason || 'Resignation',
+        notes: details.notes || '',
+      }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error removing staff member:', err);
+    return { success: false, message: err.message };
+  }
+}
+
 export async function fetchUsers(filters = {}) {
   try {
     const query = new URLSearchParams(filters).toString();
@@ -311,13 +477,23 @@ export async function loginUser({ email, password, remember = false }) {
   }
 }
 
-export async function registerUser({ identifier, fullName, email, department, password }) {
+export async function registerUser({ identifier, lastName, firstName, middleName, fullName, email, department, password }) {
+  const computedFullName = fullName || [firstName, middleName, lastName].filter(Boolean).join(' ');
   try {
     const res = await fetch(`${API_BASE}/auth.php?action=register`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ identifier, full_name: fullName, email, department, password }),
+      body: JSON.stringify({
+        identifier,
+        last_name: lastName,
+        first_name: firstName,
+        middle_name: middleName,
+        full_name: computedFullName,
+        email,
+        department,
+        password,
+      }),
     });
     const data = await res.json();
     return data;

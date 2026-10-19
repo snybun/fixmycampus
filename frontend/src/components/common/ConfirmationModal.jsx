@@ -8,6 +8,7 @@ import {
   LogOut,
   AlertTriangle,
   Wrench,
+  Archive,
 } from 'lucide-react';
 import './modals.css';
 
@@ -92,6 +93,16 @@ export const MODAL_PRESETS = {
     confirmText: 'Delete All',
     confirmClass: 'modal-btn-danger',
   },
+  archive_notifications: {
+    id: 'archive_notifications',
+    title: 'Archive All Notifications?',
+    message: 'Are you sure you want to archive all notifications? Archived alerts can be viewed anytime by filtering by Archived.',
+    icon: Archive,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Archive All',
+    confirmClass: 'modal-btn-primary',
+  },
   start_repair: {
     id: 'start_repair',
     title: 'Start Repair?',
@@ -101,6 +112,26 @@ export const MODAL_PRESETS = {
     cancelText: 'Cancel',
     confirmText: 'Yes, Start Repair',
     confirmClass: 'modal-btn-primary',
+  },
+  archive_report: {
+    id: 'archive_report',
+    title: 'Archive Report?',
+    message: 'Are you sure you want to archive this report? It will be safely moved from active reports to the History Logs.',
+    icon: Archive,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Yes, Archive Report',
+    confirmClass: 'modal-btn-primary',
+  },
+  delete_log: {
+    id: 'delete_log',
+    title: 'Delete History Log?',
+    message: 'Are you sure you want to permanently delete this history log record? This action cannot be undone.',
+    icon: Trash2,
+    badgeClass: 'badge-red',
+    cancelText: 'Cancel',
+    confirmText: 'Yes, Delete Log',
+    confirmClass: 'modal-btn-danger',
   },
 };
 

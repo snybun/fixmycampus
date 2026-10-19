@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ArrowLeft, UploadCloud, CheckCircle2, Trash2 } from 'lucide-react';
+import { ArrowLeft, UploadCloud, CheckCircle2, Archive, Trash2 } from 'lucide-react';
 import ConfirmationModal from '../common/ConfirmationModal';
 
 export default function ReportDetails({
@@ -8,6 +8,7 @@ export default function ReportDetails({
   onBack,
   onAssignSubmit,
   onStatusSubmit,
+  onArchive,
   onDelete,
 }) {
   const [selectedStaffId, setSelectedStaffId] = useState(
@@ -31,9 +32,12 @@ export default function ReportDetails({
     );
   }
 
+  const rawStatus = (report?.status || '').toLowerCase();
+  const isFixed = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
+
   const handleAssign = async (e) => {
     e.preventDefault();
-    if (!selectedStaffId) return;
+    if (isFixed || !selectedStaffId) return;
     setIsAssigning(true);
     await onAssignSubmit({
       report_id: report.id,
@@ -42,19 +46,10 @@ export default function ReportDetails({
     setIsAssigning(false);
   };
 
-  const handleUpdate = async (e) => {
+  const handleUpdate = (e) => {
     e.preventDefault();
-    if (selectedStatus === 'resolved') {
-      setShowConfirmModal(true);
-      return;
-    }
-    setIsUpdating(true);
-    await onStatusSubmit({
-      report_id: report.id,
-      status: selectedStatus,
-      remarks,
-    });
-    setIsUpdating(false);
+    if (isFixed) return;
+    setShowConfirmModal(true);
   };
 
   const handleConfirmSubmit = async () => {
@@ -102,15 +97,16 @@ export default function ReportDetails({
           </span>
         </div>
 
-        {(report.status === 'resolved' || report.status === 'closed') && onDelete && (
+        {(report.status === 'resolved' || report.status === 'closed') && (onArchive || onDelete) && (
           <button
             type="button"
-            className="admin-btn-delete-report"
-            onClick={() => onDelete(report)}
-            title="Delete fixed report from database"
+            className="admin-btn-archive-report"
+            onClick={() => (onArchive || onDelete)(report)}
+            title="Archive fixed report into History Logs"
+            id="admin-archive-report-header-btn"
           >
-            <Trash2 size={16} />
-            <span>Delete Fixed Report</span>
+            <Archive size={16} />
+            <span>Archive Fixed Report</span>
           </button>
         )}
       </div>
@@ -176,16 +172,23 @@ export default function ReportDetails({
         {/* Right Column: Actions */}
         <div>
           {/* Card 1: Assign Maintenance Worker */}
-          <div className="admin-action-card">
+          <div
+            className="admin-action-card"
+            style={isFixed ? { opacity: 0.85, backgroundColor: '#f8fafc', borderColor: '#e2e8f0' } : {}}
+          >
             <h3 className="admin-action-card-title">Assign Maintenance Worker</h3>
 
             <form onSubmit={handleAssign}>
               <div className="admin-form-group">
-                <label className="admin-form-label">Select Staff Member</label>
+                <label className="admin-form-label">
+                  {isFixed ? 'Assigned Staff Member' : 'Select Staff Member'}
+                </label>
                 <select
                   className="admin-select-input"
                   value={selectedStaffId}
                   onChange={(e) => setSelectedStaffId(e.target.value)}
+                  disabled={isFixed || isAssigning}
+                  style={isFixed ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
                 >
                   <option value="">-- Choose maintenance technician --</option>
                   {staff.map((member) => (
@@ -199,25 +202,42 @@ export default function ReportDetails({
               <button
                 type="submit"
                 className="admin-btn-black"
-                style={{ width: '100%', justifyContent: 'center' }}
-                disabled={isAssigning || !selectedStaffId}
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  ...(isFixed ? { opacity: 0.5, cursor: 'not-allowed', backgroundColor: '#94a3b8' } : {}),
+                }}
+                disabled={isFixed || isAssigning || !selectedStaffId}
+                title={isFixed ? 'Worker assignment is locked because this report is already marked as fixed' : ''}
               >
-                {isAssigning ? 'Assigning...' : 'Assign Worker'}
+                {isFixed
+                  ? 'Assignment Locked (Issue Fixed)'
+                  : isAssigning
+                  ? 'Assigning...'
+                  : 'Assign Worker'}
               </button>
             </form>
           </div>
 
           {/* Card 2: Update Incident Status */}
-          <div className="admin-action-card">
+          <div
+            className="admin-action-card"
+            style={isFixed ? { opacity: 0.85, backgroundColor: '#f8fafc', borderColor: '#e2e8f0' } : {}}
+          >
             <h3 className="admin-action-card-title">Update Incident Status</h3>
 
             <form onSubmit={handleUpdate}>
               <div className="admin-form-group">
-                <label className="admin-form-label">Select New Status</label>
+                <label className="admin-form-label">
+                  {isFixed ? 'Incident Status' : 'Select New Status'}
+                </label>
                 <select
                   className="admin-select-input"
                   value={selectedStatus}
                   onChange={(e) => setSelectedStatus(e.target.value)}
+                  disabled={isFixed || isUpdating}
+                  style={isFixed ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
+                  title={isFixed ? 'Status is locked because this report is already fixed / resolved' : ''}
                 >
                   <option value="submitted">Submitted</option>
                   <option value="under_review">Under Review</option>
@@ -231,44 +251,61 @@ export default function ReportDetails({
               {/* Completion Evidence Dropzone */}
               <div
                 className="admin-upload-dropzone"
-                onClick={() => setUploadProofDone(!uploadProofDone)}
-                title="Click to simulate completion proof photo upload"
+                onClick={() => {
+                  if (!isFixed) setUploadProofDone(!uploadProofDone);
+                }}
+                style={isFixed ? { cursor: 'not-allowed', opacity: 0.65, borderColor: '#cbd5e1', backgroundColor: '#f8fafc' } : {}}
+                title={isFixed ? 'Completion photo is locked for resolved incidents' : 'Click to simulate completion proof photo upload'}
               >
                 <UploadCloud size={28} />
                 <span className="admin-upload-label">
-                  {uploadProofDone ? 'Photo Attached: proof_repair.jpg' : 'Upload Completion Photo'}
+                  {isFixed
+                    ? 'Completion Evidence Attached & Verified'
+                    : uploadProofDone
+                    ? 'Photo Attached: proof_repair.jpg'
+                    : 'Upload Completion Photo'}
                 </span>
                 <span className="admin-upload-subtext">
-                  Completion Evidence Required
+                  {isFixed ? 'Verified Fixed & Resolved' : 'Completion Evidence Required'}
                 </span>
               </div>
 
               <button
                 type="submit"
                 className="admin-btn-black"
-                style={{ width: '100%', justifyContent: 'center' }}
-                disabled={isUpdating}
+                style={{
+                  width: '100%',
+                  justifyContent: 'center',
+                  ...(isFixed ? { opacity: 0.5, cursor: 'not-allowed', backgroundColor: '#94a3b8' } : {}),
+                }}
+                disabled={isFixed || isUpdating}
+                title={isFixed ? 'Status is locked because this report is already fixed / resolved' : ''}
               >
-                {isUpdating ? 'Updating...' : 'Update Report'}
+                {isFixed
+                  ? 'Status Locked (Issue Fixed)'
+                  : isUpdating
+                  ? 'Updating...'
+                  : 'Update Report'}
               </button>
             </form>
           </div>
 
-          {/* Card 3: Delete Fixed Report (Database Clean Up) */}
-          {(report.status === 'resolved' || report.status === 'closed') && onDelete && (
-            <div className="admin-action-card admin-action-card-delete">
-              <h3 className="admin-action-card-title">Clean Up Database</h3>
+          {/* Card 3: Archive Fixed Report */}
+          {(report.status === 'resolved' || report.status === 'closed') && (onArchive || onDelete) && (
+            <div className="admin-action-card admin-action-card-archive">
+              <h3 className="admin-action-card-title">Archive Incident</h3>
               <p style={{ fontSize: '0.84rem', color: '#64748b', marginBottom: 14 }}>
-                This report is marked as fixed. You can delete it from the database to keep reports organized and avoid clutter.
+                This report is marked as fixed. You can archive it to safely remove it from active lists and store it in History Logs.
               </p>
               <button
                 type="button"
-                className="admin-btn-delete-report"
+                className="admin-btn-archive-report"
                 style={{ width: '100%', justifyContent: 'center' }}
-                onClick={() => onDelete(report)}
+                onClick={() => (onArchive || onDelete)(report)}
+                id="admin-archive-report-card-btn"
               >
-                <Trash2 size={16} />
-                <span>Delete Fixed Report</span>
+                <Archive size={16} />
+                <span>Archive Fixed Report</span>
               </button>
             </div>
           )}
@@ -278,11 +315,15 @@ export default function ReportDetails({
       {showConfirmModal && (
         <ConfirmationModal
           isOpen={showConfirmModal}
-          presetId="mark_fixed"
-          title="Ready to Submit Report?"
-          message={`Are you sure you are ready to submit this report? This will mark ticket #${report.ticket_number || `FM-${report.id}`} (${report.title}) as Fixed / Resolved.`}
-          confirmText="Yes, Submit Report"
-          cancelText="Cancel"
+          presetId="update_status"
+          title="Are you sure?"
+          message={
+            selectedStatus === 'resolved' || selectedStatus === 'closed'
+              ? `Are you sure you want to mark ticket #${report.ticket_number || `FM-${report.id}`} (${report.title}) as Fixed / Resolved?`
+              : `Are you sure you want to update the status of ticket #${report.ticket_number || `FM-${report.id}`} to "${selectedStatus.replace('_', ' ')}"?`
+          }
+          confirmText="Yes, Update Report"
+          cancelText="Di pa 'ko ready"
           loading={isUpdating}
           onClose={() => {
             if (!isUpdating) setShowConfirmModal(false);

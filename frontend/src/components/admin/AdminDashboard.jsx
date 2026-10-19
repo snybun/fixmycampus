@@ -15,6 +15,8 @@ import {
   CheckCircle2,
   SlidersHorizontal,
   Bell,
+  History,
+  Archive,
 } from 'lucide-react';
 import {
   fetchStats,
@@ -26,7 +28,9 @@ import {
   assignReport,
   updateReportStatus,
   deleteReport,
+  archiveReport,
   addStaffMember,
+  removeStaffMember,
   addBuilding,
   updateBuilding,
   deleteBuilding,
@@ -43,6 +47,7 @@ import AnalyticsView from './AnalyticsView';
 import UsersView from './UsersView';
 import AdminSettings from './AdminSettings';
 import AdminNotificationsView from './AdminNotificationsView';
+import HistoryLogView from './HistoryLogView';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import './admin.css';
@@ -67,8 +72,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
   const [quickUpdateModal, setQuickUpdateModal] = useState(null);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
   const [selectedNewStatus, setSelectedNewStatus] = useState('in_progress');
-  const [reportToDelete, setReportToDelete] = useState(null);
-  const [isDeleting, setIsDeleting] = useState(false);
+  const [reportToArchive, setReportToArchive] = useState(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
 
   // Load all real data on mount
@@ -80,7 +85,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         fetchStaff(),
         fetchBuildings(),
         fetchCategories(),
-        fetchNotifications(),
+        fetchNotifications(currentUser?.id || 1, 'admin'),
       ]);
 
       if (statsRes?.success && statsRes.data) {
@@ -192,12 +197,25 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
   // Open Quick Update Status
   const handleOpenUpdate = (report) => {
+    if (!report) return;
+    const rawStatus = (report.status || '').toLowerCase();
+    const isResolved = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
+    if (isResolved) {
+      showToast('Status updates are locked because this report is already fixed / resolved.');
+      return;
+    }
     setQuickUpdateModal(report);
     setSelectedNewStatus(report.status || 'in_progress');
   };
 
   // Submit Status Update
   const handleStatusSubmit = async ({ report_id, status, remarks }) => {
+    const targetReport = reports.find((r) => r.id === report_id) || quickUpdateModal || selectedReport;
+    const rawStatus = (targetReport?.status || '').toLowerCase();
+    if (rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed') {
+      showToast('Status updates are locked because this report is already fixed / resolved.');
+      return;
+    }
     const res = await updateReportStatus({
       report_id,
       status,
@@ -217,27 +235,27 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
     }
   };
 
-  // Delete Fixed Report Handler
-  const handleRequestDeleteReport = (report) => {
+  // Archive Fixed Report Handler
+  const handleRequestArchiveReport = (report) => {
     if (!report) return;
     const rawStatus = (report.status || '').toLowerCase();
     const isFixed = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
     if (!isFixed) {
-      showToast('Only fixed and resolved reports can be deleted from the database.');
+      showToast('Only fixed and resolved reports can be archived.');
       return;
     }
-    setReportToDelete(report);
+    setReportToArchive(report);
   };
 
-  const handleConfirmDeleteReport = async () => {
-    if (!reportToDelete) return;
-    const targetId = reportToDelete.id;
+  const handleConfirmArchiveReport = async () => {
+    if (!reportToArchive) return;
+    const targetId = reportToArchive.id;
 
-    setIsDeleting(true);
+    setIsArchiving(true);
     try {
-      const res = await deleteReport(targetId);
+      const res = await archiveReport(targetId);
       if (res?.success) {
-        showToast(`Report #${reportToDelete.ticket_number || targetId} deleted from database.`);
+        showToast(`Report #${reportToArchive.ticket_number || targetId} archived and saved to History Logs.`);
         setReports((prev) => prev.filter((r) => r.id !== targetId));
         if (selectedReport?.id === targetId) {
           setSelectedReport(null);
@@ -245,14 +263,14 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         }
         refreshData();
       } else {
-        showToast(res?.message || 'Failed to delete report.');
+        showToast(res?.message || 'Failed to archive report.');
       }
     } catch (err) {
-      console.error('Error deleting report:', err);
-      showToast('Error deleting report from database.');
+      console.error('Error archiving report:', err);
+      showToast('Error archiving report.');
     } finally {
-      setIsDeleting(false);
-      setReportToDelete(null);
+      setIsArchiving(false);
+      setReportToArchive(null);
     }
   };
 
@@ -264,6 +282,19 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       await refreshData();
     } else {
       alert(res?.message || res?.error || 'Failed to add staff member.');
+    }
+  };
+
+  // Remove Maintenance Staff Member from Database
+  const handleRemoveStaff = async (staffId, details) => {
+    const res = await removeStaffMember(staffId, details);
+    if (res?.success) {
+      showToast(res.message || 'Staff member removed successfully.');
+      await refreshData();
+      return true;
+    } else {
+      alert(res?.message || res?.error || 'Failed to remove staff member.');
+      return false;
     }
   };
 
@@ -417,89 +448,105 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
         {/* Nav Items */}
         <nav className="admin-sidebar-nav">
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('dashboard')}
-          >
-            <LayoutDashboard size={18} />
-            <span>Dashboard</span>
-          </button>
+          {/* Section 1: Overview */}
+          <div className="admin-nav-section">
+            <span className="admin-nav-section-title">Overview</span>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('notifications')}
-          >
-            <Bell size={18} />
-            <span>Notifications</span>
-            {unreadNotifCount > 0 && (
-              <span className="admin-nav-badge">{unreadNotifCount}</span>
-            )}
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'dashboard' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('dashboard')}
+            >
+              <LayoutDashboard size={18} />
+              <span>Dashboard</span>
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${['reports', 'report-details'].includes(activeTab) ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('reports')}
-          >
-            <FileText size={18} />
-            <span>Reports</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('notifications')}
+            >
+              <Bell size={18} />
+              <span>Notifications</span>
+              {unreadNotifCount > 0 && (
+                <span className="admin-nav-badge">{unreadNotifCount}</span>
+              )}
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'staff' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('staff')}
-          >
-            <Users size={18} />
-            <span>Maintenance Staff</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('analytics')}
+            >
+              <BarChart2 size={18} />
+              <span>Analytics</span>
+            </button>
+          </div>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'buildings' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('buildings')}
-          >
-            <Building2 size={18} />
-            <span>Buildings &amp; Rooms</span>
-          </button>
+          {/* Section 2: Management */}
+          <div className="admin-nav-section">
+            <span className="admin-nav-section-title">Management</span>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('analytics')}
-          >
-            <BarChart2 size={18} />
-            <span>Analytics</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${['reports', 'report-details'].includes(activeTab) ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('reports')}
+            >
+              <FileText size={18} />
+              <span>Reports</span>
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'users' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('users')}
-          >
-            <UserCheck size={18} />
-            <span>Users</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'staff' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('staff')}
+            >
+              <Users size={18} />
+              <span>Maintenance Staff</span>
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-            onClick={() => handleNavTabClick('settings')}
-          >
-            <Settings size={18} />
-            <span>Settings</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'buildings' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('buildings')}
+            >
+              <Building2 size={18} />
+              <span>Buildings &amp; Rooms</span>
+            </button>
 
-          <button
-            type="button"
-            className={`admin-nav-item ${activeTab === 'modals-gallery' ? 'active' : ''}`}
-            onClick={() => setActiveTab('modals-gallery')}
-          >
-            <SlidersHorizontal size={18} />
-            <span>Modals &amp; States (7)</span>
-          </button>
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'users' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('users')}
+            >
+              <UserCheck size={18} />
+              <span>Users</span>
+            </button>
+          </div>
+
+          {/* Section 3: System */}
+          <div className="admin-nav-section">
+            <span className="admin-nav-section-title">System</span>
+
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('settings')}
+            >
+              <Settings size={18} />
+              <span>Settings</span>
+            </button>
+
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'history-logs' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('history-logs')}
+              id="admin-nav-history-logs"
+            >
+              <History size={18} />
+              <span>History Logs</span>
+            </button>
+          </div>
         </nav>
 
         {/* Bottom Profile Footer */}
@@ -554,7 +601,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             recentReports={reports}
             onViewReport={handleViewReport}
             onAssignReport={handleOpenAssign}
-            onDeleteReport={handleRequestDeleteReport}
+            onArchiveReport={handleRequestArchiveReport}
+            onDeleteReport={handleRequestArchiveReport}
           />
         )}
 
@@ -565,6 +613,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             onViewReport={handleViewReport}
             showToast={showToast}
             onUnreadChange={setUnreadNotifCount}
+            currentUser={currentUser}
           />
         )}
 
@@ -577,7 +626,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             onViewReport={handleViewReport}
             onAssignReport={handleOpenAssign}
             onUpdateStatus={handleOpenUpdate}
-            onDeleteReport={handleRequestDeleteReport}
+            onArchiveReport={handleRequestArchiveReport}
+            onDeleteReport={handleRequestArchiveReport}
           />
         )}
 
@@ -589,7 +639,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
             onBack={() => setActiveTab('reports')}
             onAssignSubmit={handleAssignSubmit}
             onStatusSubmit={handleStatusSubmit}
-            onDelete={handleRequestDeleteReport}
+            onArchive={handleRequestArchiveReport}
+            onDelete={handleRequestArchiveReport}
           />
         )}
 
@@ -598,6 +649,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
           <MaintenanceStaff
             staff={staff}
             onAddStaff={handleAddStaff}
+            onRemoveStaff={handleRemoveStaff}
           />
         )}
 
@@ -623,7 +675,12 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         {/* View 8: Settings */}
         {activeTab === 'settings' && <AdminSettings />}
 
-        {/* View 9: System Modals & States Gallery */}
+        {/* View 9: History Logs */}
+        {activeTab === 'history-logs' && (
+          <HistoryLogView onViewReport={handleViewReport} />
+        )}
+
+        {/* View 10: System Modals & States Gallery */}
         {activeTab === 'modals-gallery' && (
           <ModalsGalleryView onBackToDashboard={() => setActiveTab('dashboard')} />
         )}
@@ -770,20 +827,20 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         </div>
       )}
 
-      {/* Delete Fixed Report Confirmation Modal */}
-      {reportToDelete && (
+      {/* Archive Fixed Report Confirmation Modal */}
+      {reportToArchive && (
         <ConfirmationModal
-          isOpen={Boolean(reportToDelete)}
-          presetId="delete_report"
-          title="Delete Fixed Report?"
-          message={`Are you sure you want to permanently delete report #${reportToDelete.ticket_number || reportToDelete.id} ("${reportToDelete.title}") from the database? This action will remove the record to keep your database tidy and cannot be undone.`}
-          confirmText="Yes, Delete Report"
+          isOpen={Boolean(reportToArchive)}
+          presetId="archive_report"
+          title="Archive Fixed Report?"
+          message={`Are you sure you want to archive report #${reportToArchive.ticket_number || reportToArchive.id} ("${reportToArchive.title}")? It will be safely stored in the History Logs and removed from active defect lists.`}
+          confirmText="Yes, Archive Report"
           cancelText="Cancel"
-          loading={isDeleting}
+          loading={isArchiving}
           onClose={() => {
-            if (!isDeleting) setReportToDelete(null);
+            if (!isArchiving) setReportToArchive(null);
           }}
-          onConfirm={handleConfirmDeleteReport}
+          onConfirm={handleConfirmArchiveReport}
         />
       )}
 

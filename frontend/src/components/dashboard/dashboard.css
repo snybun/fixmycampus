@@ -539,7 +539,16 @@
    Recent Reports Section
    -------------------------------------------------------------------------- */
 .dash-section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
   margin-bottom: 18px;
+}
+
+.dash-section-title-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
 }
 
 .dash-section-header h2 {
@@ -549,11 +558,139 @@
   margin: 0;
 }
 
+.dash-reports-count-pill {
+  font-size: 0.76rem;
+  font-weight: 700;
+  color: #047857;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 3px 10px;
+  border-radius: 9999px;
+}
+
+.dash-scroll-arrows,
+.dash-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.dash-page-numbers {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dash-page-num-btn {
+  min-width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  font-size: 0.84rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.dash-page-num-btn:hover:not(.active) {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #1e293b;
+}
+
+.dash-page-num-btn.active {
+  background-color: #059669;
+  border-color: #059669;
+  color: #ffffff;
+  box-shadow: 0 2px 5px rgba(5, 150, 105, 0.25);
+}
+
+.dash-scroll-btn {
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  user-select: none;
+}
+
+.dash-scroll-btn:hover:not(:disabled) {
+  background-color: #f8fafc;
+  color: #059669;
+  border-color: #059669;
+  box-shadow: 0 2px 5px rgba(5, 150, 105, 0.15);
+}
+
+.dash-scroll-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.dash-scroll-btn:active:not(:disabled) {
+  transform: scale(0.96);
+}
+
 .dash-reports-grid {
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: 22px;
   margin-bottom: 34px;
+}
+
+/* Horizontal scrollable row when 3+ reports */
+.dash-reports-grid.dash-reports-horizontal {
+  display: flex !important;
+  flex-direction: row !important;
+  grid-template-columns: none !important;
+  gap: 22px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  padding: 4px 4px 16px 4px;
+  margin-bottom: 34px;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: thin;
+  scrollbar-color: #cbd5e1 #f1f5f9;
+}
+
+.dash-reports-grid.dash-reports-horizontal .dash-report-card {
+  flex: 0 0 350px;
+  min-width: 350px;
+  max-width: 350px;
+  scroll-snap-align: start;
+}
+
+.dash-reports-grid.dash-reports-horizontal::-webkit-scrollbar {
+  height: 7px;
+}
+
+.dash-reports-grid.dash-reports-horizontal::-webkit-scrollbar-track {
+  background: #f1f5f9;
+  border-radius: 9999px;
+}
+
+.dash-reports-grid.dash-reports-horizontal::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 9999px;
+  transition: background 0.2s;
+}
+
+.dash-reports-grid.dash-reports-horizontal::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
 }
 
 .dash-report-card {
@@ -677,6 +814,7 @@
   border-radius: 14px;
   padding: 24px 28px 28px 28px;
   box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  margin-bottom: 34px;
 }
 
 .dash-how-title {

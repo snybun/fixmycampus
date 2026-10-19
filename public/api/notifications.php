@@ -30,35 +30,81 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 session_start_safe();
 $action = $_GET['action'] ?? 'list';
+
+$rawBody = file_get_contents('php://input');
+$bodyData = !empty($rawBody) ? json_decode($rawBody, true) : null;
+if (!is_array($bodyData)) {
+    $bodyData = [];
+}
+
 $user = auth_user();
-if (!$user) {
-    $paramUid = (int)($_GET['user_id'] ?? $_SERVER['HTTP_X_USER_ID'] ?? 0);
-    if ($paramUid > 0) {
-        $found = db_fetch_one("
-            SELECT u.*, r.name AS role_name
-            FROM `users` u
-            LEFT JOIN `roles` r ON u.role_id = r.id
-            WHERE u.id = :id AND u.status = 'active'
-            LIMIT 1
-        ", [':id' => $paramUid]);
-        if ($found) {
-            $user = $found;
-        }
+$paramUid = (int)($_GET['user_id'] ?? $bodyData['user_id'] ?? $_SERVER['HTTP_X_USER_ID'] ?? 0);
+$dashboardContext = strtolower(trim((string)($_GET['dashboard'] ?? $bodyData['dashboard'] ?? '')));
+
+// 1. If explicit user_id provided, look up that user in database
+if ($paramUid > 0) {
+    $found = db_fetch_one("
+        SELECT u.*, r.name AS role_name
+        FROM `users` u
+        LEFT JOIN `roles` r ON u.role_id = r.id
+        WHERE u.id = :id AND u.status = 'active'
+        LIMIT 1
+    ", [':id' => $paramUid]);
+    if ($found) {
+        $user = $found;
     }
 }
 
-if ($user) {
-    $userId = (int) $user['id'];
-    $roleName = $user['role_name'] ?? auth_role() ?? 'student';
-    $roleId = (int) ($user['role_id'] ?? 0);
-} else {
-    $userId = auth_id() ?? 1;
-    $roleName = auth_role() ?? 'admin';
-    $roleId = 1;
+// 2. If no user resolved yet, check session
+if (!$user) {
+    $sessionUser = auth_user();
+    if ($sessionUser) {
+        $user = $sessionUser;
+    }
 }
 
-$isAdmin = ($roleName === 'admin' || $roleId === 1 || $userId === 1);
-$isMaintenanceUser = (!$isAdmin && ($roleName === 'supervisor' || $roleName === 'technician' || $roleId === 2 || $roleId === 3 || $userId === 17));
+// 3. If still no user, use dashboard context to find the representative active user
+if (!$user) {
+    if ($dashboardContext === 'admin') {
+        $found = db_fetch_one("
+            SELECT u.*, r.name AS role_name
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE r.name = 'admin' AND u.status = 'active'
+            ORDER BY u.id ASC
+            LIMIT 1
+        ");
+        $user = $found ?: ['id' => 1, 'role_name' => 'admin', 'role_id' => 1];
+    } elseif ($dashboardContext === 'maintenance') {
+        $found = db_fetch_one("
+            SELECT u.*, r.name AS role_name
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE r.name IN ('supervisor', 'technician') AND u.status = 'active'
+            ORDER BY u.id ASC
+            LIMIT 1
+        ");
+        $user = $found ?: ['id' => 17, 'role_name' => 'supervisor', 'role_id' => 2];
+    } else {
+        // Default to student
+        $found = db_fetch_one("
+            SELECT u.*, r.name AS role_name
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE r.name = 'student' AND u.status = 'active'
+            ORDER BY u.id ASC
+            LIMIT 1
+        ");
+        $user = $found ?: ['id' => 2, 'role_name' => 'student', 'role_id' => 5];
+    }
+}
+
+$userId = (int) $user['id'];
+$roleName = $user['role_name'] ?? auth_role() ?? 'student';
+$roleId = (int) ($user['role_id'] ?? 5);
+
+$isAdmin = ($roleName === 'admin' || $roleId === 1 || $dashboardContext === 'admin');
+$isMaintenanceUser = (!$isAdmin && ($roleName === 'supervisor' || $roleName === 'technician' || $roleId === 2 || $roleId === 3 || $dashboardContext === 'maintenance'));
 
 // Helper for relative time formatting
 function get_relative_time(string $datetime): string {
@@ -81,37 +127,31 @@ function get_relative_time(string $datetime): string {
 try {
     // -------------------------------------------------------------------------
     // POST /api/notifications.php?action=mark_all_read -> Mark all as read
+    // Strictly update only notifications belonging to this specific user
     // -------------------------------------------------------------------------
     if ($action === 'mark_all_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        if ($isAdmin) {
-            db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `user_id` = :uid OR `user_id` = 1", [':uid' => $userId]);
-        } else {
-            db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `user_id` = :uid", [':uid' => $userId]);
-        }
+        db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `user_id` = :uid", [':uid' => $userId]);
 
         \FixMyCampus\Core\Response::json([
             'success'      => true,
             'message'      => 'All notifications marked as read.',
             'unread_count' => 0,
         ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
     // POST /api/notifications.php?action=mark_read -> Mark single notification read
+    // Strictly update only if notification belongs to this specific user
     // -------------------------------------------------------------------------
     if ($action === 'mark_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $notifId = (int) ($input['id'] ?? $_GET['id'] ?? 0);
+        $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
         if ($notifId > 0) {
-            if ($isAdmin) {
-                db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `id` = :id", [':id' => $notifId]);
-            } else {
-                db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `id` = :id AND `user_id` = :uid", [
-                    ':id'  => $notifId,
-                    ':uid' => $userId,
-                ]);
-            }
+            db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `id` = :id AND `user_id` = :uid", [
+                ':id'  => $notifId,
+                ':uid' => $userId,
+            ]);
         }
 
         \FixMyCampus\Core\Response::json([
@@ -119,160 +159,207 @@ try {
             'message' => 'Notification marked as read.',
             'id'      => $notifId,
         ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/notifications.php?action=delete -> Delete single notification
+    // POST /api/notifications.php?action=archive -> Soft archive single notification
     // -------------------------------------------------------------------------
-    if ($action === 'delete' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE')) {
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
-        $notifId = (int) ($input['id'] ?? $_GET['id'] ?? 0);
+    if (($action === 'archive' || $action === 'delete') && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE' || $_SERVER['REQUEST_METHOD'] === 'PUT')) {
+        $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
         if ($notifId > 0) {
-            if ($isAdmin) {
-                db_execute("DELETE FROM `notifications` WHERE `id` = :id", [':id' => $notifId]);
-            } else {
-                db_execute("DELETE FROM `notifications` WHERE `id` = :id AND `user_id` = :uid", [
-                    ':id'  => $notifId,
-                    ':uid' => $userId,
-                ]);
-            }
-
-            $remaining = (int)db_fetch_column("SELECT COUNT(*) FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
-            if ($remaining === 0) {
-                $_SESSION['notifs_cleared_' . $userId] = true;
-            }
+            db_execute("UPDATE `notifications` SET `is_archived` = 1 WHERE `id` = :id AND `user_id` = :uid", [
+                ':id'  => $notifId,
+                ':uid' => $userId,
+            ]);
         }
 
         \FixMyCampus\Core\Response::json([
             'success' => true,
-            'message' => 'Notification deleted.',
+            'message' => 'Notification archived.',
             'id'      => $notifId,
         ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
-    // POST /api/notifications.php?action=delete_all -> Delete all notifications
+    // POST /api/notifications.php?action=unarchive -> Restore single notification
     // -------------------------------------------------------------------------
-    if ($action === 'delete_all' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE')) {
-        $_SESSION['notifs_cleared_' . $userId] = true;
+    if ($action === 'unarchive' && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'PUT')) {
+        $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
-        if ($isAdmin) {
-            db_execute("DELETE FROM `notifications` WHERE `user_id` = :uid OR `user_id` = 1", [':uid' => $userId]);
-        } else {
-            db_execute("DELETE FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
+        if ($notifId > 0) {
+            db_execute("UPDATE `notifications` SET `is_archived` = 0 WHERE `id` = :id AND `user_id` = :uid", [
+                ':id'  => $notifId,
+                ':uid' => $userId,
+            ]);
         }
 
         \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'message' => 'Notification restored from archive.',
+            'id'      => $notifId,
+        ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/notifications.php?action=archive_all -> Soft archive all notifications
+    // -------------------------------------------------------------------------
+    if (($action === 'archive_all' || $action === 'delete_all') && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE' || $_SERVER['REQUEST_METHOD'] === 'PUT')) {
+        db_execute("UPDATE `notifications` SET `is_archived` = 1 WHERE `user_id` = :uid AND `is_archived` = 0", [':uid' => $userId]);
+
+        \FixMyCampus\Core\Response::json([
             'success'      => true,
-            'message'      => 'All notifications deleted.',
+            'message'      => 'All notifications archived.',
             'unread_count' => 0,
             'count'        => 0,
             'data'         => [],
         ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
     // Auto-seed real notification records for existing database tickets if table empty
     // -------------------------------------------------------------------------
-    if (empty($_SESSION['notifs_cleared_' . $userId])) {
+    if (empty($_SESSION['notifs_cleared_' . $userId]) && empty($_COOKIE['notifs_cleared_' . $userId])) {
         $existingCount = (int)db_fetch_column("SELECT COUNT(*) FROM `notifications` WHERE `user_id` = :uid", [':uid' => $userId]);
         if ($existingCount === 0) {
-        $realReports = db_fetch_all("
-            SELECT r.*, b.name AS building_name, l.room_number, u.full_name AS reporter_name
-            FROM `reports` r
-            LEFT JOIN `locations` l ON r.location_id = l.id
-            LEFT JOIN `buildings` b ON l.building_id = b.id
-            LEFT JOIN `users` u ON r.reporter_id = u.id
-            ORDER BY r.reported_at DESC
-            LIMIT 5
-        ");
-
-        foreach ($realReports as $r) {
-            $loc = "{$r['building_name']} • " . ($r['room_number'] ?: $r['specific_area'] ?: 'Campus');
-            $tNum = $r['ticket_number'] ?: "FMC-{$r['id']}";
-
             if ($isMaintenanceUser) {
                 // Work order dispatch for maintenance staff
-                create_notification(
-                    $userId,
-                    (int)$r['id'],
-                    'work_order',
-                    "New Work Order Dispatched: {$tNum} {$r['title']}",
-                    "Assigned task for {$r['title']} in {$loc}. Priority: " . ucfirst($r['priority']) . "."
-                );
+                $realReports = db_fetch_all("
+                    SELECT r.*, b.name AS building_name, l.room_number, u.full_name AS reporter_name
+                    FROM `reports` r
+                    LEFT JOIN `locations` l ON r.location_id = l.id
+                    LEFT JOIN `buildings` b ON l.building_id = b.id
+                    LEFT JOIN `users` u ON r.reporter_id = u.id
+                    ORDER BY r.reported_at DESC
+                    LIMIT 5
+                ");
 
-                if (in_array($r['priority'], ['high', 'emergency'], true)) {
+                foreach ($realReports as $r) {
+                    $loc = "{$r['building_name']} • " . ($r['room_number'] ?: $r['specific_area'] ?: 'Campus');
+                    $tNum = $r['ticket_number'] ?: "FMC-{$r['id']}";
                     create_notification(
                         $userId,
                         (int)$r['id'],
-                        'emergency',
-                        "PRIORITY ALERT: {$tNum} - {$r['title']}",
-                        "Urgent defect reported in {$loc}. Please inspect site and begin repairs."
+                        'work_order',
+                        "New Work Order Dispatched: {$tNum} {$r['title']}",
+                        "Assigned task for {$r['title']} in {$loc}. Priority: " . ucfirst($r['priority']) . "."
                     );
+
+                    if (in_array($r['priority'], ['high', 'emergency'], true)) {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'emergency',
+                            "PRIORITY ALERT: {$tNum} - {$r['title']}",
+                            "Urgent defect reported in {$loc}. Please inspect site and begin repairs."
+                        );
+                    }
                 }
             } elseif ($isAdmin) {
                 // Administrative alert for incident oversight
-                create_notification(
-                    $userId,
-                    (int)$r['id'],
-                    'new_report',
-                    "Defect Incident Logged: {$tNum} {$r['title']}",
-                    "Submitted by {$r['reporter_name']} in {$loc}. Current status: " . ucfirst($r['status']) . "."
-                );
+                $realReports = db_fetch_all("
+                    SELECT r.*, b.name AS building_name, l.room_number, u.full_name AS reporter_name
+                    FROM `reports` r
+                    LEFT JOIN `locations` l ON r.location_id = l.id
+                    LEFT JOIN `buildings` b ON l.building_id = b.id
+                    LEFT JOIN `users` u ON r.reporter_id = u.id
+                    ORDER BY r.reported_at DESC
+                    LIMIT 5
+                ");
 
-                if (in_array($r['priority'], ['high', 'emergency'], true)) {
+                foreach ($realReports as $r) {
+                    $loc = "{$r['building_name']} • " . ($r['room_number'] ?: $r['specific_area'] ?: 'Campus');
+                    $tNum = $r['ticket_number'] ?: "FMC-{$r['id']}";
                     create_notification(
                         $userId,
                         (int)$r['id'],
-                        'emergency',
-                        "High Priority Alert: {$tNum} in {$loc}",
-                        "Requires immediate technician dispatch and facilities supervision."
+                        'new_report',
+                        "Defect Incident Logged: {$tNum} {$r['title']}",
+                        "Submitted by {$r['reporter_name']} in {$loc}. Current status: " . ucfirst($r['status']) . "."
                     );
+
+                    if (in_array($r['priority'], ['high', 'emergency'], true)) {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'emergency',
+                            "High Priority Alert: {$tNum} in {$loc}",
+                            "Requires immediate technician dispatch and facilities supervision."
+                        );
+                    }
                 }
             } else {
-                // Student / reporter updates
-                create_notification(
-                    $userId,
-                    (int)$r['id'],
-                    'verified',
-                    "Your report {$tNum} has been received and verified.",
-                    "Campus operations has reviewed '{$r['title']}' in {$loc}."
-                );
+                // Student / reporter updates: strictly for reports submitted or confirmed by this student
+                $realReports = db_fetch_all("
+                    SELECT r.*, b.name AS building_name, l.room_number, u.full_name AS reporter_name
+                    FROM `reports` r
+                    LEFT JOIN `locations` l ON r.location_id = l.id
+                    LEFT JOIN `buildings` b ON l.building_id = b.id
+                    LEFT JOIN `users` u ON r.reporter_id = u.id
+                    WHERE r.reporter_id = :uid OR r.id IN (SELECT report_id FROM `report_confirmations` WHERE user_id = :cuid)
+                    ORDER BY r.reported_at DESC
+                    LIMIT 5
+                ", [':uid' => $userId, ':cuid' => $userId]);
 
-                if ($r['status'] === 'assigned') {
-                    create_notification(
-                        $userId,
-                        (int)$r['id'],
-                        'assignment',
-                        "Technician Assigned to {$tNum}",
-                        "A maintenance specialist has been assigned to inspect and repair '{$r['title']}'."
-                    );
-                } elseif ($r['status'] === 'in_progress') {
-                    create_notification(
-                        $userId,
-                        (int)$r['id'],
-                        'in_progress',
-                        "Repair In Progress: {$tNum}",
-                        "Maintenance personnel has begun repair work on '{$r['title']}'."
-                    );
-                } elseif ($r['status'] === 'resolved' || $r['status'] === 'closed') {
+                foreach ($realReports as $r) {
+                    $loc = "{$r['building_name']} • " . ($r['room_number'] ?: $r['specific_area'] ?: 'Campus');
+                    $tNum = $r['ticket_number'] ?: "FMC-{$r['id']}";
                     create_notification(
                         $userId,
                         (int)$r['id'],
                         'verified',
-                        "Issue Fixed: {$tNum} - {$r['title']}",
-                        "Your reported issue has been repaired and verified."
+                        "Your report {$tNum} has been received and verified.",
+                        "Campus operations has reviewed '{$r['title']}' in {$loc}."
                     );
+
+                    if ($r['status'] === 'assigned') {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'assignment',
+                            "Technician Assigned to {$tNum}",
+                            "A maintenance specialist has been assigned to inspect and repair '{$r['title']}'."
+                        );
+                    } elseif ($r['status'] === 'in_progress') {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'in_progress',
+                            "Repair In Progress: {$tNum}",
+                            "Maintenance personnel has begun repair work on '{$r['title']}'."
+                        );
+                    } elseif ($r['status'] === 'resolved' || $r['status'] === 'closed') {
+                        create_notification(
+                            $userId,
+                            (int)$r['id'],
+                            'verified',
+                            "Issue Fixed: {$tNum} - {$r['title']}",
+                            "Your reported issue has been repaired and verified."
+                        );
+                    }
                 }
             }
         }
     }
-}
 
     // -------------------------------------------------------------------------
     // GET /api/notifications.php -> List database notifications
     // -------------------------------------------------------------------------
+    $includeArchived = isset($_GET['include_archived']) && ($_GET['include_archived'] === '1' || $_GET['include_archived'] === 'true');
+    $filterParam = strtolower(trim((string)($_GET['filter'] ?? $bodyData['filter'] ?? '')));
+    $isArchivedOnly = ($filterParam === 'archived' || (isset($_GET['is_archived']) && $_GET['is_archived'] === '1'));
+
+    $archivedCondition = "AND (n.is_archived = 0 OR n.is_archived IS NULL)";
+    if ($isArchivedOnly) {
+        $archivedCondition = "AND n.is_archived = 1";
+    } elseif ($includeArchived || $dashboardContext === 'admin') {
+        $archivedCondition = "";
+    }
+
     $sql = "
         SELECT 
             n.id,
@@ -282,6 +369,7 @@ try {
             n.title,
             n.message,
             n.is_read,
+            n.is_archived,
             n.created_at,
             r.ticket_number,
             r.title AS report_title,
@@ -294,14 +382,13 @@ try {
         LEFT JOIN `reports` r ON n.report_id = r.id
         LEFT JOIN `locations` l ON r.location_id = l.id
         LEFT JOIN `buildings` b ON l.building_id = b.id
-        WHERE n.user_id = :uid OR (:is_admin = 1 AND n.user_id = 1)
+        WHERE n.user_id = :uid {$archivedCondition}
         ORDER BY n.created_at DESC
         LIMIT 100
     ";
 
     $rows = db_fetch_all($sql, [
-        ':uid'      => $userId,
-        ':is_admin' => $isAdmin ? 1 : 0,
+        ':uid' => $userId,
     ]);
 
     $notifications = [];
@@ -345,17 +432,20 @@ try {
             'badge_label'   => $badgeLabel,
             'time_ago'      => get_relative_time($row['created_at']),
             'is_read'       => (int) $row['is_read'],
+            'is_archived'   => (int) ($row['is_archived'] ?? 0),
             'created_at'    => $row['created_at'],
         ];
     }
 
-    $unreadCount = count(array_filter($notifications, fn($n) => (int)$n['is_read'] === 0));
+    $unreadCount = count(array_filter($notifications, fn($n) => (int)$n['is_read'] === 0 && (int)($n['is_archived'] ?? 0) === 0));
+    $archivedCount = count(array_filter($notifications, fn($n) => (int)($n['is_archived'] ?? 0) === 1));
 
     \FixMyCampus\Core\Response::json([
-        'success'      => true,
-        'unread_count' => $unreadCount,
-        'count'        => count($notifications),
-        'data'         => $notifications,
+        'success'        => true,
+        'unread_count'   => $unreadCount,
+        'archived_count' => $archivedCount,
+        'count'          => count($notifications),
+        'data'           => $notifications,
     ]);
 } catch (\Throwable $e) {
     \FixMyCampus\Core\Response::json([
