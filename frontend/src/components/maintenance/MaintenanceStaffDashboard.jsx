@@ -515,29 +515,6 @@ export default function MaintenanceStaffDashboard({
                 </div>
               </button>
             </div>
-
-            {/* Section 3: Account */}
-            <div className="maint-nav-section">
-              <span className="maint-nav-section-title">Account</span>
-
-              <button
-                type="button"
-                className={`maint-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
-                onClick={() => {
-                  if (onNavigate) {
-                    onNavigate('settings');
-                  } else {
-                    setActiveTab('profile');
-                    setSelectedJobId(null);
-                  }
-                }}
-              >
-                <div className="maint-nav-label-box">
-                  <User size={18} />
-                  <span>Profile</span>
-                </div>
-              </button>
-            </div>
           </nav>
         </div>
 
