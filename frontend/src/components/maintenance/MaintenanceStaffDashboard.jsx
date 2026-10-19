@@ -393,82 +393,97 @@ export default function MaintenanceStaffDashboard({
 
           {/* Navigation Links */}
           <nav className="maint-nav">
-            <button
-              type="button"
-              className={`maint-nav-item ${activeTab === 'dashboard' && selectedJobId === null ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('dashboard');
-                setSelectedJobId(null);
-              }}
-            >
-              <div className="maint-nav-label-box">
-                <LayoutDashboard size={18} />
-                <span>Dashboard</span>
-              </div>
-            </button>
+            {/* Section 1: Overview */}
+            <div className="maint-nav-section">
+              <span className="maint-nav-section-title">Overview</span>
 
-            <button
-              type="button"
-              className={`maint-nav-item ${activeTab === 'assigned' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('assigned');
-                setSelectedJobId(null);
-              }}
-            >
-              <div className="maint-nav-label-box">
-                <ClipboardList size={18} />
-                <span>Assigned Jobs</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={`maint-nav-item ${activeTab === 'completed' ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('completed');
-                setSelectedJobId(null);
-              }}
-            >
-              <div className="maint-nav-label-box">
-                <CheckCircle2 size={18} />
-                <span>Completed Jobs</span>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              className={`maint-nav-item ${activeTab === 'notifications' && selectedJobId === null ? 'active' : ''}`}
-              onClick={() => {
-                setActiveTab('notifications');
-                setSelectedJobId(null);
-              }}
-            >
-              <div className="maint-nav-label-box">
-                <Bell size={18} />
-                <span>Notifications</span>
-              </div>
-              {unreadNotifCount > 0 && (
-                <span className="maint-badge-count">{unreadNotifCount}</span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              className={`maint-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
-              onClick={() => {
-                if (onNavigate) {
-                  onNavigate('settings');
-                } else {
-                  setActiveTab('profile');
+              <button
+                type="button"
+                className={`maint-nav-item ${activeTab === 'dashboard' && selectedJobId === null ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('dashboard');
                   setSelectedJobId(null);
-                }
-              }}
-            >
-              <div className="maint-nav-label-box">
-                <User size={18} />
-                <span>Profile</span>
-              </div>
-            </button>
+                }}
+              >
+                <div className="maint-nav-label-box">
+                  <LayoutDashboard size={18} />
+                  <span>Dashboard</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`maint-nav-item ${activeTab === 'notifications' && selectedJobId === null ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('notifications');
+                  setSelectedJobId(null);
+                }}
+              >
+                <div className="maint-nav-label-box">
+                  <Bell size={18} />
+                  <span>Notifications</span>
+                </div>
+                {unreadNotifCount > 0 && (
+                  <span className="maint-badge-count">{unreadNotifCount}</span>
+                )}
+              </button>
+            </div>
+
+            {/* Section 2: Management */}
+            <div className="maint-nav-section">
+              <span className="maint-nav-section-title">Management</span>
+
+              <button
+                type="button"
+                className={`maint-nav-item ${activeTab === 'assigned' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('assigned');
+                  setSelectedJobId(null);
+                }}
+              >
+                <div className="maint-nav-label-box">
+                  <ClipboardList size={18} />
+                  <span>Assigned Jobs</span>
+                </div>
+              </button>
+
+              <button
+                type="button"
+                className={`maint-nav-item ${activeTab === 'completed' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('completed');
+                  setSelectedJobId(null);
+                }}
+              >
+                <div className="maint-nav-label-box">
+                  <CheckCircle2 size={18} />
+                  <span>Completed Jobs</span>
+                </div>
+              </button>
+            </div>
+
+            {/* Section 3: Account */}
+            <div className="maint-nav-section">
+              <span className="maint-nav-section-title">Account</span>
+
+              <button
+                type="button"
+                className={`maint-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
+                onClick={() => {
+                  if (onNavigate) {
+                    onNavigate('settings');
+                  } else {
+                    setActiveTab('profile');
+                    setSelectedJobId(null);
+                  }
+                }}
+              >
+                <div className="maint-nav-label-box">
+                  <User size={18} />
+                  <span>Profile</span>
+                </div>
+              </button>
+            </div>
           </nav>
         </div>
 

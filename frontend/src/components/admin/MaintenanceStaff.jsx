@@ -26,7 +26,6 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
   const [selectedDepartment, setSelectedDepartment] = useState('');
   const [customDepartment, setCustomDepartment] = useState('');
   const [phone, setPhone] = useState('');
-  const [roleId, setRoleId] = useState('3'); // 3 = technician
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Employee Stats Modal State
@@ -78,7 +77,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
       email,
       department: resolvedDept,
       phone_number: phone,
-      role_id: Number(roleId),
+      role_id: 3,
     });
     setIsSubmitting(false);
     handleCloseAddModal();
@@ -91,7 +90,6 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
     setSelectedDepartment('');
     setCustomDepartment('');
     setPhone('');
-    setRoleId('3');
   };
 
   const handleOpenStats = async (member) => {
@@ -678,18 +676,6 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                 />
-              </div>
-
-              <div className="admin-form-group">
-                <label className="admin-form-label">Role</label>
-                <select
-                  className="admin-select-input"
-                  value={roleId}
-                  onChange={(e) => setRoleId(e.target.value)}
-                >
-                  <option value="3">Maintenance Technician</option>
-                  <option value="2">Maintenance Staff</option>
-                </select>
               </div>
 
               <div className="admin-modal-footer">
