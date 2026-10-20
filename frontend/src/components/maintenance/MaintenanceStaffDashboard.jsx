@@ -23,7 +23,7 @@ import {
   ChevronRight,
   Lock,
 } from 'lucide-react';
-import { fetchReports, updateReportStatus, assignReport, fetchNotifications } from '../../services/api';
+import { fetchReports, updateReportStatus, fetchNotifications } from '../../services/api';
 import { exportReportsToExcel } from '../../utils/exportToExcel';
 import ConfirmationModal from '../common/ConfirmationModal';
 import MaintenanceNotificationsView from './MaintenanceNotificationsView';
@@ -168,6 +168,12 @@ export default function MaintenanceStaffDashboard({
 
     const loadData = (showSpinner = false) => {
       if (showSpinner) setLoading(true);
+      if (!currentUser?.id) {
+        setJobs([]);
+        setUnreadNotifCount(0);
+        setLoading(false);
+        return;
+      }
 
       const workerParam = currentUser?.id
         ? { worker_id: currentUser.id, assigned_to: currentUser.id }
@@ -180,7 +186,7 @@ export default function MaintenanceStaffDashboard({
             // Strictly filter to reports assigned to this specific logged-in maintenance worker
             const filteredByWorker = currentUser?.id
               ? res.data.filter((r) => Number(r.worker_id) === Number(currentUser.id))
-              : res.data;
+              : [];
             const mappedApi = filteredByWorker.map((r) => mapApiReportToJob(r, displayName));
             setJobs(mappedApi);
           } else {
@@ -248,42 +254,25 @@ export default function MaintenanceStaffDashboard({
     const targetJobId = jobToStartRepair.id;
     setIsStartingRepair(true);
 
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === targetJobId
-          ? {
-              ...job,
-              status: 'in_progress',
-              repair_started_at: 'Just now',
-            }
-          : job
-      )
-    );
-    showToast('Repair marked as In Progress!');
-
     try {
-      await updateReportStatus({
+      const result = await updateReportStatus({
         report_id: targetJobId,
         status: 'in_progress',
         remarks: `Work started by ${displayName}`,
-        changed_by: currentUser?.id || 1,
+        changed_by: currentUser.id,
       });
-
-      // Only assign worker if the ticket was not previously assigned
-      const isAlreadyAssigned = Boolean(jobToStartRepair.worker_id || jobToStartRepair.assigned_to);
-      if (currentUser?.id && !isAlreadyAssigned) {
-        await assignReport({
-          report_id: targetJobId,
-          assigned_to: currentUser.id,
-          assigned_by: currentUser.id,
-          notes: `Self-assigned upon repair start by ${displayName}`,
-        }).catch(() => {});
+      if (!result?.success) {
+        throw new Error(result?.message || 'Failed to update status on server.');
       }
-      setRefreshKey((k) => k + 1);
+      setJobs((prev) => prev.map((job) =>
+        job.id === targetJobId ? { ...job, status: 'in_progress' } : job
+      ));
+      showToast('Repair marked as In Progress!');
     } catch (err) {
       console.error('Failed to update status on server:', err);
-      showToast('Failed to update status on server.');
+      showToast(err.message);
     } finally {
+      setRefreshKey((k) => k + 1);
       setIsStartingRepair(false);
       setShowStartRepairModal(false);
       setJobToStartRepair(null);
@@ -314,37 +303,32 @@ export default function MaintenanceStaffDashboard({
     const photo = proofPhotoPreview;
 
     setIsSubmittingCompletion(true);
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === targetJobId
-          ? {
-              ...job,
-              status: 'resolved',
-              completed_at: 'Just now',
-              completion_notes: notes,
-              completion_photo: photo,
-            }
-          : job
-      )
-    );
 
     try {
-      await updateReportStatus({
+      const result = await updateReportStatus({
         report_id: targetJobId,
         status: 'resolved',
         remarks: notes || `Repair verified and marked as fixed by ${displayName}`,
-        changed_by: currentUser?.id || 1,
+        changed_by: currentUser.id,
       });
+      if (!result?.success) {
+        throw new Error(result?.message || 'Failed to complete this job.');
+      }
+      setJobs((prev) => prev.map((job) =>
+        job.id === targetJobId
+          ? { ...job, status: 'resolved', completed_at: 'Just now', completion_notes: notes, completion_photo: photo }
+          : job
+      ));
       showToast('Job marked as Fixed and Completed!');
       setCompletionNotes('');
       setProofPhotoPreview(null);
       setShowCompletionModal(false);
       setJobToComplete(null);
-      setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error('Failed to complete report on server:', err);
-      showToast('Failed to update status on server. Please try again.');
+      showToast(err.message);
     } finally {
+      setRefreshKey((k) => k + 1);
       setIsSubmittingCompletion(false);
     }
   };
@@ -419,7 +403,7 @@ export default function MaintenanceStaffDashboard({
 
   // Selected job for detail view
   const selectedJob =
-    jobs.find((j) => j.id === selectedJobId) || displayedJobs[0] || jobs[0] || null;
+    jobs.find((j) => String(j.id) === String(selectedJobId)) || null;
 
   return (
     <div className="maint-container">

@@ -132,6 +132,13 @@ if (!function_exists('auth_is_staff')) {
     }
 }
 
+if (!function_exists('auth_is_maintenance')) {
+    function auth_is_maintenance(): bool
+    {
+        return auth_has_role(['supervisor', 'technician']);
+    }
+}
+
 if (!function_exists('auth_require')) {
     /**
      * Require that a user is logged in. Rejects with HTTP 401 JSON for APIs, or redirects for web pages.

@@ -31,6 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 }
 
 session_start_safe();
+$currentUser = auth_require();
 $action = $_GET['action'] ?? 'list';
 
 /**
@@ -626,12 +627,12 @@ try {
     // POST /api/reports.php?action=assign -> Assign maintenance technician
     // -------------------------------------------------------------------------
     if ($action === 'assign' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        $actorUser = auth_require_role(['admin', 'supervisor', 'technician']);
+        $actorUser = auth_require_role('admin');
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? 0);
         $technicianId = (int)($input['assigned_to'] ?? 0);
         $notes = trim($input['notes'] ?? 'Assigned by Administrator');
-        $assignedBy = (int)($input['assigned_by'] ?? ($actorUser['id'] ?? 1));
+        $assignedBy = (int)$actorUser['id'];
 
         if ($reportId <= 0 || $technicianId <= 0) {
             \FixMyCampus\Core\Response::json([
@@ -668,7 +669,9 @@ try {
         $pdo->beginTransaction();
 
         try {
-            $existingAssignment = db_fetch_one("SELECT id FROM `report_assignments` WHERE report_id = :rid", [':rid' => $reportId]);
+            // Serialize dispatch and status changes on the same report.
+            db_fetch_one("SELECT id FROM `reports` WHERE id = :rid FOR UPDATE", [':rid' => $reportId]);
+            $existingAssignment = db_fetch_one("SELECT id FROM `report_assignments` WHERE report_id = :rid FOR UPDATE", [':rid' => $reportId]);
             if ($existingAssignment) {
                 db_execute("
                     UPDATE `report_assignments`
@@ -764,7 +767,7 @@ try {
         $reportId = (int)($input['report_id'] ?? 0);
         $newStatus = trim($input['status'] ?? '');
         $remarks = trim($input['remarks'] ?? 'Status updated by Staff');
-        $changedBy = (int)($input['changed_by'] ?? ($actorUser['id'] ?? 1));
+        $changedBy = (int)$actorUser['id'];
 
         $allowedStatuses = ['submitted', 'under_review', 'assigned', 'in_progress', 'on_hold', 'resolved', 'closed', 'rejected'];
         if ($reportId <= 0 || !in_array($newStatus, $allowedStatuses, true)) {
@@ -794,6 +797,20 @@ try {
         $pdo->beginTransaction();
 
         try {
+            db_fetch_one("SELECT id FROM `reports` WHERE id = :rid FOR UPDATE", [':rid' => $reportId]);
+            if (auth_is_maintenance()) {
+                $ownAssignment = db_fetch_one("
+                    SELECT id FROM `report_assignments`
+                    WHERE report_id = :rid AND assigned_to = :uid FOR UPDATE
+                ", [':rid' => $reportId, ':uid' => (int)$actorUser['id']]);
+                if (!$ownAssignment) {
+                    $pdo->rollBack();
+                    \FixMyCampus\Core\Response::json([
+                        'success' => false,
+                        'message' => 'You can only update jobs currently assigned to you.',
+                    ], 403);
+                }
+            }
             db_execute("UPDATE `reports` SET `status` = :status, `updated_at` = NOW() WHERE `id` = :id", [
                 ':status' => $newStatus,
                 ':id'     => $reportId
@@ -962,6 +979,9 @@ try {
     // -------------------------------------------------------------------------
     if ($action === 'archive' && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $actorUser = auth_require();
+        if (auth_is_maintenance()) {
+            auth_require_role('admin');
+        }
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? $input['id'] ?? 0);
 
@@ -1023,6 +1043,9 @@ try {
     // -------------------------------------------------------------------------
     if (($action === 'unarchive' || $action === 'restore') && $_SERVER['REQUEST_METHOD'] === 'POST') {
         $actorUser = auth_require();
+        if (auth_is_maintenance()) {
+            auth_require_role('admin');
+        }
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? $input['id'] ?? 0);
 
@@ -1122,6 +1145,16 @@ try {
             \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Invalid report ID'], 400);
         }
 
+        if (auth_is_maintenance() && !db_fetch_one("
+            SELECT id FROM `report_assignments`
+            WHERE report_id = :rid AND assigned_to = :uid LIMIT 1
+        ", [':rid' => $id, ':uid' => (int)$currentUser['id']])) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'You can only view jobs currently assigned to you.',
+            ], 403);
+        }
+
         $report = db_fetch_one("
             SELECT 
                 r.*,
@@ -1203,7 +1236,7 @@ try {
     $roleName = $user['role_name'] ?? auth_role() ?? '';
     $roleId = (int)($user['role_id'] ?? 0);
     $isStudent = ($roleName === 'student' || $roleId === 5);
-    $isTechnician = ($roleName === 'technician' || $roleId === 3);
+    $isMaintenance = auth_is_maintenance();
     $isAdmin = ($roleName === 'admin' || $roleId === 1 || ($user && (int)$user['id'] === 1));
 
     $sql = "
@@ -1291,8 +1324,8 @@ try {
     }
 
     $workerFilter = $_GET['worker_id'] ?? $_GET['assigned_to'] ?? null;
-    if ($isTechnician && !$isAdmin) {
-        $effectiveWorkerId = (int)($user['id'] ?? $targetUserId);
+    if ($isMaintenance) {
+        $effectiveWorkerId = (int)$currentUser['id'];
         $sql .= " AND ra.assigned_to = :worker_id";
         $params[':worker_id'] = $effectiveWorkerId;
     } elseif (!empty($workerFilter) && $workerFilter !== 'all') {

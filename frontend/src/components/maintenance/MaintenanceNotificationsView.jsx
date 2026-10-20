@@ -64,8 +64,7 @@ export default function MaintenanceNotificationsView({
           const matchedJob = jobs.find(
             (j) =>
               (item.ticket_number && j.ticket_number && j.ticket_number.toUpperCase() === item.ticket_number.toUpperCase()) ||
-              (item.ticket_number && String(j.id) === String(item.ticket_number.replace(/\D/g, ''))) ||
-              (item.report_id && j.id === item.report_id)
+              (item.report_id && String(j.id) === String(item.report_id))
           );
 
           let badgeLabel = item.badge_label || 'Notification';
@@ -328,7 +327,7 @@ export default function MaintenanceNotificationsView({
             )}
           </div>
           <p className="maint-subtext">
-            Work order dispatches, priority hazard alerts, parts requisitions, and supervisor sign-offs.
+            Work order dispatches, priority alerts, and updates for jobs assigned to you.
           </p>
         </div>
 
