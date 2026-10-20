@@ -27,6 +27,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
 
 session_start_safe();
 require_once SRC_PATH . '/helpers/history_logs.php';
+require_once SRC_PATH . '/helpers/staff_seed.php';
 
 try {
     $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
@@ -252,9 +253,29 @@ try {
         exit;
     }
 
-    // GET Request: check if specific staff member statistics requested
-    $currentUser = auth_require_role(['admin', 'supervisor', 'technician']);
+    // GET Request: list staff, stats, or worker suggestion based on specialization
+    ensure_specialized_staff_seeded();
+    $currentUser = auth_require();
     $action = $_GET['action'] ?? 'list';
+
+    // --------------------------------------------------------------------------
+    // ACTION: SUGGESTED WORKER BASED ON CATEGORY SPECIALIZATION
+    // --------------------------------------------------------------------------
+    if ($action === 'suggested' || $action === 'suggested_worker') {
+        $categorySlug = strtolower(trim((string)($_GET['category'] ?? $_GET['category_slug'] ?? '')));
+        $categoryId = (int)($_GET['category_id'] ?? 0);
+        $param = !empty($categorySlug) ? $categorySlug : ($categoryId > 0 ? $categoryId : 'air-conditioning');
+
+        $matchedWorker = find_suggested_worker_for_category($param);
+
+        \FixMyCampus\Core\Response::json([
+            'success'          => true,
+            'category_slug'    => $matchedWorker['category_slug'] ?? $categorySlug,
+            'specialization'   => $matchedWorker['target_specialization'] ?? 'General Maintenance',
+            'suggested_worker' => $matchedWorker,
+        ]);
+        exit;
+    }
 
     // --------------------------------------------------------------------------
     // ACTION: STATS / DETAIL FOR A SPECIFIC STAFF MEMBER

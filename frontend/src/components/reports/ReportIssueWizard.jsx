@@ -26,13 +26,128 @@ import {
   FileText,
   PlusCircle,
   User,
+  Sparkles,
+  Phone,
 } from 'lucide-react';
-import { fetchBuildings, fetchCategories, createReport, fetchNotifications, checkDuplicateReport, confirmReport } from '../../services/api';
+import {
+  fetchBuildings,
+  fetchCategories,
+  createReport,
+  fetchNotifications,
+  checkDuplicateReport,
+  confirmReport,
+  fetchSuggestedWorker,
+} from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 import DuplicateReportModal from './DuplicateReportModal';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import CampusMapPlacement from './CampusMapPlacement';
 import './reportWizard.css';
+
+// Client-side fallback dictionary for instant zero-latency specialist suggestions
+const CATEGORY_SPECIALIST_MAP = {
+  'air-conditioning': {
+    id: 4,
+    full_name: 'Engr. Ricardo Gomez',
+    role_display: 'HVAC Specialist / Technician',
+    department: 'HVAC / Air Conditioning',
+    specialization: 'HVAC / Air Conditioning',
+    phone_number: '09172345671',
+    user_identifier: 'TEC-HVAC-01',
+    active_jobs: 0,
+    note: 'Specialized in split-type aircon, central HVAC units, refrigeration & ventilation systems.',
+  },
+  'electrical': {
+    id: 5,
+    full_name: 'Mateo Santos',
+    role_display: 'Electrical Specialist / Technician',
+    department: 'Electrical',
+    specialization: 'Electrical Systems',
+    phone_number: '09183456782',
+    user_identifier: 'TEC-ELEC-02',
+    active_jobs: 0,
+    note: 'Specialized in circuit breakers, wall sockets, LED fixtures, switches, and electrical wirings.',
+  },
+  'furniture': {
+    id: 6,
+    full_name: 'Danilo Reyes',
+    role_display: 'Carpentry & Woodwork Specialist',
+    department: 'Carpentry & Woodwork',
+    specialization: 'Carpentry & Furniture',
+    phone_number: '09194567893',
+    user_identifier: 'TEC-CARP-03',
+    active_jobs: 0,
+    note: 'Specialized in student armchairs, instructor podiums, whiteboard mounts, doors & cabinetry.',
+  },
+  'classroom': {
+    id: 7,
+    full_name: 'Christian Ramos',
+    role_display: 'Audio-Visual & Tech Specialist',
+    department: 'Audio-Visual & Classroom Tech',
+    specialization: 'Classroom Tech & AV',
+    phone_number: '09205678904',
+    user_identifier: 'TEC-AV-04',
+    active_jobs: 0,
+    note: 'Specialized in overhead projectors, smart TVs, audio speakers, amplifiers, and HDMI setup.',
+  },
+  'restroom': {
+    id: 2,
+    full_name: 'Juan Dela Cruz',
+    role_display: 'Plumbing Specialist / Supervisor',
+    department: 'Plumbing',
+    specialization: 'Plumbing & Sanitation',
+    phone_number: '09123456789',
+    user_identifier: 'MGT-001',
+    active_jobs: 0,
+    note: 'Specialized in restroom water fixtures, sink clogs, flushers, bidets, and campus pipework.',
+  },
+  'internet': {
+    id: 8,
+    full_name: 'Alex Hernandez',
+    role_display: 'Network & Telecom Specialist',
+    department: 'Network & Telecommunications',
+    specialization: 'Campus WiFi & Networks',
+    phone_number: '09216789015',
+    user_identifier: 'TEC-NET-05',
+    active_jobs: 0,
+    note: 'Specialized in wireless access points, Ethernet ports, LAN switches, and fiber links.',
+  },
+  'cleaning': {
+    id: 9,
+    full_name: 'Eduardo Bautista',
+    role_display: 'Janitorial & Sanitation Specialist',
+    department: 'Janitorial & Sanitation',
+    specialization: 'Sanitation & Janitorial',
+    phone_number: '09227890126',
+    user_identifier: 'TEC-JAN-06',
+    active_jobs: 0,
+    note: 'Specialized in waste disposal, deep classroom sanitation, hazard spill cleanup, and hygiene.',
+  },
+  'safety': {
+    id: 10,
+    full_name: 'Roberto Cruz',
+    role_display: 'General Maintenance & Safety Officer',
+    department: 'General Maintenance',
+    specialization: 'Facility Safety & Hazards',
+    phone_number: '09238901237',
+    user_identifier: 'TEC-GEN-07',
+    active_jobs: 0,
+    note: 'Specialized in emergency hazard containment, fire extinguishers, stair safety rails, and grounds.',
+  },
+  'other': {
+    id: 10,
+    full_name: 'Roberto Cruz',
+    role_display: 'General Facility Specialist',
+    department: 'General Maintenance',
+    specialization: 'General Facility Repairs',
+    phone_number: '09238901237',
+    user_identifier: 'TEC-GEN-07',
+    active_jobs: 0,
+    note: 'Specialized in multi-trade physical plant maintenance and facility defect diagnostics.',
+  },
+};
+
+const SAMPLE_DEFECT_PHOTO = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='600' height='400' viewBox='0 0 600 400'><rect width='600' height='400' fill='%23ecfdf5'/><circle cx='300' cy='180' r='60' fill='%23a7f3d0'/><path d='M280 180 L295 195 L325 165' stroke='%23059669' stroke-width='8' fill='none' stroke-linecap='round'/><text x='50%25' y='280' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-weight='700' font-size='20' fill='%23047857'>Facility Defect Sample Photo</text><text x='50%25' y='315' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='14' fill='%23065f46'>FixMyCampus Inspection Photo Attached</text></svg>";
 
 // 9 Categories matching Screenshot 1
 const CATEGORY_DEFINITIONS = [
@@ -126,6 +241,8 @@ export default function ReportIssueWizard({
 
   // Form State
   const [selectedCategory, setSelectedCategory] = useState(CATEGORY_DEFINITIONS[0]); // Default to Air Conditioning
+  const [suggestedWorker, setSuggestedWorker] = useState(() => CATEGORY_SPECIALIST_MAP['air-conditioning']);
+  const [loadingWorker, setLoadingWorker] = useState(false);
   const [primaryPhoto, setPrimaryPhoto] = useState(null); // User uploaded photo (no placeholder)
   const [additionalPhotos, setAdditionalPhotos] = useState([]); // User uploaded additional photos (no placeholders)
   const [isDragging, setIsDragging] = useState(false);
@@ -183,6 +300,45 @@ export default function ReportIssueWizard({
       })
       .catch(() => {});
   }, [currentUser?.id]);
+
+  // Fetch suggested maintenance specialist dynamically when category changes
+  useEffect(() => {
+    if (!selectedCategory) return;
+    const catSlug = selectedCategory.slug || 'other';
+    const fallback = CATEGORY_SPECIALIST_MAP[catSlug] || CATEGORY_SPECIALIST_MAP['other'];
+
+    // Instantly set fallback for zero-latency UI updates
+    setSuggestedWorker((prev) => ({
+      ...fallback,
+      ...(prev && prev.category_slug === catSlug ? prev : {}),
+    }));
+
+    let isMounted = true;
+    setLoadingWorker(true);
+    fetchSuggestedWorker({
+      categoryId: selectedCategory.id,
+      categorySlug: catSlug,
+    })
+      .then((res) => {
+        if (isMounted && res && res.success && res.suggested_worker) {
+          setSuggestedWorker({
+            ...fallback,
+            ...res.suggested_worker,
+            target_specialization: res.specialization || res.suggested_worker.department || fallback.specialization,
+          });
+        }
+      })
+      .catch((err) => {
+        console.warn('Could not fetch dynamic worker suggestion:', err);
+      })
+      .finally(() => {
+        if (isMounted) setLoadingWorker(false);
+      });
+
+    return () => {
+      isMounted = false;
+    };
+  }, [selectedCategory?.id, selectedCategory?.slug]);
 
   // Update floor options when building changes
   const activeBuildingObj = buildings.find((b) => b.name === selectedBuilding) || buildings[0];
@@ -381,6 +537,8 @@ export default function ReportIssueWizard({
       priority: priorityLevel.toLowerCase(),
       primary_photo: primaryPhoto,
       additional_photos: additionalPhotos,
+      suggested_worker_id: suggestedWorker?.id,
+      suggested_worker_name: suggestedWorker?.full_name,
     };
 
     try {
@@ -392,6 +550,7 @@ export default function ReportIssueWizard({
             id: res.report_id || Date.now(),
             ticket_number: res.ticket_number || 'FMC-2026-NEW',
             status: 'submitted',
+            assigned_worker: suggestedWorker?.full_name,
             reported_at: new Date().toISOString(),
           });
         }
@@ -778,6 +937,17 @@ export default function ReportIssueWizard({
                       </div>
                       <h4 className="rw-upload-prompt-title">Add Primary Photo</h4>
                       <p className="rw-upload-prompt-sub">Drag & drop or browse device</p>
+                      <button
+                        type="button"
+                        className="rw-sample-photo-btn"
+                        id="rw-use-sample-photo-btn"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setPrimaryPhoto(SAMPLE_DEFECT_PHOTO);
+                        }}
+                      >
+                        Use Sample Photo
+                      </button>
                     </div>
                   )}
                 </div>
@@ -821,6 +991,64 @@ export default function ReportIssueWizard({
                 </div>
               </div>
             </div>
+
+            {/* Suggested Maintenance Specialist Card (Dynamic based on Category Specialization) */}
+            {suggestedWorker && (
+              <div className="rw-suggested-worker-card" id="rw-suggested-worker-banner">
+                <div className="rw-suggested-worker-header">
+                  <div className="rw-suggested-title-group">
+                    <span className="rw-suggested-pill">
+                      <Sparkles size={13} className="rw-suggested-sparkle" />
+                      <span>Recommended Specialist</span>
+                    </span>
+                    <span className="rw-suggested-dept-badge">
+                      {suggestedWorker.target_specialization || suggestedWorker.department || 'Specialized Maintenance'}
+                    </span>
+                  </div>
+                  {typeof suggestedWorker.active_jobs !== 'undefined' && (
+                    <span className="rw-suggested-workload-badge">
+                      {suggestedWorker.active_jobs === 0 ? '🟢 Available Now' : `🟡 ${suggestedWorker.active_jobs} Active Work Orders`}
+                    </span>
+                  )}
+                </div>
+
+                <div className="rw-suggested-worker-body">
+                  <div className="rw-suggested-avatar">
+                    {suggestedWorker.full_name
+                      ? suggestedWorker.full_name
+                          .split(' ')
+                          .map((w) => w[0])
+                          .filter(Boolean)
+                          .slice(0, 2)
+                          .join('')
+                      : 'SP'}
+                  </div>
+
+                  <div className="rw-suggested-details">
+                    <div className="rw-suggested-name-line">
+                      <h4 className="rw-suggested-name">{suggestedWorker.full_name}</h4>
+                      <span className="rw-suggested-id-tag">{suggestedWorker.user_identifier || 'Campus Staff'}</span>
+                      <span className="rw-suggested-role-tag">{suggestedWorker.role_display || 'Field Technician'}</span>
+                    </div>
+                    <p className="rw-suggested-caption">
+                      Assigned automatically for <strong>{selectedCategory?.name}</strong> defects. Our dispatch system routes this work order directly to this specialist upon submission.
+                    </p>
+                  </div>
+
+                  {suggestedWorker.phone_number && (
+                    <div className="rw-suggested-contact-box" title={`Campus Mobile: ${suggestedWorker.phone_number}`}>
+                      <div className="rw-suggested-phone-icon">
+                        <Phone size={14} />
+                      </div>
+                      <div className="rw-suggested-phone-info">
+                        <span className="rw-suggested-phone-label">Maintenance Contact</span>
+                        <span className="rw-suggested-phone-val">{suggestedWorker.phone_number}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             <div className="rw-card-footer" style={{ justifyContent: 'space-between' }}>
               <button
@@ -1126,6 +1354,16 @@ export default function ReportIssueWizard({
                     </div>
                   </div>
 
+                  {suggestedWorker && (
+                    <div className="rw-meta-row border-bottom">
+                      <span className="rw-meta-label">Specialist</span>
+                      <div className="rw-meta-specialist-badge">
+                        <Wrench size={12} />
+                        <span>{suggestedWorker.full_name}</span>
+                      </div>
+                    </div>
+                  )}
+
                   <div className="rw-meta-row">
                     <span className="rw-meta-label">Priority Level</span>
                     <span className={`rw-priority-pill ${priorityLevel.toLowerCase()}`}>
@@ -1135,7 +1373,7 @@ export default function ReportIssueWizard({
                 </div>
               </div>
 
-              {/* Right Column: Title, Location Details, Description Box */}
+              {/* Right Column: Title, Location Details, Description Box & Suggested Specialist */}
               <div className="rw-review-right">
                 <div className="rw-review-field-group">
                   <div className="rw-review-field-label">Issue Title</div>
@@ -1160,6 +1398,47 @@ export default function ReportIssueWizard({
                     )}
                   </div>
                 </div>
+
+                {suggestedWorker && (
+                  <div className="rw-review-field-group">
+                    <div className="rw-review-field-label">Designated Maintenance Specialist</div>
+                    <div className="rw-review-spec-banner">
+                      <div className="rw-review-spec-avatar">
+                        {suggestedWorker.full_name
+                          ? suggestedWorker.full_name
+                              .split(' ')
+                              .map((w) => w[0])
+                              .filter(Boolean)
+                              .slice(0, 2)
+                              .join('')
+                          : 'SP'}
+                      </div>
+                      <div className="rw-review-spec-body">
+                        <div className="rw-review-spec-headline">
+                          <span className="rw-review-spec-name">{suggestedWorker.full_name}</span>
+                          <span className="rw-review-spec-badge">
+                            {suggestedWorker.target_specialization || suggestedWorker.department}
+                          </span>
+                        </div>
+                        <div className="rw-review-spec-meta">
+                          <span>{suggestedWorker.role_display || 'Technician'}</span>
+                          <span>•</span>
+                          <span>{suggestedWorker.user_identifier || 'Campus Staff'}</span>
+                          {suggestedWorker.phone_number && (
+                            <>
+                              <span>•</span>
+                              <span>{suggestedWorker.phone_number}</span>
+                            </>
+                          )}
+                        </div>
+                        <div className="rw-review-spec-routing">
+                          <CheckCircle2 size={13} className="rw-review-spec-check" />
+                          <span>Auto-routed to {suggestedWorker.full_name} based on <strong>{selectedCategory?.name}</strong> specialization.</span>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

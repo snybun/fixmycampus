@@ -15,6 +15,7 @@ import {
   ChevronRight,
   Shield,
   User,
+  LogIn,
 } from 'lucide-react';
 import { fetchHistoryLogs, deleteHistoryLog } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
@@ -29,6 +30,7 @@ export default function HistoryLogView({ onViewReport }) {
   const [pageSize, setPageSize] = useState(10);
   const [summary, setSummary] = useState({
     all: 0,
+    user_login: 0,
     user_registration: 0,
     report_submitted: 0,
     status_change: 0,
@@ -140,6 +142,13 @@ export default function HistoryLogView({ onViewReport }) {
 
   const renderTypeChip = (type) => {
     switch (type) {
+      case 'user_login':
+        return (
+          <span className="history-type-chip user_login">
+            <LogIn size={13} />
+            <span>User Sign-in</span>
+          </span>
+        );
       case 'user_registration':
         return (
           <span className="history-type-chip user_registration">
@@ -228,7 +237,7 @@ export default function HistoryLogView({ onViewReport }) {
             </span>
           </div>
           <p className="admin-header-subtitle">
-            Comprehensive audit trail of users who registered, defect reports logged with timestamps &amp; locations, status updates, and archived records.
+            Comprehensive audit trail of user sign-ins, registrations, defect reports logged with timestamps &amp; locations, status updates, and archived records.
           </p>
         </div>
 
@@ -246,7 +255,14 @@ export default function HistoryLogView({ onViewReport }) {
 
       {/* Summary KPI Cards */}
       <div className="history-summary-grid">
-        <div className="history-summary-card">
+        <div
+          className={`history-summary-card ${activeType === 'all' ? 'active' : ''}`}
+          onClick={() => handleTypeChange('all')}
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          title="View all activities"
+        >
           <div className="history-summary-icon all">
             <History size={20} />
           </div>
@@ -256,7 +272,31 @@ export default function HistoryLogView({ onViewReport }) {
           </div>
         </div>
 
-        <div className="history-summary-card">
+        <div
+          className={`history-summary-card ${activeType === 'user_login' ? 'active' : ''}`}
+          onClick={() => handleTypeChange('user_login')}
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          title="View user sign-ins"
+        >
+          <div className="history-summary-icon logins">
+            <LogIn size={20} />
+          </div>
+          <div>
+            <div className="history-summary-val">{summary.user_login || 0}</div>
+            <div className="history-summary-lbl">User Sign-ins</div>
+          </div>
+        </div>
+
+        <div
+          className={`history-summary-card ${activeType === 'user_registration' ? 'active' : ''}`}
+          onClick={() => handleTypeChange('user_registration')}
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          title="View user registrations"
+        >
           <div className="history-summary-icon users">
             <UserPlus size={20} />
           </div>
@@ -266,7 +306,14 @@ export default function HistoryLogView({ onViewReport }) {
           </div>
         </div>
 
-        <div className="history-summary-card">
+        <div
+          className={`history-summary-card ${activeType === 'report_submitted' ? 'active' : ''}`}
+          onClick={() => handleTypeChange('report_submitted')}
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          title="View incident reports"
+        >
           <div className="history-summary-icon reports">
             <AlertCircle size={20} />
           </div>
@@ -276,7 +323,14 @@ export default function HistoryLogView({ onViewReport }) {
           </div>
         </div>
 
-        <div className="history-summary-card">
+        <div
+          className={`history-summary-card ${activeType === 'status_change' ? 'active' : ''}`}
+          onClick={() => handleTypeChange('status_change')}
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          title="View status updates"
+        >
           <div className="history-summary-icon status">
             <RefreshCcw size={20} />
           </div>
@@ -286,7 +340,14 @@ export default function HistoryLogView({ onViewReport }) {
           </div>
         </div>
 
-        <div className="history-summary-card">
+        <div
+          className={`history-summary-card ${activeType === 'report_archived' ? 'active' : ''}`}
+          onClick={() => handleTypeChange('report_archived')}
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          title="View archived reports"
+        >
           <div className="history-summary-icon archive">
             <Archive size={20} />
           </div>
@@ -336,6 +397,7 @@ export default function HistoryLogView({ onViewReport }) {
             title="Filter by log category"
           >
             <option value="all">All Logs ({summary.all})</option>
+            <option value="user_login">User Sign-ins ({summary.user_login || 0})</option>
             <option value="user_registration">User Sign-ups ({summary.user_registration})</option>
             <option value="report_submitted">Reports Logged ({summary.report_submitted})</option>
             <option value="status_change">Status Updates ({summary.status_change})</option>

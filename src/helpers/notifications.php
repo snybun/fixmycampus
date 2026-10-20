@@ -25,6 +25,21 @@ if (!function_exists('create_notification')) {
         }
 
         try {
+            // Maintenance recipients only receive alerts for their current assignments.
+            $recipient = db_fetch_one("
+                SELECT r.name AS role_name
+                FROM `users` u JOIN `roles` r ON r.id = u.role_id
+                WHERE u.id = :uid
+            ", [':uid' => $userId]);
+            if (in_array($recipient['role_name'] ?? '', ['supervisor', 'technician'], true)) {
+                if (!$reportId || !db_fetch_one("
+                    SELECT id FROM `report_assignments`
+                    WHERE report_id = :rid AND assigned_to = :uid LIMIT 1
+                ", [':rid' => $reportId, ':uid' => $userId])) {
+                    return 0;
+                }
+            }
+
             return db_insert('notifications', [
                 'user_id'    => $userId,
                 'report_id'  => $reportId,

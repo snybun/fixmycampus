@@ -196,6 +196,7 @@ try {
     // Also calculate type summary counters
     $summary = [
         'all'               => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs`"),
+        'user_login'        => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'user_login'"),
         'user_registration' => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'user_registration'"),
         'report_submitted'  => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'report_submitted'"),
         'status_change'     => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'status_change'"),

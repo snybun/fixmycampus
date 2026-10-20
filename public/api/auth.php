@@ -422,6 +422,26 @@ try {
         // Login user
         auth_login($user);
 
+        // Record sign-in in history & audit logs
+        $roleLabel = ucfirst($user['role_name'] ?? 'User');
+        $dept = !empty($user['department']) ? $user['department'] : 'PHINMA University of Pangasinan';
+        record_history_log(
+            'user_login',
+            "User Signed In: {$user['full_name']} ({$roleLabel})",
+            "{$user['full_name']} ({$user['email']}) signed in successfully.",
+            (int)$user['id'],
+            null,
+            $user['full_name'],
+            $roleLabel,
+            $dept,
+            [
+                'email'           => $user['email'],
+                'user_identifier' => $user['user_identifier'] ?? null,
+                'role'            => $user['role_name'] ?? null,
+                'method'          => 'password',
+            ]
+        );
+
         \FixMyCampus\Core\Response::json([
             'success' => true,
             'message' => 'Authentication successful.',
@@ -586,6 +606,26 @@ try {
 
         // Initialize session
         auth_login($user);
+
+        // Record sign-in in history & audit logs
+        $roleLabel = ucfirst($user['role_name'] ?? 'User');
+        $dept = !empty($user['department']) ? $user['department'] : 'PHINMA University of Pangasinan';
+        record_history_log(
+            'user_login',
+            "User Signed In via Google: {$user['full_name']} ({$roleLabel})",
+            "{$user['full_name']} ({$user['email']}) signed in via Google Institutional Sign-In.",
+            (int)$user['id'],
+            null,
+            $user['full_name'],
+            $roleLabel,
+            $dept,
+            [
+                'email'           => $user['email'],
+                'user_identifier' => $user['user_identifier'] ?? null,
+                'role'            => $user['role_name'] ?? null,
+                'method'          => 'google_oauth',
+            ]
+        );
 
         \FixMyCampus\Core\Response::json([
             'success' => true,

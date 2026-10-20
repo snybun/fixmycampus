@@ -141,7 +141,7 @@ export async function fetchHistoryLogs({ page = 1, limit = 10, type = 'all', sea
     return {
       success: false,
       data: [],
-      summary: { all: 0, user_registration: 0, report_submitted: 0, status_change: 0, report_archived: 0 },
+      summary: { all: 0, user_login: 0, user_registration: 0, report_submitted: 0, status_change: 0, report_archived: 0 },
       pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
     };
   }
@@ -432,6 +432,23 @@ export async function removeStaffMember(staffId, details = {}) {
   } catch (err) {
     console.error('Error removing staff member:', err);
     return { success: false, message: err.message };
+  }
+}
+
+export async function fetchSuggestedWorker({ categoryId, categorySlug } = {}) {
+  try {
+    const params = new URLSearchParams({ action: 'suggested' });
+    if (categoryId) params.append('category_id', String(categoryId));
+    if (categorySlug) params.append('category_slug', String(categorySlug));
+
+    const res = await fetch(`${API_BASE}/staff.php?${params.toString()}`, {
+      credentials: 'include',
+    });
+    if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+    return await res.json();
+  } catch (err) {
+    console.error('Error fetching suggested worker:', err);
+    return { success: false, suggested_worker: null };
   }
 }
 
@@ -767,3 +784,4 @@ export async function confirmReport(reportId, ticketNumber = '') {
     return { success: false, message: 'Failed to confirm report' };
   }
 }
+

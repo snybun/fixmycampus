@@ -58,8 +58,65 @@ if (!function_exists('ensure_history_logs_synced')) {
      */
     function ensure_history_logs_synced(): void {
         try {
+            // Ensure table exists with VARCHAR(50) log_type
+            db_query("CREATE TABLE IF NOT EXISTS `history_logs` (
+                `id` INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                `log_type` VARCHAR(50) NOT NULL,
+                `user_id` INT UNSIGNED DEFAULT NULL,
+                `report_id` INT UNSIGNED DEFAULT NULL,
+                `actor_name` VARCHAR(150) DEFAULT NULL,
+                `actor_role` VARCHAR(50) DEFAULT NULL,
+                `title` VARCHAR(255) NOT NULL,
+                `description` TEXT DEFAULT NULL,
+                `location_info` VARCHAR(255) DEFAULT NULL,
+                `metadata` JSON DEFAULT NULL,
+                `created_at` TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (`id`),
+                KEY `idx_history_type` (`log_type`),
+                KEY `idx_history_user` (`user_id`),
+                KEY `idx_history_report` (`report_id`),
+                KEY `idx_history_created` (`created_at`)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci");
+
+            try {
+                db_query("ALTER TABLE `history_logs` MODIFY COLUMN `log_type` VARCHAR(50) NOT NULL");
+            } catch (\Throwable $t) {}
+
             $count = (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs`");
+
+            // If there are existing logs, check if we need to backfill initial user_login entries
             if ($count > 0) {
+                $loginCount = (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'user_login'");
+                if ($loginCount === 0) {
+                    $activeUsers = db_fetch_all("
+                        SELECT u.id, u.user_identifier, u.full_name, u.email, u.department, u.created_at, r.name AS role_name
+                        FROM `users` u
+                        LEFT JOIN `roles` r ON u.role_id = r.id
+                        WHERE u.status = 'active'
+                        ORDER BY u.id ASC
+                        LIMIT 5
+                    ");
+                    foreach ($activeUsers as $au) {
+                        $roleLabel = ucfirst($au['role_name'] ?? 'User');
+                        record_history_log(
+                            'user_login',
+                            "User Signed In: {$au['full_name']} ({$roleLabel})",
+                            "{$au['full_name']} ({$au['email']}) signed in successfully.",
+                            (int)$au['id'],
+                            null,
+                            $au['full_name'],
+                            $roleLabel,
+                            $au['department'] ?: 'PHINMA University of Pangasinan',
+                            [
+                                'email'           => $au['email'],
+                                'user_identifier' => $au['user_identifier'],
+                                'role'            => $au['role_name'],
+                                'method'          => 'password',
+                            ],
+                            $au['created_at']
+                        );
+                    }
+                }
                 return;
             }
 
@@ -192,6 +249,36 @@ if (!function_exists('ensure_history_logs_synced')) {
                         'remarks'         => $sh['remarks'],
                     ],
                     $sh['created_at']
+                );
+            }
+
+            // 4. Back-populate initial user sign-ins
+            $activeUsers = db_fetch_all("
+                SELECT u.id, u.user_identifier, u.full_name, u.email, u.department, u.created_at, r.name AS role_name
+                FROM `users` u
+                LEFT JOIN `roles` r ON u.role_id = r.id
+                WHERE u.status = 'active'
+                ORDER BY u.created_at ASC
+                LIMIT 5
+            ");
+            foreach ($activeUsers as $au) {
+                $roleLabel = ucfirst($au['role_name'] ?? 'User');
+                record_history_log(
+                    'user_login',
+                    "User Signed In: {$au['full_name']} ({$roleLabel})",
+                    "{$au['full_name']} ({$au['email']}) signed in successfully.",
+                    (int)$au['id'],
+                    null,
+                    $au['full_name'],
+                    $roleLabel,
+                    $au['department'] ?: 'PHINMA University of Pangasinan',
+                    [
+                        'email'           => $au['email'],
+                        'user_identifier' => $au['user_identifier'],
+                        'role'            => $au['role_name'],
+                        'method'          => 'password',
+                    ],
+                    $au['created_at']
                 );
             }
         } catch (\Throwable $e) {

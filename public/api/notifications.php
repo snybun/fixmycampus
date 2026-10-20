@@ -37,74 +37,17 @@ if (!is_array($bodyData)) {
     $bodyData = [];
 }
 
-$user = auth_user();
-$paramUid = (int)($_GET['user_id'] ?? $bodyData['user_id'] ?? $_SERVER['HTTP_X_USER_ID'] ?? 0);
+$user = auth_require();
 $dashboardContext = strtolower(trim((string)($_GET['dashboard'] ?? $bodyData['dashboard'] ?? '')));
 
-// 1. If explicit user_id provided, look up that user in database
-if ($paramUid > 0) {
-    $found = db_fetch_one("
-        SELECT u.*, r.name AS role_name
-        FROM `users` u
-        LEFT JOIN `roles` r ON u.role_id = r.id
-        WHERE u.id = :id AND u.status = 'active'
-        LIMIT 1
-    ", [':id' => $paramUid]);
-    if ($found) {
-        $user = $found;
-    }
-}
-
-// 2. If no user resolved yet, check session
-if (!$user) {
-    $sessionUser = auth_user();
-    if ($sessionUser) {
-        $user = $sessionUser;
-    }
-}
-
-// 3. If still no user, use dashboard context to find the representative active user
-if (!$user) {
-    if ($dashboardContext === 'admin') {
-        $found = db_fetch_one("
-            SELECT u.*, r.name AS role_name
-            FROM `users` u
-            JOIN `roles` r ON u.role_id = r.id
-            WHERE r.name = 'admin' AND u.status = 'active'
-            ORDER BY u.id ASC
-            LIMIT 1
-        ");
-        $user = $found ?: ['id' => 1, 'role_name' => 'admin', 'role_id' => 1];
-    } elseif ($dashboardContext === 'maintenance') {
-        $found = db_fetch_one("
-            SELECT u.*, r.name AS role_name
-            FROM `users` u
-            JOIN `roles` r ON u.role_id = r.id
-            WHERE r.name IN ('supervisor', 'technician') AND u.status = 'active'
-            ORDER BY u.id ASC
-            LIMIT 1
-        ");
-        $user = $found ?: ['id' => 17, 'role_name' => 'supervisor', 'role_id' => 2];
-    } else {
-        // Default to student
-        $found = db_fetch_one("
-            SELECT u.*, r.name AS role_name
-            FROM `users` u
-            JOIN `roles` r ON u.role_id = r.id
-            WHERE r.name = 'student' AND u.status = 'active'
-            ORDER BY u.id ASC
-            LIMIT 1
-        ");
-        $user = $found ?: ['id' => 2, 'role_name' => 'student', 'role_id' => 5];
-    }
-}
-
 $userId = (int) $user['id'];
-$roleName = $user['role_name'] ?? auth_role() ?? 'student';
-$roleId = (int) ($user['role_id'] ?? 5);
-
-$isAdmin = ($roleName === 'admin' || $roleId === 1 || $dashboardContext === 'admin');
-$isMaintenanceUser = (!$isAdmin && ($roleName === 'supervisor' || $roleName === 'technician' || $roleId === 2 || $roleId === 3 || $dashboardContext === 'maintenance'));
+$isAdmin = auth_is_admin();
+$isMaintenanceUser = auth_is_maintenance();
+// Request parameters never determine identity or assignment access.
+$assignmentCondition = $isMaintenanceUser
+    ? " AND EXISTS (SELECT 1 FROM `report_assignments` ra
+        WHERE ra.report_id = notifications.report_id AND ra.assigned_to = notifications.user_id)"
+    : '';
 
 // Helper for relative time formatting
 function get_relative_time(string $datetime): string {
@@ -130,7 +73,7 @@ try {
     // Strictly update only notifications belonging to this specific user
     // -------------------------------------------------------------------------
     if ($action === 'mark_all_read' && $_SERVER['REQUEST_METHOD'] === 'POST') {
-        db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `user_id` = :uid", [':uid' => $userId]);
+        db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `user_id` = :uid {$assignmentCondition}", [':uid' => $userId]);
 
         \FixMyCampus\Core\Response::json([
             'success'      => true,
@@ -148,7 +91,7 @@ try {
         $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
         if ($notifId > 0) {
-            db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `id` = :id AND `user_id` = :uid", [
+            db_execute("UPDATE `notifications` SET `is_read` = 1 WHERE `id` = :id AND `user_id` = :uid {$assignmentCondition}", [
                 ':id'  => $notifId,
                 ':uid' => $userId,
             ]);
@@ -169,7 +112,7 @@ try {
         $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
         if ($notifId > 0) {
-            db_execute("UPDATE `notifications` SET `is_archived` = 1 WHERE `id` = :id AND `user_id` = :uid", [
+            db_execute("UPDATE `notifications` SET `is_archived` = 1 WHERE `id` = :id AND `user_id` = :uid {$assignmentCondition}", [
                 ':id'  => $notifId,
                 ':uid' => $userId,
             ]);
@@ -190,7 +133,7 @@ try {
         $notifId = (int) ($bodyData['id'] ?? $_GET['id'] ?? 0);
 
         if ($notifId > 0) {
-            db_execute("UPDATE `notifications` SET `is_archived` = 0 WHERE `id` = :id AND `user_id` = :uid", [
+            db_execute("UPDATE `notifications` SET `is_archived` = 0 WHERE `id` = :id AND `user_id` = :uid {$assignmentCondition}", [
                 ':id'  => $notifId,
                 ':uid' => $userId,
             ]);
@@ -208,7 +151,7 @@ try {
     // POST /api/notifications.php?action=archive_all -> Soft archive all notifications
     // -------------------------------------------------------------------------
     if (($action === 'archive_all' || $action === 'delete_all') && ($_SERVER['REQUEST_METHOD'] === 'POST' || $_SERVER['REQUEST_METHOD'] === 'DELETE' || $_SERVER['REQUEST_METHOD'] === 'PUT')) {
-        db_execute("UPDATE `notifications` SET `is_archived` = 1 WHERE `user_id` = :uid AND `is_archived` = 0", [':uid' => $userId]);
+        db_execute("UPDATE `notifications` SET `is_archived` = 1 WHERE `user_id` = :uid AND `is_archived` = 0 {$assignmentCondition}", [':uid' => $userId]);
 
         \FixMyCampus\Core\Response::json([
             'success'      => true,
@@ -234,9 +177,11 @@ try {
                     LEFT JOIN `locations` l ON r.location_id = l.id
                     LEFT JOIN `buildings` b ON l.building_id = b.id
                     LEFT JOIN `users` u ON r.reporter_id = u.id
+                    WHERE EXISTS (SELECT 1 FROM `report_assignments` ra
+                        WHERE ra.report_id = r.id AND ra.assigned_to = :uid)
                     ORDER BY r.reported_at DESC
                     LIMIT 5
-                ");
+                ", [':uid' => $userId]);
 
                 foreach ($realReports as $r) {
                     $loc = "{$r['building_name']} • " . ($r['room_number'] ?: $r['specific_area'] ?: 'Campus');
@@ -356,9 +301,14 @@ try {
     $archivedCondition = "AND (n.is_archived = 0 OR n.is_archived IS NULL)";
     if ($isArchivedOnly) {
         $archivedCondition = "AND n.is_archived = 1";
-    } elseif ($includeArchived || $dashboardContext === 'admin') {
+    } elseif ($includeArchived || ($isAdmin && $dashboardContext === 'admin')) {
         $archivedCondition = "";
     }
+
+    $assignmentFilter = $isMaintenanceUser
+        ? "AND EXISTS (SELECT 1 FROM `report_assignments` ra
+            WHERE ra.report_id = n.report_id AND ra.assigned_to = n.user_id)"
+        : '';
 
     $sql = "
         SELECT 
@@ -382,7 +332,7 @@ try {
         LEFT JOIN `reports` r ON n.report_id = r.id
         LEFT JOIN `locations` l ON r.location_id = l.id
         LEFT JOIN `buildings` b ON l.building_id = b.id
-        WHERE n.user_id = :uid {$archivedCondition}
+        WHERE n.user_id = :uid {$archivedCondition} {$assignmentFilter}
         ORDER BY n.created_at DESC
         LIMIT 100
     ";

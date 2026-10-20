@@ -19,8 +19,11 @@ import {
   X,
   RefreshCw,
   FileSpreadsheet,
+  ChevronLeft,
+  ChevronRight,
+  Lock,
 } from 'lucide-react';
-import { fetchReports, updateReportStatus, assignReport, fetchNotifications } from '../../services/api';
+import { fetchReports, updateReportStatus, fetchNotifications } from '../../services/api';
 import { exportReportsToExcel } from '../../utils/exportToExcel';
 import ConfirmationModal from '../common/ConfirmationModal';
 import MaintenanceNotificationsView from './MaintenanceNotificationsView';
@@ -59,6 +62,16 @@ const isReportOverdue = (job) => {
   const slaHours = Number(job.sla_hours) || 24;
   const deadlineTime = reportedTime + slaHours * 3600 * 1000;
   return Date.now() > deadlineTime;
+};
+
+// Priority display label helper: Map 'emergency' to 'Urgent' to match student view
+const getPriorityLabel = (priority) => {
+  const p = String(priority || '').toLowerCase();
+  if (p === 'emergency' || p === 'urgent') return 'Urgent';
+  if (p === 'high') return 'High';
+  if (p === 'medium') return 'Medium';
+  if (p === 'low') return 'Low';
+  return p ? p.charAt(0).toUpperCase() + p.slice(1) : 'Medium';
 };
 
 // Transform database report row into maintenance job object
@@ -114,6 +127,12 @@ export default function MaintenanceStaffDashboard({
   const [selectedJobId, setSelectedJobId] = useState(null);
   const [priorityFilter, setPriorityFilter] = useState('all'); // 'all', 'high', 'medium', 'low'
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, priorityFilter]);
 
   // Live Database Reports state
   const [jobs, setJobs] = useState([]);
@@ -149,12 +168,26 @@ export default function MaintenanceStaffDashboard({
 
     const loadData = (showSpinner = false) => {
       if (showSpinner) setLoading(true);
+      if (!currentUser?.id) {
+        setJobs([]);
+        setUnreadNotifCount(0);
+        setLoading(false);
+        return;
+      }
 
-      fetchReports({ limit: 100 })
+      const workerParam = currentUser?.id
+        ? { worker_id: currentUser.id, assigned_to: currentUser.id }
+        : {};
+
+      fetchReports({ limit: 100, ...workerParam })
         .then((res) => {
           if (!isMounted) return;
           if (res && res.success && Array.isArray(res.data)) {
-            const mappedApi = res.data.map((r) => mapApiReportToJob(r, displayName));
+            // Strictly filter to reports assigned to this specific logged-in maintenance worker
+            const filteredByWorker = currentUser?.id
+              ? res.data.filter((r) => Number(r.worker_id) === Number(currentUser.id))
+              : [];
+            const mappedApi = filteredByWorker.map((r) => mapApiReportToJob(r, displayName));
             setJobs(mappedApi);
           } else {
             setJobs([]);
@@ -169,15 +202,19 @@ export default function MaintenanceStaffDashboard({
           if (isMounted && showSpinner) setLoading(false);
         });
 
-      // Fetch unread notifications count from database
-      fetchNotifications(currentUser?.id || 17, 'maintenance')
-        .then((notifRes) => {
-          if (!isMounted) return;
-          if (notifRes && notifRes.success && typeof notifRes.unread_count === 'number') {
-            setUnreadNotifCount(notifRes.unread_count);
-          }
-        })
-        .catch(() => {});
+      // Fetch unread notifications count from database for this specific user
+      if (currentUser?.id) {
+        fetchNotifications(currentUser.id, 'maintenance')
+          .then((notifRes) => {
+            if (!isMounted) return;
+            if (notifRes && notifRes.success && typeof notifRes.unread_count === 'number') {
+              setUnreadNotifCount(notifRes.unread_count);
+            }
+          })
+          .catch(() => {});
+      } else {
+        setUnreadNotifCount(0);
+      }
     };
 
     loadData(true);
@@ -217,42 +254,25 @@ export default function MaintenanceStaffDashboard({
     const targetJobId = jobToStartRepair.id;
     setIsStartingRepair(true);
 
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === targetJobId
-          ? {
-              ...job,
-              status: 'in_progress',
-              repair_started_at: 'Just now',
-            }
-          : job
-      )
-    );
-    showToast('Repair marked as In Progress!');
-
     try {
-      await updateReportStatus({
+      const result = await updateReportStatus({
         report_id: targetJobId,
         status: 'in_progress',
         remarks: `Work started by ${displayName}`,
-        changed_by: currentUser?.id || 1,
+        changed_by: currentUser.id,
       });
-
-      // Only assign worker if the ticket was not previously assigned
-      const isAlreadyAssigned = Boolean(jobToStartRepair.worker_id || jobToStartRepair.assigned_to);
-      if (currentUser?.id && !isAlreadyAssigned) {
-        await assignReport({
-          report_id: targetJobId,
-          assigned_to: currentUser.id,
-          assigned_by: currentUser.id,
-          notes: `Self-assigned upon repair start by ${displayName}`,
-        }).catch(() => {});
+      if (!result?.success) {
+        throw new Error(result?.message || 'Failed to update status on server.');
       }
-      setRefreshKey((k) => k + 1);
+      setJobs((prev) => prev.map((job) =>
+        job.id === targetJobId ? { ...job, status: 'in_progress' } : job
+      ));
+      showToast('Repair marked as In Progress!');
     } catch (err) {
       console.error('Failed to update status on server:', err);
-      showToast('Failed to update status on server.');
+      showToast(err.message);
     } finally {
+      setRefreshKey((k) => k + 1);
       setIsStartingRepair(false);
       setShowStartRepairModal(false);
       setJobToStartRepair(null);
@@ -283,37 +303,32 @@ export default function MaintenanceStaffDashboard({
     const photo = proofPhotoPreview;
 
     setIsSubmittingCompletion(true);
-    setJobs((prev) =>
-      prev.map((job) =>
-        job.id === targetJobId
-          ? {
-              ...job,
-              status: 'resolved',
-              completed_at: 'Just now',
-              completion_notes: notes,
-              completion_photo: photo,
-            }
-          : job
-      )
-    );
 
     try {
-      await updateReportStatus({
+      const result = await updateReportStatus({
         report_id: targetJobId,
         status: 'resolved',
         remarks: notes || `Repair verified and marked as fixed by ${displayName}`,
-        changed_by: currentUser?.id || 1,
+        changed_by: currentUser.id,
       });
+      if (!result?.success) {
+        throw new Error(result?.message || 'Failed to complete this job.');
+      }
+      setJobs((prev) => prev.map((job) =>
+        job.id === targetJobId
+          ? { ...job, status: 'resolved', completed_at: 'Just now', completion_notes: notes, completion_photo: photo }
+          : job
+      ));
       showToast('Job marked as Fixed and Completed!');
       setCompletionNotes('');
       setProofPhotoPreview(null);
       setShowCompletionModal(false);
       setJobToComplete(null);
-      setRefreshKey((k) => k + 1);
     } catch (err) {
       console.error('Failed to complete report on server:', err);
-      showToast('Failed to update status on server. Please try again.');
+      showToast(err.message);
     } finally {
+      setRefreshKey((k) => k + 1);
       setIsSubmittingCompletion(false);
     }
   };
@@ -335,26 +350,60 @@ export default function MaintenanceStaffDashboard({
   const overdueCount = jobs.filter(isReportOverdue).length;
 
   // Filtered Jobs based on tab and priority
-  let displayedJobs = jobs;
+  let displayedJobs = [];
   if (activeTab === 'completed') {
     displayedJobs = jobs.filter((j) => j.status === 'resolved' || j.status === 'closed');
   } else if (activeTab === 'assigned') {
     displayedJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
   } else {
-    // Dashboard overview: show active assigned and in-progress jobs by default, or all if none
-    const activeJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
-    displayedJobs = activeJobs.length > 0 ? activeJobs : jobs;
+    // Dashboard overview: show active assigned and in-progress jobs for this worker
+    displayedJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
   }
 
   if (priorityFilter !== 'all') {
-    displayedJobs = displayedJobs.filter(
-      (j) => j.priority.toLowerCase() === priorityFilter.toLowerCase()
-    );
+    displayedJobs = displayedJobs.filter((j) => {
+      const jp = (j.priority || '').toLowerCase();
+      const fp = priorityFilter.toLowerCase();
+      if (fp === 'urgent' || fp === 'emergency') {
+        return jp === 'urgent' || jp === 'emergency';
+      }
+      return jp === fp;
+    });
   }
+
+  // Pagination calculation
+  const totalPages = Math.max(1, Math.ceil(displayedJobs.length / pageSize));
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedJobs = displayedJobs.slice(startIndex, startIndex + pageSize);
+
+  const getPageNumbers = () => {
+    if (totalPages <= 7) {
+      return Array.from({ length: totalPages }, (_, i) => i + 1);
+    }
+    const pages = [];
+    if (currentPage <= 4) {
+      for (let i = 1; i <= 5; i++) pages.push(i);
+      pages.push('...');
+      pages.push(totalPages);
+    } else if (currentPage >= totalPages - 3) {
+      pages.push(1);
+      pages.push('...');
+      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
+    } else {
+      pages.push(1);
+      pages.push('...');
+      pages.push(currentPage - 1);
+      pages.push(currentPage);
+      pages.push(currentPage + 1);
+      pages.push('...');
+      pages.push(totalPages);
+    }
+    return pages;
+  };
 
   // Selected job for detail view
   const selectedJob =
-    jobs.find((j) => j.id === selectedJobId) || displayedJobs[0] || jobs[0] || null;
+    jobs.find((j) => String(j.id) === String(selectedJobId)) || null;
 
   return (
     <div className="maint-container">
@@ -461,29 +510,6 @@ export default function MaintenanceStaffDashboard({
                 </div>
               </button>
             </div>
-
-            {/* Section 3: Account */}
-            <div className="maint-nav-section">
-              <span className="maint-nav-section-title">Account</span>
-
-              <button
-                type="button"
-                className={`maint-nav-item ${activeTab === 'profile' ? 'active' : ''}`}
-                onClick={() => {
-                  if (onNavigate) {
-                    onNavigate('settings');
-                  } else {
-                    setActiveTab('profile');
-                    setSelectedJobId(null);
-                  }
-                }}
-              >
-                <div className="maint-nav-label-box">
-                  <User size={18} />
-                  <span>Profile</span>
-                </div>
-              </button>
-            </div>
           </nav>
         </div>
 
@@ -585,7 +611,7 @@ export default function MaintenanceStaffDashboard({
                       <span className="maint-info-label">PRIORITY</span>
                       <div>
                         <span className={`maint-priority-badge ${selectedJob.priority}`}>
-                          {selectedJob.priority.charAt(0).toUpperCase() + selectedJob.priority.slice(1)}
+                          {getPriorityLabel(selectedJob.priority)}
                         </span>
                       </div>
                     </div>
@@ -638,7 +664,13 @@ export default function MaintenanceStaffDashboard({
                   <button
                     type="button"
                     className={`maint-btn-action-secondary ${selectedJob.status !== 'resolved' && selectedJob.status !== 'closed' ? 'enabled' : ''}`}
-                    onClick={() => handleRequestCompletion(selectedJob)}
+                    onClick={() => {
+                      if (selectedJob.status !== 'resolved' && selectedJob.status !== 'closed') {
+                        handleRequestCompletion(selectedJob);
+                      }
+                    }}
+                    disabled={selectedJob.status === 'resolved' || selectedJob.status === 'closed'}
+                    style={selectedJob.status === 'resolved' || selectedJob.status === 'closed' ? { cursor: 'not-allowed', opacity: 0.65 } : {}}
                   >
                     {selectedJob.status === 'resolved' || selectedJob.status === 'closed'
                       ? 'Already Fixed'
@@ -652,7 +684,39 @@ export default function MaintenanceStaffDashboard({
 
                   <span className="maint-field-label">Completion Photo</span>
 
-                  {!proofPhotoPreview ? (
+                  {(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? (
+                    /* Locked View: Task is done, cannot be edited */
+                    (proofPhotoPreview || selectedJob.completion_photo) ? (
+                      <div className="maint-upload-preview-card" style={{ opacity: 0.95, pointerEvents: 'none' }}>
+                        <img
+                          src={proofPhotoPreview || selectedJob.completion_photo}
+                          alt="Proof preview"
+                          className="maint-preview-img"
+                        />
+                        <div className="maint-preview-info">
+                          <span className="maint-preview-status">
+                            <Check size={14} strokeWidth={3} /> Proof photo attached
+                          </span>
+                        </div>
+                      </div>
+                    ) : (
+                      <div
+                        className="maint-dropzone disabled"
+                        style={{
+                          cursor: 'not-allowed',
+                          backgroundColor: '#f8fafc',
+                          borderColor: '#e2e8f0',
+                          opacity: 0.85,
+                          pointerEvents: 'none',
+                        }}
+                      >
+                        <div className="maint-dropzone-icon" style={{ color: '#94a3b8' }}>
+                          <Camera size={26} strokeWidth={1.75} />
+                        </div>
+                        <div className="maint-dropzone-text">Upload proof photo</div>
+                      </div>
+                    )
+                  ) : !proofPhotoPreview ? (
                     <label
                       htmlFor="maint-proof-upload"
                       className={`maint-dropzone ${isDragging ? 'drag-over' : ''}`}
@@ -717,15 +781,39 @@ export default function MaintenanceStaffDashboard({
                   <textarea
                     className="maint-textarea"
                     placeholder="Describe the repairs performed..."
-                    value={completionNotes}
-                    onChange={(e) => setCompletionNotes(e.target.value)}
+                    value={(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? (selectedJob.completion_notes || completionNotes || '') : completionNotes}
+                    onChange={(e) => {
+                      if (selectedJob.status !== 'resolved' && selectedJob.status !== 'closed') {
+                        setCompletionNotes(e.target.value);
+                      }
+                    }}
+                    disabled={selectedJob.status === 'resolved' || selectedJob.status === 'closed'}
+                    readOnly={selectedJob.status === 'resolved' || selectedJob.status === 'closed'}
+                    style={(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? {
+                      cursor: 'not-allowed',
+                      backgroundColor: '#f8fafc',
+                      color: '#64748b',
+                      borderColor: '#e2e8f0',
+                      resize: 'none',
+                    } : {}}
                   />
 
                   <button
                     type="button"
-                    className="maint-btn-confirm"
-                    onClick={() => handleRequestCompletion(selectedJob)}
+                    className={`maint-btn-confirm ${(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? 'disabled' : ''}`}
+                    onClick={() => {
+                      if (selectedJob.status !== 'resolved' && selectedJob.status !== 'closed') {
+                        handleRequestCompletion(selectedJob);
+                      }
+                    }}
                     disabled={selectedJob.status === 'resolved' || selectedJob.status === 'closed'}
+                    style={(selectedJob.status === 'resolved' || selectedJob.status === 'closed') ? {
+                      backgroundColor: '#f1f5f9',
+                      borderColor: '#e2e8f0',
+                      color: '#94a3b8',
+                      cursor: 'not-allowed',
+                      boxShadow: 'none',
+                    } : {}}
                   >
                     {selectedJob.status === 'resolved' || selectedJob.status === 'closed'
                       ? 'Report Already Completed'
@@ -905,7 +993,11 @@ export default function MaintenanceStaffDashboard({
             {/* Section Header & Priority Filter Tabs */}
             <div className="maint-section-bar">
               <h3 className="maint-section-title">
-                Your Assigned Jobs ({displayedJobs.length})
+                {activeTab === 'completed'
+                  ? `Completed Jobs (${displayedJobs.length})`
+                  : activeTab === 'assigned'
+                  ? `Assigned Jobs (${displayedJobs.length})`
+                  : `Your Assigned Jobs (${displayedJobs.length})`}
               </h3>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
@@ -916,6 +1008,13 @@ export default function MaintenanceStaffDashboard({
                     onClick={() => setPriorityFilter('all')}
                   >
                     All Priorities
+                  </button>
+                  <button
+                    type="button"
+                    className={`maint-filter-tab ${priorityFilter === 'urgent' ? 'active' : ''}`}
+                    onClick={() => setPriorityFilter('urgent')}
+                  >
+                    Urgent
                   </button>
                   <button
                     type="button"
@@ -962,26 +1061,82 @@ export default function MaintenanceStaffDashboard({
                 <p className="maint-empty-desc">Fetching assigned tasks and defect records from the database.</p>
               </div>
             ) : displayedJobs.length === 0 ? (
-              <div className="maint-empty-state">
-                <ClipboardList size={40} className="maint-empty-icon" />
-                <h4 className="maint-empty-title">
-                  {priorityFilter !== 'all'
-                    ? `No ${priorityFilter.toUpperCase()} priority tasks`
-                    : activeTab === 'completed'
-                    ? 'No completed tasks yet'
-                    : 'No assigned maintenance tasks'}
-                </h4>
-                <p className="maint-empty-desc">
-                  {priorityFilter !== 'all'
-                    ? `There are no maintenance tasks with ${priorityFilter} priority in this queue.`
-                    : activeTab === 'completed'
-                    ? 'Completed repair tickets will show up here.'
-                    : 'All campus defect reports have been resolved or are awaiting assignment.'}
-                </p>
-              </div>
+              <>
+                <div className="maint-empty-state">
+                  <ClipboardList size={40} className="maint-empty-icon" />
+                  <h4 className="maint-empty-title">
+                    {priorityFilter !== 'all'
+                      ? `No ${priorityFilter.toUpperCase()} priority tasks`
+                      : activeTab === 'completed'
+                      ? 'No completed tasks yet'
+                      : 'No assigned maintenance tasks'}
+                  </h4>
+                  <p className="maint-empty-desc">
+                    {priorityFilter !== 'all'
+                      ? `There are no maintenance tasks with ${priorityFilter} priority in this queue.`
+                      : activeTab === 'completed'
+                      ? 'Completed repair tickets will show up here.'
+                      : 'All campus defect reports have been resolved or are awaiting assignment.'}
+                  </p>
+                </div>
+
+                {/* Pagination Controls (Always present for consistent UI across Assigned and Completed Jobs) */}
+                <div className="maint-pagination" aria-label="Maintenance tasks pagination">
+                  <div className="maint-pagination-info">
+                    <span>Showing 0–0 of 0 tasks</span>
+                    <div className="maint-pagination-limit">
+                      <span>Per page:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="maint-pagination-select"
+                        aria-label="Tasks per page"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="maint-pagination-controls">
+                    <button
+                      type="button"
+                      className="maint-page-btn"
+                      disabled={true}
+                      title="Previous page"
+                    >
+                      <ChevronLeft size={15} />
+                      <span>Previous</span>
+                    </button>
+                    <button
+                      type="button"
+                      className="maint-page-btn active"
+                      disabled={true}
+                      title="Page 1"
+                    >
+                      1
+                    </button>
+                    <button
+                      type="button"
+                      className="maint-page-btn"
+                      disabled={true}
+                      title="Next page"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              </>
             ) : (
-                            <div className="maint-jobs-list">
-                {displayedJobs.map((job) => {
+              <>
+                <div className="maint-jobs-list">
+                {paginatedJobs.map((job) => {
                   const isOngoing = job.status === 'in_progress';
                   const isFixed = job.status === 'resolved' || job.status === 'closed';
 
@@ -1005,7 +1160,7 @@ export default function MaintenanceStaffDashboard({
                           <div className="maint-job-location">{job.location_summary}</div>
                           <div className="maint-job-meta-row">
                             <span className={`maint-priority-badge ${job.priority}`}>
-                              {job.priority.charAt(0).toUpperCase() + job.priority.slice(1)}
+                              {getPriorityLabel(job.priority)}
                             </span>
                             {job.confirmation_count > 1 && (
                               <span className="maint-job-impact-badge" title={`${job.confirmation_count} students reported or confirmed this defect`}>
@@ -1047,7 +1202,78 @@ export default function MaintenanceStaffDashboard({
                   );
                 })}
               </div>
-            )}
+
+              {/* Pagination Controls */}
+              {displayedJobs.length > 0 && (
+                <div className="maint-pagination" aria-label="Maintenance tasks pagination">
+                  <div className="maint-pagination-info">
+                    <span>
+                      Showing {startIndex + 1}–{Math.min(displayedJobs.length, startIndex + pageSize)} of {displayedJobs.length} {displayedJobs.length === 1 ? 'task' : 'tasks'}
+                    </span>
+                    <div className="maint-pagination-limit">
+                      <span>Per page:</span>
+                      <select
+                        value={pageSize}
+                        onChange={(e) => {
+                          setPageSize(Number(e.target.value));
+                          setCurrentPage(1);
+                        }}
+                        className="maint-pagination-select"
+                        aria-label="Tasks per page"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div className="maint-pagination-controls">
+                    <button
+                      type="button"
+                      className="maint-page-btn"
+                      disabled={currentPage <= 1}
+                      onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                      title="Previous page"
+                    >
+                      <ChevronLeft size={15} />
+                      <span>Previous</span>
+                    </button>
+
+                    {getPageNumbers().map((item, idx) =>
+                      item === '...' ? (
+                        <span key={`ellipsis-${idx}`} className="maint-page-ellipsis">
+                          ...
+                        </span>
+                      ) : (
+                        <button
+                          key={item}
+                          type="button"
+                          className={`maint-page-btn ${currentPage === item ? 'active' : ''}`}
+                          onClick={() => setCurrentPage(item)}
+                          title={`Page ${item}`}
+                        >
+                          {item}
+                        </button>
+                      )
+                    )}
+
+                    <button
+                      type="button"
+                      className="maint-page-btn"
+                      disabled={currentPage >= totalPages}
+                      onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                      title="Next page"
+                    >
+                      <span>Next</span>
+                      <ChevronRight size={15} />
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
+          )}
           </div>
         )}
       </main>

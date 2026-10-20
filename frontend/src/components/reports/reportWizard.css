@@ -630,7 +630,314 @@
   color: #ffffff;
 }
 
+/* --------------------------------------------------------------------------
+   Suggested Maintenance Specialist Card (Step 1 & Step 4)
+   -------------------------------------------------------------------------- */
+.rw-suggested-worker-card {
+  margin-top: 1.5rem;
+  margin-bottom: 0.5rem;
+  background: linear-gradient(145deg, #f0fdf4 0%, #ecfdf5 50%, #ffffff 100%);
+  border: 1.5px solid #a7f3d0;
+  border-radius: 16px;
+  padding: 1.25rem 1.5rem;
+  box-shadow: 0 4px 16px rgba(5, 150, 105, 0.08);
+  transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+  animation: rwFadeIn 0.3s ease forwards;
+}
 
+@keyframes rwFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.rw-suggested-worker-card:hover {
+  border-color: #34d399;
+  box-shadow: 0 6px 20px rgba(5, 150, 105, 0.12);
+}
+
+.rw-suggested-worker-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.875rem;
+  flex-wrap: wrap;
+  gap: 0.625rem;
+}
+
+.rw-suggested-title-group {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+}
+
+.rw-suggested-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.25);
+}
+
+.rw-suggested-sparkle {
+  color: #fef08a;
+}
+
+.rw-suggested-dept-badge {
+  background-color: #d1fae5;
+  color: #065f46;
+  border: 1px solid #6ee7b7;
+  padding: 3px 10px;
+  border-radius: 9999px;
+  font-size: 0.78125rem;
+  font-weight: 650;
+}
+
+.rw-suggested-workload-badge {
+  font-size: 0.75rem;
+  font-weight: 650;
+  color: #1e293b;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 3px 9px;
+  border-radius: 9999px;
+}
+
+.rw-suggested-worker-body {
+  display: flex;
+  align-items: center;
+  gap: 1.125rem;
+}
+
+.rw-suggested-avatar {
+  width: 50px;
+  height: 50px;
+  border-radius: 14px;
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  color: #ffffff;
+  font-size: 1.125rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.2);
+  border: 2px solid #ffffff;
+}
+
+.rw-suggested-details {
+  flex: 1;
+  min-width: 0;
+}
+
+.rw-suggested-name-line {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.rw-suggested-name {
+  font-size: 1.0625rem;
+  font-weight: 750;
+  color: #0f172a;
+  margin: 0;
+}
+
+.rw-suggested-id-tag {
+  font-size: 0.75rem;
+  font-weight: 700;
+  color: #047857;
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  padding: 1px 7px;
+  border-radius: 6px;
+  font-family: monospace;
+}
+
+.rw-suggested-role-tag {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: #475569;
+  background-color: #f1f5f9;
+  border: 1px solid #e2e8f0;
+  padding: 1px 7px;
+  border-radius: 6px;
+}
+
+.rw-suggested-caption {
+  font-size: 0.8375rem;
+  color: #475569;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.rw-suggested-caption strong {
+  color: #047857;
+  font-weight: 700;
+}
+
+.rw-suggested-contact-box {
+  display: flex;
+  align-items: center;
+  gap: 0.625rem;
+  background-color: #ffffff;
+  border: 1px solid #cbd5e1;
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+.rw-suggested-phone-icon {
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background-color: #ecfdf5;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.rw-suggested-phone-info {
+  display: flex;
+  flex-direction: column;
+}
+
+.rw-suggested-phone-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.rw-suggested-phone-val {
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #0f172a;
+  letter-spacing: 0.02em;
+}
+
+/* Step 4 Review specialist badge and banner */
+.rw-meta-specialist-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  color: #047857;
+  background-color: #ecfdf5;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+}
+
+.rw-review-spec-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: 1rem;
+  background: #f8fafc;
+  border: 1.5px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 1rem 1.125rem;
+  margin-top: 0.35rem;
+}
+
+.rw-review-spec-avatar {
+  width: 44px;
+  height: 44px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #059669 0%, #0d9488 100%);
+  color: #ffffff;
+  font-size: 1rem;
+  font-weight: 800;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.rw-review-spec-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.rw-review-spec-headline {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-bottom: 0.25rem;
+}
+
+.rw-review-spec-name {
+  font-size: 0.95rem;
+  font-weight: 750;
+  color: #0f172a;
+}
+
+.rw-review-spec-badge {
+  font-size: 0.71875rem;
+  font-weight: 700;
+  color: #065f46;
+  background-color: #d1fae5;
+  border: 1px solid #6ee7b7;
+  padding: 1px 7px;
+  border-radius: 9999px;
+}
+
+.rw-review-spec-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.78125rem;
+  color: #64748b;
+  margin-bottom: 0.35rem;
+}
+
+.rw-review-spec-routing {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78125rem;
+  color: #047857;
+  font-weight: 550;
+  background-color: #ecfdf5;
+  padding: 3px 8px;
+  border-radius: 6px;
+  border: 1px solid #a7f3d0;
+}
+
+.rw-review-spec-check {
+  color: #059669;
+  flex-shrink: 0;
+}
+
+@media (max-width: 640px) {
+  .rw-suggested-worker-body {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .rw-suggested-contact-box {
+    width: 100%;
+    box-sizing: border-box;
+  }
+}
 
 /* --------------------------------------------------------------------------
    STEP 2: Set Defect Location

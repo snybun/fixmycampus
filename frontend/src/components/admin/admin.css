@@ -2603,9 +2603,20 @@
   color: #0f172a;
 }
 
+.history-summary-icon.logins {
+  background: #eef2ff;
+  color: #4338ca;
+}
+
 .history-summary-icon.users {
   background: #eff6ff;
   color: #2563eb;
+}
+
+.history-summary-card.active {
+  border-color: #0f172a;
+  background-color: #f8fafc;
+  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.08);
 }
 
 .history-summary-icon.reports {
@@ -2739,6 +2750,12 @@
   font-size: 0.76rem;
   font-weight: 600;
   white-space: nowrap;
+}
+
+.history-type-chip.user_login {
+  background: #eef2ff;
+  color: #4338ca;
+  border: 1px solid #c7d2fe;
 }
 
 .history-type-chip.user_registration {
