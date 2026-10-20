@@ -945,7 +945,7 @@ try {
                 );
             }
 
-            $repLoc = trim(($report['building_name'] ?? 'Campus') . ' • ' . ($report['room_number'] ?: $report['specific_area'] ?: 'General Area'));
+            $repLoc = trim(($report['building_name'] ?? 'Campus') . ' • ' . (($report['room_number'] ?? '') ?: ($report['specific_area'] ?? '') ?: 'General Area'));
             record_history_log(
                 'status_change',
                 "Status Update: {$tNum} (" . ucfirst(str_replace('_', ' ', $newStatus)) . ")",
