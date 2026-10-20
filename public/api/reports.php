@@ -1203,6 +1203,7 @@ try {
     $roleName = $user['role_name'] ?? auth_role() ?? '';
     $roleId = (int)($user['role_id'] ?? 0);
     $isStudent = ($roleName === 'student' || $roleId === 5);
+    $isTechnician = ($roleName === 'technician' || $roleId === 3);
     $isAdmin = ($roleName === 'admin' || $roleId === 1 || ($user && (int)$user['id'] === 1));
 
     $sql = "
@@ -1290,7 +1291,11 @@ try {
     }
 
     $workerFilter = $_GET['worker_id'] ?? $_GET['assigned_to'] ?? null;
-    if (!empty($workerFilter) && $workerFilter !== 'all') {
+    if ($isTechnician && !$isAdmin) {
+        $effectiveWorkerId = (int)($user['id'] ?? $targetUserId);
+        $sql .= " AND ra.assigned_to = :worker_id";
+        $params[':worker_id'] = $effectiveWorkerId;
+    } elseif (!empty($workerFilter) && $workerFilter !== 'all') {
         $sql .= " AND ra.assigned_to = :worker_id";
         $params[':worker_id'] = (int)$workerFilter;
     }

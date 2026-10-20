@@ -169,11 +169,19 @@ export default function MaintenanceStaffDashboard({
     const loadData = (showSpinner = false) => {
       if (showSpinner) setLoading(true);
 
-      fetchReports({ limit: 100 })
+      const workerParam = currentUser?.id
+        ? { worker_id: currentUser.id, assigned_to: currentUser.id }
+        : {};
+
+      fetchReports({ limit: 100, ...workerParam })
         .then((res) => {
           if (!isMounted) return;
           if (res && res.success && Array.isArray(res.data)) {
-            const mappedApi = res.data.map((r) => mapApiReportToJob(r, displayName));
+            // Strictly filter to reports assigned to this specific logged-in maintenance worker
+            const filteredByWorker = currentUser?.id
+              ? res.data.filter((r) => Number(r.worker_id) === Number(currentUser.id))
+              : res.data;
+            const mappedApi = filteredByWorker.map((r) => mapApiReportToJob(r, displayName));
             setJobs(mappedApi);
           } else {
             setJobs([]);
@@ -188,15 +196,19 @@ export default function MaintenanceStaffDashboard({
           if (isMounted && showSpinner) setLoading(false);
         });
 
-      // Fetch unread notifications count from database
-      fetchNotifications(currentUser?.id || 17, 'maintenance')
-        .then((notifRes) => {
-          if (!isMounted) return;
-          if (notifRes && notifRes.success && typeof notifRes.unread_count === 'number') {
-            setUnreadNotifCount(notifRes.unread_count);
-          }
-        })
-        .catch(() => {});
+      // Fetch unread notifications count from database for this specific user
+      if (currentUser?.id) {
+        fetchNotifications(currentUser.id, 'maintenance')
+          .then((notifRes) => {
+            if (!isMounted) return;
+            if (notifRes && notifRes.success && typeof notifRes.unread_count === 'number') {
+              setUnreadNotifCount(notifRes.unread_count);
+            }
+          })
+          .catch(() => {});
+      } else {
+        setUnreadNotifCount(0);
+      }
     };
 
     loadData(true);
@@ -354,15 +366,14 @@ export default function MaintenanceStaffDashboard({
   const overdueCount = jobs.filter(isReportOverdue).length;
 
   // Filtered Jobs based on tab and priority
-  let displayedJobs = jobs;
+  let displayedJobs = [];
   if (activeTab === 'completed') {
     displayedJobs = jobs.filter((j) => j.status === 'resolved' || j.status === 'closed');
   } else if (activeTab === 'assigned') {
     displayedJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
   } else {
-    // Dashboard overview: show active assigned and in-progress jobs by default, or all if none
-    const activeJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
-    displayedJobs = activeJobs.length > 0 ? activeJobs : jobs;
+    // Dashboard overview: show active assigned and in-progress jobs for this worker
+    displayedJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
   }
 
   if (priorityFilter !== 'all') {
