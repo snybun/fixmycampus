@@ -160,8 +160,27 @@ try {
         'audit actor comes from session, not request body');
     [$status, $data] = requestApi('reports', 1, ['action' => 'assign'],
         ['report_id' => 101, 'assigned_to' => 3, 'assigned_by' => 2], 'POST');
-    check($status === 200 && $data['success'], 'admin can reassign work');
-    check((int)db_fetch_column('SELECT assigned_by FROM report_assignments WHERE report_id = 101') === 1, 'assignment actor is authenticated admin');
+    check($status === 409 && $data['error_code'] === 'ASSIGNMENT_LOCKED', 'admin cannot replace an assigned worker');
+    check((int)db_fetch_column('SELECT assigned_to FROM report_assignments WHERE report_id = 101') === 2, 'locked assignment retains original worker');
+    check(db_fetch_column('SELECT status FROM reports WHERE id = 101') === 'in_progress', 'locked assignment retains repair status');
+    db_insert('reports', ['id' => 104, 'ticket_number' => 'TEST-104', 'reporter_id' => 5,
+        'category_id' => 1, 'location_id' => 1, 'title' => 'New assignment test', 'description' => 'Test only', 'status' => 'submitted']);
+    [$status, $data] = requestApi('reports', 1, ['action' => 'assign'],
+        ['report_id' => 104, 'assigned_to' => 3, 'assigned_by' => 2], 'POST');
+    check($status === 200 && $data['success'], 'admin can assign an unassigned report');
+    check((int)db_fetch_column('SELECT assigned_by FROM report_assignments WHERE report_id = 104') === 1, 'assignment actor is authenticated admin');
+    $historyCount = (int)db_fetch_column('SELECT COUNT(*) FROM report_status_history');
+    $notificationCount = (int)db_fetch_column('SELECT COUNT(*) FROM notifications');
+    foreach ([3, 4] as $worker) {
+        [$status, $data] = requestApi('reports', 1, ['action' => 'assign'],
+            ['report_id' => 104, 'assigned_to' => $worker], 'POST');
+        check($status === 409 && $data['error_code'] === 'ASSIGNMENT_LOCKED', 'repeat assignment is locked even for the same worker');
+    }
+    check((int)db_fetch_column('SELECT COUNT(*) FROM report_assignments WHERE report_id = 104') === 1, 'retries create no duplicate assignments');
+    check((int)db_fetch_column('SELECT COUNT(*) FROM report_status_history') === $historyCount
+        && (int)db_fetch_column('SELECT COUNT(*) FROM notifications') === $notificationCount, 'locked requests create no history or alerts');
+    // Simulate an externally changed legacy assignment to retain ownership regression coverage.
+    db_execute('UPDATE report_assignments SET assigned_to = 3 WHERE report_id = 101');
     [$status, $data] = requestApi('notifications', 2, ['include_archived' => 1]);
     check($status === 200 && $data['count'] === 0 && $data['unread_count'] === 0, 'reassignment immediately hides old worker alerts including archives');
     [$status] = requestApi('reports', 2, ['action' => 'update_status'], ['report_id' => 101, 'status' => 'resolved'], 'POST');
@@ -169,8 +188,21 @@ try {
     [$status, $data] = requestApi('reports', 3, ['action' => 'update_status'], ['report_id' => 101, 'status' => 'resolved'], 'POST');
     check($status === 200 && $data['success'], 'new worker can complete reassigned job');
     [$status, $data] = requestApi('reports', 5, ['my_reports' => 1]);
-    check($status === 200 && count($data['data']) === 3, 'reporter can still view submitted reports');
-    echo "All maintenance access checks passed.\n";
+    check($status === 200 && count($data['data']) === 4, 'reporter can still view submitted reports');
+    [$status, $data] = requestApi('auth', 1, ['action' => 'update_profile'], [
+        'first_name' => 'Updated', 'middle_name' => 'Campus', 'last_name' => 'Administrator',
+        'user_id' => 5, 'role_id' => 5, 'department' => 'Untrusted department',
+    ], 'POST');
+    check($status === 200 && $data['success'] && $data['user']['full_name'] === 'Updated Campus Administrator',
+        'administrator can save personal name details');
+    check($data['user']['role_name'] === 'admin' && empty($data['user']['department']),
+        'profile editing preserves administrator role and assigned department');
+    check(db_fetch_column('SELECT full_name FROM users WHERE id = 1') === 'Updated Campus Administrator'
+        && db_fetch_column('SELECT full_name FROM users WHERE id = 5') === 'Test User 5',
+        'profile changes persist only for the authenticated account');
+    [$status] = requestApi('auth', 0, ['action' => 'update_profile'], ['first_name' => 'No', 'last_name' => 'Session'], 'POST');
+    check($status === 401, 'profile editing requires a signed-in account');
+    echo "All maintenance access and administrator profile checks passed.\n";
 } finally {
     // Only tables created by this run in the fixed, disposable test DB.
     foreach (array_reverse($tables) as $table) {

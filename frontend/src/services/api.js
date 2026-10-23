@@ -47,8 +47,17 @@ export async function fetchReportDetail(id) {
   }
 }
 
-export async function assignReport({ report_id, assigned_to, assigned_by = 1, notes = '' }) {
+export async function assignReport({ report_id, assigned_to, assigned_by = 1, expected_admin_id, notes = '' }) {
   try {
+    const session = await fetchAuthMe();
+    if (!session.authenticated || session.user?.role_name !== 'admin'
+      || (expected_admin_id != null && Number(session.user.id) !== Number(expected_admin_id))) {
+      return {
+        success: false,
+        error_code: 'SESSION_CHANGED',
+        message: 'Your login session has changed or expired. Please sign in as an administrator again before assigning a worker. Tabs in the same browser share a login session.',
+      };
+    }
     const res = await fetch(`${API_BASE}/reports.php?action=assign`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -466,7 +475,10 @@ export async function fetchUsers(filters = {}) {
 
 export async function fetchAuthMe() {
   try {
-    const res = await fetch(`${API_BASE}/auth.php?action=me`);
+    const res = await fetch(`${API_BASE}/auth.php?action=me`, {
+      credentials: 'include',
+      cache: 'no-store',
+    });
     if (!res.ok) throw new Error(`HTTP error ${res.status}`);
     return await res.json();
   } catch (err) {

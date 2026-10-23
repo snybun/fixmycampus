@@ -34,16 +34,21 @@ export default function ReportDetails({
 
   const rawStatus = (report?.status || '').toLowerCase();
   const isFixed = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
+  const hasAssignedWorker = Boolean(report.worker_id);
+  const assignmentLocked = isFixed || hasAssignedWorker;
 
   const handleAssign = async (e) => {
     e.preventDefault();
-    if (isFixed || !selectedStaffId) return;
+    if (assignmentLocked || !selectedStaffId) return;
     setIsAssigning(true);
-    await onAssignSubmit({
-      report_id: report.id,
-      assigned_to: Number(selectedStaffId),
-    });
-    setIsAssigning(false);
+    try {
+      await onAssignSubmit({
+        report_id: report.id,
+        assigned_to: Number(selectedStaffId),
+      });
+    } finally {
+      setIsAssigning(false);
+    }
   };
 
   const handleUpdate = (e) => {
@@ -181,16 +186,19 @@ export default function ReportDetails({
             <form onSubmit={handleAssign}>
               <div className="admin-form-group">
                 <label className="admin-form-label">
-                  {isFixed ? 'Assigned Staff Member' : 'Select Staff Member'}
+                  {assignmentLocked ? 'Assigned Staff Member' : 'Select Staff Member'}
                 </label>
                 <select
                   className="admin-select-input"
-                  value={selectedStaffId}
+                  value={hasAssignedWorker ? String(report.worker_id) : selectedStaffId}
                   onChange={(e) => setSelectedStaffId(e.target.value)}
-                  disabled={isFixed || isAssigning}
-                  style={isFixed ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
+                  disabled={assignmentLocked || isAssigning}
+                  style={assignmentLocked ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
                 >
                   <option value="">-- Choose maintenance technician --</option>
+                  {hasAssignedWorker && !staff.some(member => String(member.id) === String(report.worker_id)) && (
+                    <option value={String(report.worker_id)}>{report.worker_name || 'Assigned worker'}</option>
+                  )}
                   {staff.map((member) => (
                     <option key={member.id} value={member.id}>
                       {member.full_name} ({member.department})
@@ -205,13 +213,15 @@ export default function ReportDetails({
                 style={{
                   width: '100%',
                   justifyContent: 'center',
-                  ...(isFixed ? { opacity: 0.5, cursor: 'not-allowed', backgroundColor: '#94a3b8' } : {}),
+                  ...(assignmentLocked ? { opacity: 0.5, cursor: 'not-allowed', backgroundColor: '#94a3b8' } : {}),
                 }}
-                disabled={isFixed || isAssigning || !selectedStaffId}
-                title={isFixed ? 'Worker assignment is locked because this report is already marked as fixed' : ''}
+                disabled={assignmentLocked || isAssigning || !selectedStaffId}
+                title={assignmentLocked ? 'Worker assignment is locked' : ''}
               >
                 {isFixed
                   ? 'Assignment Locked (Issue Fixed)'
+                  : hasAssignedWorker
+                  ? 'Worker Assigned'
                   : isAssigning
                   ? 'Assigning...'
                   : 'Assign Worker'}
