@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { Search, FileSpreadsheet, MapPin } from 'lucide-react';
 import { exportReportsToExcel } from '../../utils/exportToExcel';
 
@@ -10,6 +10,8 @@ export default function ReportManagement({
   onAssignReport,
   onUpdateStatus,
   onArchiveReport,
+  onArchiveReports,
+  isArchiving = false,
   onDeleteReport,
 }) {
   const [searchTerm, setSearchTerm] = useState('');
@@ -21,6 +23,17 @@ export default function ReportManagement({
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 8;
+  const [selectMode, setSelectMode] = useState(false);
+  const [selectedIds, setSelectedIds] = useState([]);
+  const canArchive = (report) => ['resolved', 'closed'].includes(report.status);
+
+  useEffect(() => {
+    setSelectedIds((ids) => ids.filter((id) => reports.some((r) => r.id === id && canArchive(r))));
+  }, [reports]);
+
+  useEffect(() => {
+    setSelectedIds([]);
+  }, [activeSearch, statusFilter, priorityFilter, buildingFilter, categoryFilter, dateFilter]);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -52,8 +65,24 @@ export default function ReportManagement({
   });
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
-  const startIndex = (currentPage - 1) * pageSize;
+  useEffect(() => {
+    setCurrentPage((page) => Math.min(page, totalPages));
+  }, [totalPages]);
+  const startIndex = (Math.min(currentPage, totalPages) - 1) * pageSize;
   const paginatedReports = filtered.slice(startIndex, startIndex + pageSize);
+  const selectedReports = filtered.filter((r) => selectedIds.includes(r.id) && canArchive(r));
+  const selectableOnPage = paginatedReports.filter(canArchive);
+  const allOnPageSelected = selectableOnPage.length > 0 && selectableOnPage.every((r) => selectedIds.includes(r.id));
+  const renderSelection = (report) => (
+    <input
+      type="checkbox"
+      aria-label={`Select ${report.ticket_number || report.title} for archive`}
+      checked={selectedIds.includes(report.id)}
+      disabled={!canArchive(report) || isArchiving}
+      onChange={() => setSelectedIds((ids) => ids.includes(report.id)
+        ? ids.filter((id) => id !== report.id) : [...ids, report.id])}
+    />
+  );
 
   return (
     <div>
@@ -69,7 +98,7 @@ export default function ReportManagement({
           type="button"
           className="admin-btn-excel"
           onClick={handleExportExcel}
-          disabled={reports.length === 0}
+          disabled={selectMode || reports.length === 0}
           title="Export filtered reports to Microsoft Excel (.xlsx)"
           id="admin-export-excel-btn"
         >
@@ -180,11 +209,38 @@ export default function ReportManagement({
 
       {/* Reports Table & Mobile Cards */}
       <div className="admin-table-card">
+        {onArchiveReports && (
+          <div className="admin-archive-toolbar">
+            <button type="button" className="admin-btn-action-view" aria-pressed={selectMode}
+              disabled={isArchiving || (!selectMode && !filtered.some(canArchive))}
+              onClick={() => { setSelectMode((value) => !value); setSelectedIds([]); }}>
+              {selectMode ? 'Cancel selection' : 'Select'}
+            </button>
+            {selectMode && (
+              <>
+                <label className="admin-archive-select-all">
+                  <input type="checkbox" checked={allOnPageSelected}
+                    disabled={isArchiving || selectableOnPage.length === 0}
+                    onChange={() => setSelectedIds((ids) => allOnPageSelected
+                      ? ids.filter((id) => !selectableOnPage.some((r) => r.id === id))
+                      : [...new Set([...ids, ...selectableOnPage.map((r) => r.id)])])} />
+                  Select page
+                </label>
+                <button type="button" className="admin-btn-action-archive"
+                  disabled={isArchiving || selectedReports.length === 0}
+                  onClick={() => onArchiveReports(selectedReports)}>
+                  {isArchiving ? 'Archiving...' : `Archive selected (${selectedReports.length})`}
+                </button>
+              </>
+            )}
+          </div>
+        )}
         {/* Desktop / Tablet Table View */}
         <div className="admin-table-responsive admin-desktop-only">
           <table className="admin-table">
             <thead>
               <tr>
+                {selectMode && <th scope="col">Select</th>}
                 <th>ID</th>
                 <th>Issue Title</th>
                 <th>Reporter Name</th>
@@ -197,7 +253,7 @@ export default function ReportManagement({
             <tbody>
               {paginatedReports.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>
+                  <td colSpan={selectMode ? 8 : 7} style={{ textAlign: 'center', padding: '36px', color: '#94a3b8' }}>
                     No incident reports match your active filters.
                   </td>
                 </tr>
@@ -219,6 +275,7 @@ export default function ReportManagement({
 
                   return (
                     <tr key={report.id}>
+                      {selectMode && <td>{renderSelection(report)}</td>}
                       <td className="admin-ticket-id">
                         {report.ticket_number || `FM-${report.id}`}
                       </td>
@@ -245,6 +302,7 @@ export default function ReportManagement({
                           <button
                             type="button"
                             className="admin-btn-action-view"
+                            disabled={selectMode}
                             onClick={() => onViewReport(report)}
                           >
                             View
@@ -256,7 +314,7 @@ export default function ReportManagement({
                               if (isResolved || report.worker_id) return;
                               onAssignReport(report);
                             }}
-                            disabled={isResolved || Boolean(report.worker_id)}
+                            disabled={selectMode || isResolved || Boolean(report.worker_id)}
                             style={(isResolved || report.worker_id) ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
                             title={(isResolved || report.worker_id) ? 'Worker assignment is locked' : 'Assign maintenance technician'}
                           >
@@ -269,13 +327,13 @@ export default function ReportManagement({
                               if (isResolved) return;
                               onUpdateStatus(report);
                             }}
-                            disabled={isResolved}
+                            disabled={selectMode || isResolved}
                             style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
                             title={isResolved ? 'Status locked: Issue already fixed' : 'Update report status'}
                           >
                             Update
                           </button>
-                          {isResolved && (onArchiveReport || onDeleteReport) && (
+                          {!selectMode && isResolved && (onArchiveReport || onDeleteReport) && (
                             <button
                               type="button"
                               className="admin-btn-action-archive"
@@ -321,6 +379,7 @@ export default function ReportManagement({
                 <div key={report.id} className="admin-report-mobile-card">
                   {/* Top Bar: Ticket ID + Priority/Status Badges */}
                   <div className="admin-report-card-top">
+                    {selectMode && renderSelection(report)}
                     <span className="admin-ticket-id">
                       {report.ticket_number || `FM-${report.id}`}
                     </span>
@@ -358,7 +417,8 @@ export default function ReportManagement({
                     <button
                       type="button"
                       className="admin-btn-action-view"
-                      onClick={() => onViewReport(report)}
+                      disabled={selectMode}
+                            onClick={() => onViewReport(report)}
                     >
                       View
                     </button>
@@ -369,7 +429,7 @@ export default function ReportManagement({
                         if (isResolved || report.worker_id) return;
                         onAssignReport(report);
                       }}
-                      disabled={isResolved || Boolean(report.worker_id)}
+                      disabled={selectMode || isResolved || Boolean(report.worker_id)}
                       style={(isResolved || report.worker_id) ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
                       title={(isResolved || report.worker_id) ? 'Worker assignment is locked' : 'Assign maintenance technician'}
                     >
@@ -382,13 +442,13 @@ export default function ReportManagement({
                         if (isResolved) return;
                         onUpdateStatus(report);
                       }}
-                      disabled={isResolved}
+                      disabled={selectMode || isResolved}
                       style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
                       title={isResolved ? 'Status locked: Issue already fixed' : 'Update report status'}
                     >
                       Update
                     </button>
-                    {isResolved && (onArchiveReport || onDeleteReport) && (
+                    {!selectMode && isResolved && (onArchiveReport || onDeleteReport) && (
                       <button
                         type="button"
                         className="admin-btn-action-archive"
