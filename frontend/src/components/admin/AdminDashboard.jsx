@@ -52,7 +52,7 @@ import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import './admin.css';
 
-export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
+export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUpdateUser }) {
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'reports' | 'report-details' | 'staff' | 'buildings' | 'analytics' | 'users' | 'settings'
   const [selectedReport, setSelectedReport] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -165,6 +165,10 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
 
   // Open Quick Assign
   const handleOpenAssign = (report) => {
+    if (report.worker_id) {
+      showToast('A worker is already assigned. This assignment is locked.');
+      return;
+    }
     setQuickAssignModal(report);
     setSelectedTechnicianId(report.worker_id ? String(report.worker_id) : (staff[0] ? String(staff[0].id) : ''));
   };
@@ -175,6 +179,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       report_id,
       assigned_to,
       assigned_by: currentUser?.id || 1,
+      expected_admin_id: currentUser?.id,
       notes,
     });
 
@@ -185,13 +190,20 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
       if (selectedReport && selectedReport.id === report_id) {
         setSelectedReport((prev) => ({
           ...prev,
-          status: 'assigned',
+          status: res.status || prev.status,
           worker_id: assigned_to,
           worker_name: res.technician?.full_name,
         }));
       }
     } else {
       alert(res?.message || 'Failed to assign worker.');
+      if (res?.error_code === 'ASSIGNMENT_LOCKED') {
+        setQuickAssignModal(null);
+        await refreshData();
+      }
+      if (['SESSION_CHANGED', 'UNAUTHENTICATED', 'FORBIDDEN'].includes(res?.error_code)) {
+        onNavigate('login');
+      }
     }
   };
 
@@ -673,7 +685,14 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout }) {
         {activeTab === 'users' && <UsersView />}
 
         {/* View 8: Settings */}
-        {activeTab === 'settings' && <AdminSettings />}
+        {activeTab === 'settings' && (
+          <AdminSettings
+            currentUser={currentUser}
+            onNavigate={(view) => view === 'admin' ? handleNavTabClick('dashboard') : onNavigate(view)}
+            onLogout={onLogout}
+            onUpdateUser={onUpdateUser}
+          />
+        )}
 
         {/* View 9: History Logs */}
         {activeTab === 'history-logs' && (

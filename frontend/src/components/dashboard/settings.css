@@ -13,6 +13,12 @@
   color: #111827;
 }
 
+.settings-page-wrapper.settings-page-embedded {
+  min-height: auto;
+  padding: 0 0 2rem;
+  background: transparent;
+}
+
 .settings-top-bar {
   max-width: 580px;
   width: 100%;

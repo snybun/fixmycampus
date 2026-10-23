@@ -253,14 +253,14 @@ export default function ReportManagement({
                             type="button"
                             className="admin-btn-action-assign"
                             onClick={() => {
-                              if (isResolved) return;
+                              if (isResolved || report.worker_id) return;
                               onAssignReport(report);
                             }}
-                            disabled={isResolved}
-                            style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
-                            title={isResolved ? 'Assignment locked: Issue already fixed' : 'Assign maintenance technician'}
+                            disabled={isResolved || Boolean(report.worker_id)}
+                            style={(isResolved || report.worker_id) ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                            title={(isResolved || report.worker_id) ? 'Worker assignment is locked' : 'Assign maintenance technician'}
                           >
-                            Assign
+                            {report.worker_id ? 'Assigned' : 'Assign'}
                           </button>
                           <button
                             type="button"
@@ -366,14 +366,14 @@ export default function ReportManagement({
                       type="button"
                       className="admin-btn-action-assign"
                       onClick={() => {
-                        if (isResolved) return;
+                        if (isResolved || report.worker_id) return;
                         onAssignReport(report);
                       }}
-                      disabled={isResolved}
-                      style={isResolved ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
-                      title={isResolved ? 'Assignment locked: Issue already fixed' : 'Assign maintenance technician'}
+                      disabled={isResolved || Boolean(report.worker_id)}
+                      style={(isResolved || report.worker_id) ? { opacity: 0.45, cursor: 'not-allowed' } : {}}
+                      title={(isResolved || report.worker_id) ? 'Worker assignment is locked' : 'Assign maintenance technician'}
                     >
-                      Assign
+                      {report.worker_id ? 'Assigned' : 'Assign'}
                     </button>
                     <button
                       type="button"

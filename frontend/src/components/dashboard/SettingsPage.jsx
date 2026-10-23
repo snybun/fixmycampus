@@ -44,6 +44,7 @@ export default function SettingsPage({
   onNavigate,
   onLogout,
   onUpdateUser,
+  embedded = false,
 }) {
   const fileInputRef = useRef(null);
 
@@ -112,8 +113,8 @@ export default function SettingsPage({
   );
 
   // Parse existing names from currentUser
-  const displayName = currentUser?.full_name || (isMaintenance ? 'Maintenance Staff' : 'Mark Dyvie Cerna');
-  const staffOrStudentId = currentUser?.user_identifier || (isMaintenance ? 'MGT-001' : '03-01-2526-045589');
+  const displayName = currentUser?.full_name || (isAdmin ? 'Administrator' : isMaintenance ? 'Maintenance Staff' : 'User');
+  const staffOrStudentId = currentUser?.user_identifier || '';
   const emailAddress = currentUser?.email || 'user@phinmaed.com';
   const departmentName = currentUser?.department || '';
   
@@ -286,7 +287,7 @@ export default function SettingsPage({
   };
 
   return (
-    <div className="settings-page-wrapper">
+    <div className={`settings-page-wrapper${embedded ? ' settings-page-embedded' : ''}`}>
       {/* Hidden File Input for Avatar Photo (Triggered only by camera badge on the avatar) */}
       <input
         type="file"
@@ -353,7 +354,7 @@ export default function SettingsPage({
               value={staffOrStudentId}
               readOnly
               disabled
-              title={isMaintenance ? 'Staff ID assigned by Campus Administration' : 'Student ID is permanent and managed by Registrar'}
+              title={isMaintenance || isAdmin ? 'Account ID assigned by Campus Administration' : 'Student ID is permanent and managed by Registrar'}
             />
           </div>
 
@@ -395,7 +396,7 @@ export default function SettingsPage({
             type="button"
             className="settings-action-row"
             onClick={handleOpenEditProfile}
-            title={isMaintenance ? 'Edit your name details' : 'Edit your name, academic year level, and department'}
+            title={isMaintenance || isAdmin ? 'Edit your name details' : 'Edit your name, academic year level, and department'}
           >
             <div className="settings-action-left">
               <div className="settings-action-icon">

@@ -56,9 +56,11 @@ export default function App() {
     currentUserRef.current = currentUser;
   }, [currentUser]);
 
-  // Check existing session on mount
+  // Login cookies are shared across tabs; refresh when returning to this tab.
   useEffect(() => {
-    fetchAuthMe().then((res) => {
+    let disposed = false;
+    const refreshSession = () => fetchAuthMe().then((res) => {
+      if (disposed) return;
       if (res && res.authenticated && res.user) {
         currentUserRef.current = res.user;
         setCurrentUser(res.user);
@@ -92,6 +94,17 @@ export default function App() {
         }
       }
     });
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshSession();
+    };
+    refreshSession();
+    window.addEventListener('focus', refreshSession);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      disposed = true;
+      window.removeEventListener('focus', refreshSession);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   useEffect(() => {
@@ -274,6 +287,10 @@ export default function App() {
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
+          onUpdateUser={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            currentUserRef.current = updatedUser;
+          }}
         />
       )}
 

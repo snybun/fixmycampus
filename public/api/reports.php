@@ -673,20 +673,12 @@ try {
             db_fetch_one("SELECT id FROM `reports` WHERE id = :rid FOR UPDATE", [':rid' => $reportId]);
             $existingAssignment = db_fetch_one("SELECT id FROM `report_assignments` WHERE report_id = :rid FOR UPDATE", [':rid' => $reportId]);
             if ($existingAssignment) {
-                db_execute("
-                    UPDATE `report_assignments`
-                    SET `assigned_to` = :assigned_to,
-                        `assigned_by` = :assigned_by,
-                        `assignment_notes` = :notes,
-                        `status` = 'pending',
-                        `updated_at` = NOW()
-                    WHERE `id` = :id
-                ", [
-                    ':assigned_to' => $technicianId,
-                    ':assigned_by' => $assignedBy,
-                    ':notes'       => $notes,
-                    ':id'          => $existingAssignment['id']
-                ]);
+                $pdo->rollBack();
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'error_code' => 'ASSIGNMENT_LOCKED',
+                    'message' => 'A maintenance worker is already assigned. This assignment is locked.'
+                ], 409);
             } else {
                 db_execute("
                     INSERT INTO `report_assignments` (`report_id`, `assigned_to`, `assigned_by`, `assignment_notes`, `status`)

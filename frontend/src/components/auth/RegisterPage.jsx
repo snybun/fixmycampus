@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
 import { registerUser, loginWithGoogle, fetchGoogleConfig } from '../../services/api';
 import './auth.css';
 
@@ -264,15 +264,11 @@ export default function RegisterPage({ onNavigate }) {
             <p className="auth-subtitle">
               Join our community effort to maintain a safe, clean campus.
             </p>
-          </div>
-
-          {/* Institutional Notice */}
-          <div className="auth-domain-banner">
-            <ShieldCheck size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
-            <div>
-              <strong>Exclusively for PHINMA University of Pangasinan:</strong> Registration is open only to verified{' '}
-              <span className="auth-domain-tag">@{allowedDomain}</span> accounts.
-            </div>
+            <p className="auth-registration-notice">
+              <strong>
+                Exclusively for PHINMA University of Pangasinan: Registration is open only to verified @{allowedDomain} accounts.
+              </strong>
+            </p>
           </div>
 
           {error && (
