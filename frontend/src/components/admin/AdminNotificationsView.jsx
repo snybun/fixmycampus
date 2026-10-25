@@ -48,6 +48,9 @@ export default function AdminNotificationsView({
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [showArchiveAllModal, setShowArchiveAllModal] = useState(false);
   const [isArchivingAll, setIsArchivingAll] = useState(false);
+  const [showArchiveSingleModal, setShowArchiveSingleModal] = useState(false);
+  const [itemToArchive, setItemToArchive] = useState(null);
+  const [isArchivingSingle, setIsArchivingSingle] = useState(false);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -168,10 +171,18 @@ export default function AdminNotificationsView({
     }
   };
 
-  // Archive individual notification
-  const handleArchiveSingle = async (notif, e) => {
+  // Trigger confirmation modal for single notification archive
+  const handleRequestArchiveSingle = (notif, e) => {
     if (e) e.stopPropagation();
-    const targetId = notif.id;
+    setItemToArchive(notif);
+    setShowArchiveSingleModal(true);
+  };
+
+  // Confirm and execute single notification archive
+  const handleConfirmArchiveSingle = async () => {
+    if (!itemToArchive) return;
+    setIsArchivingSingle(true);
+    const targetId = itemToArchive.id;
 
     // Optimistic archive update
     setNotifications((prev) =>
@@ -185,6 +196,10 @@ export default function AdminNotificationsView({
       await archiveNotification(targetId, effectiveAdminId, 'admin');
     } catch (err) {
       console.error('Error archiving notification:', err);
+    } finally {
+      setIsArchivingSingle(false);
+      setShowArchiveSingleModal(false);
+      setItemToArchive(null);
     }
   };
 
@@ -861,7 +876,7 @@ export default function AdminNotificationsView({
                     <button
                       type="button"
                       className="admin-notif-card-archive-btn"
-                      onClick={(e) => handleArchiveSingle(item, e)}
+                      onClick={(e) => handleRequestArchiveSingle(item, e)}
                       style={{
                         display: 'inline-flex',
                         alignItems: 'center',
@@ -1032,6 +1047,28 @@ export default function AdminNotificationsView({
             </button>
           </div>
         </div>
+      )}
+
+      {/* Archive Single Confirmation Modal */}
+      {showArchiveSingleModal && (
+        <ConfirmationModal
+          isOpen={showArchiveSingleModal}
+          presetId="archive_notification"
+          title="Archive Notification?"
+          message={
+            itemToArchive?.title
+              ? `Are you sure you want to archive "${itemToArchive.title}"?`
+              : 'Are you sure you want to archive this notification?'
+          }
+          onConfirm={handleConfirmArchiveSingle}
+          onCancel={() => {
+            if (!isArchivingSingle) {
+              setShowArchiveSingleModal(false);
+              setItemToArchive(null);
+            }
+          }}
+          isLoading={isArchivingSingle}
+        />
       )}
 
       {/* Archive All Confirmation Modal */}

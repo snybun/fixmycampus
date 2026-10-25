@@ -186,11 +186,20 @@ export async function deleteMultipleHistoryLogs(ids = [], { clearAll = false, ty
   }
 }
 
-export async function fetchNotifications(userId = null, dashboard = null) {
+export async function fetchNotifications(userId = null, dashboard = null, options = {}) {
   try {
     const params = new URLSearchParams();
     if (userId) params.append('user_id', userId);
     if (dashboard) params.append('dashboard', dashboard);
+    if (options.is_archived !== undefined) {
+      params.append('is_archived', options.is_archived ? '1' : '0');
+    }
+    if (options.filter) {
+      params.append('filter', options.filter);
+    }
+    if (options.include_archived) {
+      params.append('include_archived', '1');
+    }
     const queryString = params.toString();
     const url = queryString ? `${API_BASE}/notifications.php?${queryString}` : `${API_BASE}/notifications.php`;
     const headers = {};

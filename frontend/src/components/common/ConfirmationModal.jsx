@@ -96,11 +96,21 @@ export const MODAL_PRESETS = {
   archive_notifications: {
     id: 'archive_notifications',
     title: 'Archive All Notifications?',
-    message: 'Are you sure you want to archive all notifications? Archived alerts can be viewed anytime by filtering by Archived.',
+    message: 'Are you sure you want to archive all notifications? Archived alerts can be viewed anytime in your History & Archives.',
     icon: Archive,
     badgeClass: 'badge-amber',
     cancelText: 'Cancel',
     confirmText: 'Archive All',
+    confirmClass: 'modal-btn-primary',
+  },
+  archive_notification: {
+    id: 'archive_notification',
+    title: 'Archive Notification?',
+    message: 'Are you sure you want to archive this notification? It will be safely moved to your History & Archives.',
+    icon: Archive,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Archive',
     confirmClass: 'modal-btn-primary',
   },
   start_repair: {

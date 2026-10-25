@@ -19,6 +19,7 @@ import {
   X,
   Home,
   PlusCircle,
+  History,
 } from 'lucide-react';
 import { fetchStats, fetchReports, deleteReport, fetchNotifications } from '../../services/api';
 import ConfirmationModal, { MODAL_PRESETS } from '../common/ConfirmationModal';
@@ -26,6 +27,7 @@ import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import MyReportsView from './MyReportsView';
 import NotificationsView from '../notifications/NotificationsView';
+import StudentHistoryView from './StudentHistoryView';
 import './dashboard.css';
 
 export default function DashboardPage({
@@ -49,6 +51,7 @@ export default function DashboardPage({
     const hash = window.location.hash.replace('#', '');
     if (hash === 'my-reports') return 'my-reports';
     if (hash === 'notifications') return 'notifications';
+    if (hash === 'history') return 'history';
     return initialTab || 'home';
   });
   const [selectedReportForDetails, setSelectedReportForDetails] = useState(null);
@@ -86,6 +89,8 @@ export default function DashboardPage({
         setActiveTab('my-reports');
       } else if (hash === 'notifications') {
         setActiveTab('notifications');
+      } else if (hash === 'history') {
+        setActiveTab('history');
       } else if (hash === 'dashboard') {
         setActiveTab('home');
       }
@@ -440,7 +445,18 @@ export default function DashboardPage({
             {/* User Profile Menu with Settings & Logout Dropdown */}
             <UserProfileDropdown
               currentUser={currentUser}
-              onNavigate={onNavigate}
+              onNavigate={(v) => {
+                if (v === 'history') {
+                  setActiveTab('history');
+                  window.location.hash = 'history';
+                } else {
+                  onNavigate(v);
+                }
+              }}
+              onHistoryClick={() => {
+                setActiveTab('history');
+                window.location.hash = 'history';
+              }}
               onLogout={() => setActiveModalPreset('logout')}
               idPrefix="dash-user-profile"
             />
@@ -565,6 +581,18 @@ export default function DashboardPage({
                     className="dash-mobile-action-btn"
                     onClick={() => {
                       setMobileMenuOpen(false);
+                      setActiveTab('history');
+                      window.location.hash = 'history';
+                    }}
+                  >
+                    <History size={15} />
+                    <span>History & Archives</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="dash-mobile-action-btn"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
                       onNavigate('settings');
                     }}
                   >
@@ -651,6 +679,28 @@ export default function DashboardPage({
           }}
           isAdmin={isAdmin}
           currentUser={currentUser}
+        />
+      ) : activeTab === 'history' ? (
+        <StudentHistoryView
+          currentUser={currentUser}
+          onNavigate={onNavigate}
+          onSelectReport={(ticketNumber) => {
+            const found = reports.find(
+              (r) =>
+                r.ticket_number === ticketNumber ||
+                r.ticket_id === ticketNumber ||
+                String(r.id) === String(ticketNumber)
+            );
+            if (found) {
+              setSelectedReportForDetails(found);
+            }
+            setActiveTab('my-reports');
+            window.location.hash = 'my-reports';
+          }}
+          onBack={() => {
+            setActiveTab('home');
+            window.location.hash = 'dashboard';
+          }}
         />
       ) : (
         <main className="dash-content">

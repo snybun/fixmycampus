@@ -261,53 +261,29 @@ try {
             "Reported by {$user['full_name']} with " . ucfirst($priority) . " priority."
         );
 
-        // Auto-route to suggested maintenance specialist based on category specialization
-        $suggestedWorker = find_suggested_worker_for_category($categoryId);
-        if ($suggestedWorker && !empty($suggestedWorker['id'])) {
-            db_insert('report_assignments', [
-                'report_id'        => $reportId,
-                'assigned_to'      => (int)$suggestedWorker['id'],
-                'assigned_by'      => 1, // System Dispatcher
-                'assignment_notes' => "Auto-routed to {$suggestedWorker['full_name']} based on {$suggestedWorker['department']} specialization.",
-                'status'           => 'pending',
-            ]);
-
-            create_notification(
-                (int)$suggestedWorker['id'],
-                $reportId,
-                'assigned',
-                "Work Order Assigned: {$ticketNumber}",
-                "Defect ticket {$ticketNumber} ({$title}) has been auto-assigned to you based on your {$suggestedWorker['department']} specialization."
-            );
-        }
-
         $logLoc = trim(($buildingName ?: 'Campus') . ' • ' . ($roomCoord ?: $specificArea ?: 'General Area'));
-        $workerNote = $suggestedWorker ? " • Suggested Specialist: {$suggestedWorker['full_name']} ({$suggestedWorker['department']})" : '';
         record_history_log(
             'report_submitted',
             "Incident Reported: {$ticketNumber} - {$title}",
-            "Submitted by {$user['full_name']} with " . ucfirst($priority) . " priority.{$workerNote} Description: {$description}",
+            "Submitted by {$user['full_name']} with " . ucfirst($priority) . " priority. Description: {$description}",
             (int)$user['id'],
             $reportId,
             $user['full_name'],
             'Student',
             $logLoc,
             [
-                'ticket_number'    => $ticketNumber,
-                'priority'         => $priority,
-                'status'           => 'submitted',
-                'location'         => $logLoc,
-                'suggested_worker' => $suggestedWorker['full_name'] ?? null,
-                'specialization'   => $suggestedWorker['department'] ?? null,
+                'ticket_number' => $ticketNumber,
+                'priority'      => $priority,
+                'status'        => 'submitted',
+                'location'      => $logLoc,
             ]
         );
 
         \FixMyCampus\Core\Response::json([
-            'success'          => true,
-            'message'          => 'Defect report submitted successfully.',
-            'report_id'        => $reportId,
-            'ticket_number'    => $ticketNumber,
-            'suggested_worker' => $suggestedWorker,
+            'success'       => true,
+            'message'       => 'Defect report submitted successfully.',
+            'report_id'     => $reportId,
+            'ticket_number' => $ticketNumber,
         ], 201);
     }
 

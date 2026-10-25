@@ -518,6 +518,10 @@ export default function MaintenanceStaffDashboard({
           <UserProfileDropdown
             currentUser={currentUser}
             onNavigate={onNavigate}
+            onHistoryClick={() => {
+              setActiveTab('completed');
+              setSelectedJobId(null);
+            }}
             onLogout={() => setShowLogoutModal(true)}
             direction="up"
             showSubInButton={true}

@@ -18,6 +18,7 @@ import {
   History,
   Archive,
 } from 'lucide-react';
+import { getRecommendedWorker } from '../../utils/recommendedWorker';
 import {
   fetchStats,
   fetchReports,
@@ -170,7 +171,12 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
       return;
     }
     setQuickAssignModal(report);
-    setSelectedTechnicianId(report.worker_id ? String(report.worker_id) : (staff[0] ? String(staff[0].id) : ''));
+    const recWorker = getRecommendedWorker(report, staff);
+    setSelectedTechnicianId(
+      report.worker_id
+        ? String(report.worker_id)
+        : (recWorker ? String(recWorker.id) : (staff[0] ? String(staff[0].id) : ''))
+    );
   };
 
   // Submit Worker Assignment
@@ -249,33 +255,39 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
 
   // Archive Fixed Report Handler
   const handleRequestArchiveReport = (report) => {
-    if (!report) return;
-    const rawStatus = (report.status || '').toLowerCase();
-    const isFixed = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
-    if (!isFixed) {
+    if (!report || isArchiving) return;
+    const targets = Array.isArray(report) ? report : [report];
+    if (targets.length === 0) return;
+    if (!targets.every((r) => ['resolved', 'closed', 'fixed'].includes((r.status || '').toLowerCase()))) {
       showToast('Only fixed and resolved reports can be archived.');
       return;
     }
-    setReportToArchive(report);
+    setReportToArchive(targets);
   };
 
   const handleConfirmArchiveReport = async () => {
-    if (!reportToArchive) return;
-    const targetId = reportToArchive.id;
+    if (!reportToArchive || isArchiving) return;
 
     setIsArchiving(true);
     try {
-      const res = await archiveReport(targetId);
-      if (res?.success) {
-        showToast(`Report #${reportToArchive.ticket_number || targetId} archived and saved to History Logs.`);
-        setReports((prev) => prev.filter((r) => r.id !== targetId));
-        if (selectedReport?.id === targetId) {
+      const archivedIds = new Set();
+      for (const report of reportToArchive) {
+        try {
+          const res = await archiveReport(report.id);
+          if (res?.success) archivedIds.add(report.id);
+        } catch (err) {
+          console.error('Error archiving report:', err);
+        }
+      }
+      const failedCount = reportToArchive.length - archivedIds.size;
+      showToast(`${archivedIds.size} report${archivedIds.size === 1 ? '' : 's'} archived to History Logs.${failedCount ? ` ${failedCount} could not be archived. Please retry.` : ''}`);
+      if (archivedIds.size > 0) {
+        setReports((prev) => prev.filter((r) => !archivedIds.has(r.id)));
+        if (selectedReport && archivedIds.has(selectedReport.id)) {
           setSelectedReport(null);
           setActiveTab('reports');
         }
         refreshData();
-      } else {
-        showToast(res?.message || 'Failed to archive report.');
       }
     } catch (err) {
       console.error('Error archiving report:', err);
@@ -400,6 +412,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
           <UserProfileDropdown
             currentUser={currentUser}
             onNavigate={onNavigate}
+            onHistoryClick={() => handleNavTabClick('logs')}
             onSettingsClick={() => handleNavTabClick('settings')}
             onLogout={() => setShowLogoutModal(true)}
             idPrefix="admin-mobile-profile"
@@ -566,6 +579,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
           <UserProfileDropdown
             currentUser={currentUser}
             onNavigate={onNavigate}
+            onHistoryClick={() => handleNavTabClick('logs')}
             onSettingsClick={() => handleNavTabClick('settings')}
             onLogout={() => setShowLogoutModal(true)}
             direction="up"
@@ -639,6 +653,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
             onAssignReport={handleOpenAssign}
             onUpdateStatus={handleOpenUpdate}
             onArchiveReport={handleRequestArchiveReport}
+            onArchiveReports={handleRequestArchiveReport}
+            isArchiving={isArchiving}
             onDeleteReport={handleRequestArchiveReport}
           />
         )}
@@ -708,73 +724,79 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
       {/* --------------------------------------------------------------------
           Quick Assign Worker Modal (Triggered from tables)
           -------------------------------------------------------------------- */}
-      {quickAssignModal && (
-        <div
-          className="admin-modal-backdrop"
-          onClick={() => setQuickAssignModal(null)}
-        >
+      {quickAssignModal && (() => {
+        const recommended = getRecommendedWorker(quickAssignModal, staff);
+        return (
           <div
-            className="admin-modal-dialog"
-            onClick={(e) => e.stopPropagation()}
+            className="admin-modal-backdrop"
+            onClick={() => setQuickAssignModal(null)}
           >
-            <div className="admin-modal-header">
-              <div>
-                <h3 className="admin-modal-title">Assign Maintenance Worker</h3>
-                <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
-                  Ticket: {quickAssignModal.ticket_number || `FM-${quickAssignModal.id}`} &bull; {quickAssignModal.title}
-                </p>
-              </div>
-              <button
-                type="button"
-                className="admin-modal-close-btn"
-                onClick={() => setQuickAssignModal(null)}
-              >
-                <X size={18} />
-              </button>
-            </div>
-
-            <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!selectedTechnicianId) return;
-                handleAssignSubmit({
-                  report_id: quickAssignModal.id,
-                  assigned_to: Number(selectedTechnicianId),
-                });
-              }}
+            <div
+              className="admin-modal-dialog"
+              onClick={(e) => e.stopPropagation()}
             >
-              <div className="admin-form-group">
-                <label className="admin-form-label">Select Staff Member</label>
-                <select
-                  className="admin-select-input"
-                  value={selectedTechnicianId}
-                  onChange={(e) => setSelectedTechnicianId(e.target.value)}
-                >
-                  <option value="">-- Choose maintenance personnel --</option>
-                  {staff.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.full_name} ({m.department})
-                    </option>
-                  ))}
-                </select>
-              </div>
-
-              <div className="admin-modal-footer">
+              <div className="admin-modal-header">
+                <div>
+                  <h3 className="admin-modal-title">Assign Maintenance Worker</h3>
+                  <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+                    Ticket: {quickAssignModal.ticket_number || `FM-${quickAssignModal.id}`} &bull; {quickAssignModal.title}
+                  </p>
+                </div>
                 <button
                   type="button"
-                  className="admin-btn-secondary"
+                  className="admin-modal-close-btn"
                   onClick={() => setQuickAssignModal(null)}
                 >
-                  Cancel
-                </button>
-                <button type="submit" className="admin-btn-black">
-                  Confirm Assignment
+                  <X size={18} />
                 </button>
               </div>
-            </form>
+
+              <form
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  if (!selectedTechnicianId) return;
+                  handleAssignSubmit({
+                    report_id: quickAssignModal.id,
+                    assigned_to: Number(selectedTechnicianId),
+                  });
+                }}
+              >
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Select Staff Member</label>
+                  <select
+                    className="admin-select-input"
+                    value={selectedTechnicianId}
+                    onChange={(e) => setSelectedTechnicianId(e.target.value)}
+                  >
+                    <option value="">-- Choose maintenance personnel --</option>
+                    {staff.map((m) => {
+                      const isRec = recommended && String(recommended.id) === String(m.id);
+                      return (
+                        <option key={m.id} value={m.id}>
+                          {m.full_name}{isRec ? ' (Recommended)' : ''}{m.department ? ` (${m.department})` : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div className="admin-modal-footer">
+                  <button
+                    type="button"
+                    className="admin-btn-secondary"
+                    onClick={() => setQuickAssignModal(null)}
+                  >
+                    Cancel
+                  </button>
+                  <button type="submit" className="admin-btn-black">
+                    Confirm Assignment
+                  </button>
+                </div>
+              </form>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* --------------------------------------------------------------------
           Quick Update Status Modal (Triggered from tables)
@@ -851,9 +873,11 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
         <ConfirmationModal
           isOpen={Boolean(reportToArchive)}
           presetId="archive_report"
-          title="Archive Fixed Report?"
-          message={`Are you sure you want to archive report #${reportToArchive.ticket_number || reportToArchive.id} ("${reportToArchive.title}")? It will be safely stored in the History Logs and removed from active defect lists.`}
-          confirmText="Yes, Archive Report"
+          title={reportToArchive.length === 1 ? 'Archive Fixed Report?' : `Archive ${reportToArchive.length} Reports?`}
+          message={reportToArchive.length === 1
+            ? `Archive report #${reportToArchive[0].ticket_number || reportToArchive[0].id} ("${reportToArchive[0].title}")? It will be stored in History Logs and removed from active defect lists.`
+            : `Archive these ${reportToArchive.length} selected reports? They will be stored in History Logs and removed from active defect lists.`}
+          confirmText={reportToArchive.length === 1 ? 'Yes, Archive Report' : 'Yes, Archive Reports'}
           cancelText="Cancel"
           loading={isArchiving}
           onClose={() => {

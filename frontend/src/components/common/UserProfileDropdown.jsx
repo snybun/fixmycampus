@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, ChevronDown, SlidersHorizontal, LogOut } from 'lucide-react';
+import { User, ChevronDown, SlidersHorizontal, LogOut, History } from 'lucide-react';
 import './userProfileDropdown.css';
 
 export default function UserProfileDropdown({
@@ -8,6 +8,7 @@ export default function UserProfileDropdown({
   onLogout,
   direction = 'down',
   onSettingsClick,
+  onHistoryClick,
   className = '',
   idPrefix = 'user-profile',
   subTitle,
@@ -40,6 +41,15 @@ export default function UserProfileDropdown({
       onSettingsClick();
     } else if (onNavigate) {
       onNavigate('settings');
+    }
+  };
+
+  const handleHistory = () => {
+    setIsOpen(false);
+    if (onHistoryClick) {
+      onHistoryClick();
+    } else if (onNavigate) {
+      onNavigate('history');
     }
   };
 
@@ -104,6 +114,17 @@ export default function UserProfileDropdown({
           </div>
 
           <div className="fmc-dropdown-divider" />
+
+          {/* History */}
+          <button
+            type="button"
+            className="fmc-dropdown-item"
+            onClick={handleHistory}
+            id={`${idPrefix}-dropdown-history-btn`}
+          >
+            <History size={16} className="fmc-dropdown-icon" />
+            <span>History</span>
+          </button>
 
           {/* Settings */}
           <button
