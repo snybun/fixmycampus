@@ -17,6 +17,45 @@
   min-height: auto;
   padding: 0 0 2rem;
   background: transparent;
+  width: 100%;
+}
+
+.settings-page-embedded .settings-top-bar {
+  display: none !important;
+}
+
+.settings-page-embedded .settings-card {
+  max-width: 100%;
+  width: 100%;
+  margin: 0;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+  padding: 2.25rem 2.5rem;
+}
+
+.settings-page-embedded .settings-fields-group {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem 1.5rem;
+  margin-bottom: 0.5rem;
+}
+
+.settings-page-embedded .settings-actions-list {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 12px;
+}
+
+@media (max-width: 768px) {
+  .settings-page-embedded .settings-card {
+    padding: 1.5rem;
+  }
+
+  .settings-page-embedded .settings-fields-group,
+  .settings-page-embedded .settings-actions-list {
+    grid-template-columns: 1fr;
+  }
 }
 
 .settings-top-bar {

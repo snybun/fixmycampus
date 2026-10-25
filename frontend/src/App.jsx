@@ -330,6 +330,7 @@ export default function App() {
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
+          showBackButton={!isUserAdmin(currentUser)}
           onUpdateUser={(updatedUser) => {
             setCurrentUser(updatedUser);
             currentUserRef.current = updatedUser;

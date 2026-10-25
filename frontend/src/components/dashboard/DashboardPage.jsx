@@ -835,9 +835,6 @@ export default function DashboardPage({
           <div className="dash-section-header">
             <div className="dash-section-title-wrap">
               <h2 id="recent-reports-heading">Recent Reports</h2>
-              {reports.length > 0 && (
-                <span className="dash-reports-count-pill">{reports.length} Reports</span>
-              )}
             </div>
 
             {totalRecentPages > 1 && (
