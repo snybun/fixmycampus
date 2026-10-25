@@ -40,7 +40,7 @@ export default function App() {
   // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #my-reports, #admin, #report-issue, #settings, #access-denied, #maintenance)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'notifications', 'admin', 'report-issue', 'settings', 'access-denied', 'maintenance'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'notifications', 'history', 'admin', 'report-issue', 'settings', 'access-denied', 'maintenance'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -73,7 +73,7 @@ export default function App() {
             setCurrentView('access-denied');
             window.location.hash = 'access-denied';
           }
-        } else if (hash === 'dashboard' || hash === 'my-reports' || hash === 'notifications' || hash === 'report-issue' || hash === 'settings' || hash === 'maintenance') {
+        } else if (hash === 'dashboard' || hash === 'my-reports' || hash === 'notifications' || hash === 'history' || hash === 'report-issue' || hash === 'settings' || hash === 'maintenance') {
           if (isUserAdmin(res.user) && (hash === 'dashboard' || hash === 'my-reports')) {
             setCurrentView('admin');
             window.location.hash = 'admin';
@@ -88,7 +88,7 @@ export default function App() {
         setCurrentUser(null);
         currentUserRef.current = null;
         const hash = window.location.hash.replace('#', '');
-        if (['dashboard', 'my-reports', 'notifications', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
+        if (['dashboard', 'my-reports', 'notifications', 'history', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
           setCurrentView('login');
           window.location.hash = 'login';
         }
@@ -167,7 +167,7 @@ export default function App() {
 
     // Route guard: if trying to access protected views while logged out, redirect to login
     let targetView = view;
-    if (['dashboard', 'my-reports', 'notifications', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(view) && !activeUser) {
+    if (['dashboard', 'my-reports', 'notifications', 'history', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(view) && !activeUser) {
       targetView = 'login';
     } else if (view === 'admin' && !isUserAdmin(activeUser)) {
       // Non-admin attempting to access #admin is blocked by RBAC
@@ -180,8 +180,8 @@ export default function App() {
 
     if (targetView === currentView && !userOverride) return;
 
-    // Show loading screen when navigating to auth views, dashboard, my-reports, notifications, admin, report-issue, settings, maintenance, or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'notifications', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(targetView)) {
+    // Show loading screen when navigating to auth views, dashboard, my-reports, notifications, history, admin, report-issue, settings, maintenance, or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'notifications', 'history', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(targetView)) {
       setLoadingMessage(
         customLoadingMessage ||
         (targetView === 'admin'
@@ -198,11 +198,13 @@ export default function App() {
           ? 'Opening My Reports...'
           : targetView === 'notifications'
           ? 'Opening Notifications...'
+          : targetView === 'history'
+          ? 'Opening Activity & Notification History...'
           : targetView === 'report-issue'
           ? 'Opening Report Issue Wizard...'
           : targetView === 'settings'
           ? 'Opening Profile & Account Settings...'
-          : targetView === 'login' && !activeUser && ['dashboard', 'my-reports', 'notifications', 'report-issue', 'admin', 'settings', 'maintenance'].includes(view)
+          : targetView === 'login' && !activeUser && ['dashboard', 'my-reports', 'notifications', 'history', 'report-issue', 'admin', 'settings', 'maintenance'].includes(view)
           ? 'Please log in to FixMyCampus to continue...'
           : 'Accessing FixMyCampus Portal...')
       );
@@ -312,11 +314,11 @@ export default function App() {
         />
       )}
 
-      {/* Student / Faculty / Reporter Dashboard, My Reports & Notifications */}
-      {(currentView === 'dashboard' || currentView === 'my-reports' || currentView === 'notifications') && !isAdminView && !isMaintenanceView && (
+      {/* Student / Faculty / Reporter Dashboard, My Reports, Notifications & History */}
+      {(currentView === 'dashboard' || currentView === 'my-reports' || currentView === 'notifications' || currentView === 'history') && !isAdminView && !isMaintenanceView && (
         <DashboardPage
           currentUser={currentUser}
-          initialTab={currentView === 'my-reports' ? 'my-reports' : currentView === 'notifications' ? 'notifications' : 'home'}
+          initialTab={currentView === 'my-reports' ? 'my-reports' : currentView === 'notifications' ? 'notifications' : currentView === 'history' ? 'history' : 'home'}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
         />
@@ -328,6 +330,7 @@ export default function App() {
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
+          showBackButton={!isUserAdmin(currentUser)}
           onUpdateUser={(updatedUser) => {
             setCurrentUser(updatedUser);
             currentUserRef.current = updatedUser;

@@ -1,6 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, UploadCloud, CheckCircle2, Archive, Trash2 } from 'lucide-react';
 import ConfirmationModal from '../common/ConfirmationModal';
+import { getRecommendedWorker } from '../../utils/recommendedWorker';
 
 export default function ReportDetails({
   report,
@@ -11,9 +12,22 @@ export default function ReportDetails({
   onArchive,
   onDelete,
 }) {
-  const [selectedStaffId, setSelectedStaffId] = useState(
-    report?.worker_id ? String(report.worker_id) : (staff[0] ? String(staff[0].id) : '')
-  );
+  const recommendedStaff = useMemo(() => getRecommendedWorker(report, staff), [report, staff]);
+
+  const [selectedStaffId, setSelectedStaffId] = useState(() => {
+    if (report?.worker_id) return String(report.worker_id);
+    const rec = getRecommendedWorker(report, staff);
+    return rec ? String(rec.id) : (staff[0] ? String(staff[0].id) : '');
+  });
+
+  useEffect(() => {
+    if (report?.worker_id) {
+      setSelectedStaffId(String(report.worker_id));
+    } else if (recommendedStaff) {
+      setSelectedStaffId(String(recommendedStaff.id));
+    }
+  }, [report?.id, report?.worker_id, recommendedStaff]);
+
   const [selectedStatus, setSelectedStatus] = useState(report?.status || 'in_progress');
   const [remarks, setRemarks] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
@@ -199,11 +213,14 @@ export default function ReportDetails({
                   {hasAssignedWorker && !staff.some(member => String(member.id) === String(report.worker_id)) && (
                     <option value={String(report.worker_id)}>{report.worker_name || 'Assigned worker'}</option>
                   )}
-                  {staff.map((member) => (
-                    <option key={member.id} value={member.id}>
-                      {member.full_name} ({member.department})
-                    </option>
-                  ))}
+                  {staff.map((member) => {
+                    const isRec = !hasAssignedWorker && recommendedStaff && String(recommendedStaff.id) === String(member.id);
+                    return (
+                      <option key={member.id} value={member.id}>
+                        {member.full_name}{isRec ? ' (Recommended)' : ''}{member.department ? ` (${member.department})` : ''}
+                      </option>
+                    );
+                  })}
                 </select>
               </div>
 

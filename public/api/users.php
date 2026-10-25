@@ -46,7 +46,9 @@ try {
             r.display_name AS role_display
         FROM `users` u
         JOIN `roles` r ON u.role_id = r.id
-        WHERE 1=1
+        -- Removed maintenance staff remain inactive for historical references.
+        -- Match the Maintenance Staff roster while keeping other account statuses visible.
+        WHERE (r.name NOT IN ('technician', 'supervisor') OR u.status = 'active')
     ";
 
     $params = [];

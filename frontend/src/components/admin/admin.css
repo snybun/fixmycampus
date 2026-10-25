@@ -3,6 +3,29 @@
    Matches the Figma / Design Mockups Pixel-for-Pixel
    ========================================================================== */
 
+.admin-archive-toolbar {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.admin-archive-select-all {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: #475569;
+}
+
+.admin-archive-toolbar button:disabled,
+.admin-action-btns button:disabled,
+.admin-report-card-actions button:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
 :root {
   --admin-bg: #f8fafc;
   --admin-sidebar-bg: #ffffff;

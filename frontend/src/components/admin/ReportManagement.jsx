@@ -209,45 +209,118 @@ export default function ReportManagement({
 
       {/* Reports Table & Mobile Cards */}
       <div className="admin-table-card">
+        {/* Mobile-only Selection Controls */}
         {onArchiveReports && (
-          <div className="admin-archive-toolbar">
-            <button type="button" className="admin-btn-action-view" aria-pressed={selectMode}
-              disabled={isArchiving || (!selectMode && !filtered.some(canArchive))}
-              onClick={() => { setSelectMode((value) => !value); setSelectedIds([]); }}>
-              {selectMode ? 'Cancel selection' : 'Select'}
-            </button>
-            {selectMode && (
-              <>
-                <label className="admin-archive-select-all">
-                  <input type="checkbox" checked={allOnPageSelected}
-                    disabled={isArchiving || selectableOnPage.length === 0}
-                    onChange={() => setSelectedIds((ids) => allOnPageSelected
-                      ? ids.filter((id) => !selectableOnPage.some((r) => r.id === id))
-                      : [...new Set([...ids, ...selectableOnPage.map((r) => r.id)])])} />
-                  Select page
-                </label>
-                <button type="button" className="admin-btn-action-archive"
-                  disabled={isArchiving || selectedReports.length === 0}
-                  onClick={() => onArchiveReports(selectedReports)}>
-                  {isArchiving ? 'Archiving...' : `Archive selected (${selectedReports.length})`}
+          <div className="admin-mobile-only" style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '12px 16px', borderBottom: '1px solid #f1f5f9' }}>
+            <span style={{ fontSize: '0.82rem', fontWeight: 600, color: '#64748b' }}>
+              {selectMode ? `${selectedReports.length} selected` : 'Reports'}
+            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+              {selectMode && selectedReports.length > 0 && (
+                <button
+                  type="button"
+                  className="admin-btn-action-archive"
+                  disabled={isArchiving}
+                  onClick={() => onArchiveReports(selectedReports)}
+                  style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+                >
+                  {isArchiving ? 'Archiving...' : `Archive (${selectedReports.length})`}
                 </button>
-              </>
-            )}
+              )}
+              <button
+                type="button"
+                className="admin-btn-action-view"
+                disabled={isArchiving || (!selectMode && !filtered.some(canArchive))}
+                onClick={() => {
+                  setSelectMode((value) => !value);
+                  setSelectedIds([]);
+                }}
+                style={{ padding: '4px 10px', fontSize: '0.78rem' }}
+              >
+                {selectMode ? 'Cancel' : 'Select'}
+              </button>
+            </div>
           </div>
         )}
+
         {/* Desktop / Tablet Table View */}
         <div className="admin-table-responsive admin-desktop-only">
           <table className="admin-table">
             <thead>
               <tr>
-                {selectMode && <th scope="col">Select</th>}
+                {selectMode && (
+                  <th scope="col" style={{ width: '44px', textAlign: 'center', padding: '12px 8px' }}>
+                    <input
+                      type="checkbox"
+                      checked={allOnPageSelected}
+                      disabled={isArchiving || selectableOnPage.length === 0}
+                      onChange={() =>
+                        setSelectedIds((ids) =>
+                          allOnPageSelected
+                            ? ids.filter((id) => !selectableOnPage.some((r) => r.id === id))
+                            : [...new Set([...ids, ...selectableOnPage.map((r) => r.id)])]
+                        )
+                      }
+                      title="Select all on this page"
+                      aria-label="Select all on this page"
+                      style={{ cursor: 'pointer', width: '15px', height: '15px' }}
+                    />
+                  </th>
+                )}
                 <th>ID</th>
                 <th>Issue Title</th>
                 <th>Reporter Name</th>
                 <th>Priority</th>
                 <th>Status</th>
                 <th>Date</th>
-                <th>Actions</th>
+                <th style={{ minWidth: '180px' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: '8px' }}>
+                    <span>Actions</span>
+                    {onArchiveReports && (
+                      <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                        {selectMode && selectedReports.length > 0 && (
+                          <button
+                            type="button"
+                            className="admin-btn-action-archive"
+                            disabled={isArchiving}
+                            onClick={() => onArchiveReports(selectedReports)}
+                            style={{
+                              padding: '2px 8px',
+                              fontSize: '0.74rem',
+                              fontWeight: 600,
+                              lineHeight: 1.4,
+                            }}
+                            title="Archive selected reports"
+                          >
+                            {isArchiving ? 'Archiving...' : `Archive (${selectedReports.length})`}
+                          </button>
+                        )}
+                        <button
+                          type="button"
+                          className="admin-btn-action-view"
+                          aria-pressed={selectMode}
+                          disabled={isArchiving || (!selectMode && !filtered.some(canArchive))}
+                          onClick={() => {
+                            setSelectMode((value) => !value);
+                            setSelectedIds([]);
+                          }}
+                          style={{
+                            padding: '2px 8px',
+                            fontSize: '0.74rem',
+                            fontWeight: 600,
+                            lineHeight: 1.4,
+                            backgroundColor: selectMode ? '#fee2e2' : '#ffffff',
+                            borderColor: selectMode ? '#fca5a5' : 'var(--admin-border)',
+                            color: selectMode ? '#dc2626' : '#0f172a',
+                          }}
+                          title={selectMode ? 'Cancel selection' : 'Select multiple reports to archive'}
+                        >
+                          {selectMode ? 'Cancel' : 'Select'}
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                </th>
               </tr>
             </thead>
             <tbody>

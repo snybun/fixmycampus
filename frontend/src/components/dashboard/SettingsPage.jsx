@@ -45,6 +45,7 @@ export default function SettingsPage({
   onLogout,
   onUpdateUser,
   embedded = false,
+  showBackButton = false,
 }) {
   const fileInputRef = useRef(null);
 
@@ -297,18 +298,20 @@ export default function SettingsPage({
         onChange={handlePhotoSelect}
       />
 
-      {/* Top Bar with Back Button */}
-      <div className="settings-top-bar">
-        <button
-          type="button"
-          className="settings-back-btn"
-          onClick={() => onNavigate(isMaintenance ? 'maintenance' : isAdmin ? 'admin' : 'dashboard')}
-          title="Return to Dashboard"
-        >
-          <ArrowLeft size={16} />
-          <span>Back to Dashboard</span>
-        </button>
-      </div>
+      {/* Top Bar with Back Button (only rendered when not embedded and requested) */}
+      {!embedded && showBackButton && (
+        <div className="settings-top-bar">
+          <button
+            type="button"
+            className="settings-back-btn"
+            onClick={() => onNavigate(isMaintenance ? 'maintenance' : isAdmin ? 'admin' : 'dashboard')}
+            title="Return to Dashboard"
+          >
+            <ArrowLeft size={16} />
+            <span>Back to Dashboard</span>
+          </button>
+        </div>
+      )}
 
       {/* Main Settings Card */}
       <div className="settings-card">

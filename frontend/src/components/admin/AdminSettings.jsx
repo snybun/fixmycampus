@@ -14,6 +14,7 @@ export default function AdminSettings({ currentUser, onNavigate, onLogout, onUpd
       </div>
       <SettingsPage
         embedded
+        showBackButton={false}
         currentUser={currentUser}
         onNavigate={onNavigate}
         onLogout={onLogout}

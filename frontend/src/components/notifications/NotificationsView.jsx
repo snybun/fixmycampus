@@ -11,6 +11,7 @@ import {
   AlertOctagon,
   RefreshCw,
   Archive,
+  History,
 } from 'lucide-react';
 import {
   fetchNotifications,
@@ -34,6 +35,9 @@ export default function NotificationsView({
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [showArchiveSingleModal, setShowArchiveSingleModal] = useState(false);
+  const [itemToArchive, setItemToArchive] = useState(null);
+  const [isArchivingSingle, setIsArchivingSingle] = useState(false);
 
   const loadNotifications = async () => {
     try {
@@ -109,11 +113,19 @@ export default function NotificationsView({
     }
   };
 
-  // Archive individual notification
-  const handleDeleteSingle = async (item, e) => {
+  // Trigger confirmation modal for single notification archive
+  const handleRequestArchiveSingle = (item, e) => {
     if (e) e.stopPropagation();
-    const targetId = item.id;
-    const wasUnread = !item.is_read;
+    setItemToArchive(item);
+    setShowArchiveSingleModal(true);
+  };
+
+  // Confirm and execute single notification archive
+  const handleConfirmArchiveSingle = async () => {
+    if (!itemToArchive) return;
+    setIsArchivingSingle(true);
+    const targetId = itemToArchive.id;
+    const wasUnread = !itemToArchive.is_read;
 
     // Optimistic UI removal
     setNotifications((prev) => prev.filter((n) => n.id !== targetId));
@@ -125,6 +137,10 @@ export default function NotificationsView({
       await archiveNotification(targetId, currentUser?.id, 'student');
     } catch (err) {
       console.error('Error archiving notification:', err);
+    } finally {
+      setIsArchivingSingle(false);
+      setShowArchiveSingleModal(false);
+      setItemToArchive(null);
     }
   };
 
@@ -259,6 +275,19 @@ export default function NotificationsView({
               <Archive size={14} />
               <span>Archive all</span>
             </button>
+
+            {typeof onNavigate === 'function' && (
+              <button
+                type="button"
+                className="notif-history-link-btn"
+                onClick={() => onNavigate('history')}
+                title="View archived notifications in History"
+                id="notif-view-history-btn"
+              >
+                <History size={14} />
+                <span>History</span>
+              </button>
+            )}
           </div>
         </div>
 
@@ -330,9 +359,10 @@ export default function NotificationsView({
                     <button
                       type="button"
                       className="notif-card-delete-btn"
-                      onClick={(e) => handleDeleteSingle(item, e)}
+                      onClick={(e) => handleRequestArchiveSingle(item, e)}
                       title="Archive notification"
                       aria-label="Archive this notification"
+                      id={`notif-archive-btn-${item.id}`}
                     >
                       <Archive size={15} />
                     </button>
@@ -353,11 +383,35 @@ export default function NotificationsView({
           </div>
         )}
 
+        {/* Archive Single Confirmation Modal */}
+        {showArchiveSingleModal && (
+          <ConfirmationModal
+            isOpen={showArchiveSingleModal}
+            presetId="archive_notification"
+            title="Archive Notification?"
+            message={
+              itemToArchive?.title
+                ? `Are you sure you want to archive "${itemToArchive.title}"? It will be safely stored in your History.`
+                : 'Are you sure you want to archive this notification? It will be safely stored in your History.'
+            }
+            loading={isArchivingSingle}
+            onClose={() => {
+              if (!isArchivingSingle) {
+                setShowArchiveSingleModal(false);
+                setItemToArchive(null);
+              }
+            }}
+            onConfirm={handleConfirmArchiveSingle}
+          />
+        )}
+
         {/* Archive All Confirmation Modal */}
         {showDeleteAllModal && (
           <ConfirmationModal
             isOpen={showDeleteAllModal}
             presetId="archive_notifications"
+            title="Archive All Notifications?"
+            message="Are you sure you want to archive all notifications? All archived alerts can be accessed anytime from your History."
             loading={isDeletingAll}
             onClose={() => {
               if (!isDeletingAll) setShowDeleteAllModal(false);

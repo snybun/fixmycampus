@@ -47,6 +47,9 @@ export default function MaintenanceNotificationsView({
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
   const [isDeletingAll, setIsDeletingAll] = useState(false);
+  const [showArchiveSingleModal, setShowArchiveSingleModal] = useState(false);
+  const [itemToArchive, setItemToArchive] = useState(null);
+  const [isArchivingSingle, setIsArchivingSingle] = useState(false);
 
   // Sync notifications from API if available
   const loadNotifications = async () => {
@@ -168,10 +171,18 @@ export default function MaintenanceNotificationsView({
     }
   };
 
-  // Delete individual notification
-  const handleDeleteSingle = async (notif, e) => {
+  // Trigger confirmation modal for single notification archive
+  const handleRequestArchiveSingle = (notif, e) => {
     if (e) e.stopPropagation();
-    const targetId = notif.id;
+    setItemToArchive(notif);
+    setShowArchiveSingleModal(true);
+  };
+
+  // Confirm and execute single notification archive
+  const handleConfirmArchiveSingle = async () => {
+    if (!itemToArchive) return;
+    setIsArchivingSingle(true);
+    const targetId = itemToArchive.id;
 
     // Optimistically remove from state
     setNotifications((prev) => prev.filter((n) => n.id !== targetId));
@@ -184,6 +195,10 @@ export default function MaintenanceNotificationsView({
       await archiveNotification(targetId, effectiveMaintId, 'maintenance');
     } catch (err) {
       console.error('Error archiving notification:', err);
+    } finally {
+      setIsArchivingSingle(false);
+      setShowArchiveSingleModal(false);
+      setItemToArchive(null);
     }
   };
 
@@ -610,7 +625,7 @@ export default function MaintenanceNotificationsView({
                   <button
                     type="button"
                     className="maint-notif-btn-delete"
-                    onClick={(e) => handleDeleteSingle(item, e)}
+                    onClick={(e) => handleRequestArchiveSingle(item, e)}
                     title="Archive notification"
                   >
                     <Archive size={14} />
@@ -649,6 +664,28 @@ export default function MaintenanceNotificationsView({
           </div>
         )}
       </div>
+
+      {/* Archive Single Confirmation Modal */}
+      {showArchiveSingleModal && (
+        <ConfirmationModal
+          isOpen={showArchiveSingleModal}
+          presetId="archive_notification"
+          title="Archive Notification?"
+          message={
+            itemToArchive?.title
+              ? `Are you sure you want to archive "${itemToArchive.title}"?`
+              : 'Are you sure you want to archive this notification?'
+          }
+          onConfirm={handleConfirmArchiveSingle}
+          onCancel={() => {
+            if (!isArchivingSingle) {
+              setShowArchiveSingleModal(false);
+              setItemToArchive(null);
+            }
+          }}
+          isLoading={isArchivingSingle}
+        />
+      )}
 
       {/* Archive All Confirmation Modal */}
       <ConfirmationModal
