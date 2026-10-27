@@ -5,6 +5,30 @@
 
 const API_BASE = '/api';
 
+export async function fetchFeedback(params = {}) {
+  try {
+    const res = await fetch(`${API_BASE}/feedback.php?${new URLSearchParams(params)}`, {
+      credentials: 'include', cache: 'no-store',
+    });
+    return { ...await res.json(), httpStatus: res.status };
+  } catch {
+    return { success: false, message: 'Unable to load feedback. Please try again.' };
+  }
+}
+
+export async function submitFeedback({ report_id, rating, comments }) {
+  try {
+    const res = await fetch(`${API_BASE}/feedback.php`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id, rating, comments }),
+    });
+    return { ...await res.json(), httpStatus: res.status };
+  } catch {
+    return { success: false, message: 'Unable to submit feedback. Please check your connection and try again.' };
+  }
+}
+
 export async function fetchStats(params = {}) {
   try {
     const query = new URLSearchParams(params).toString();

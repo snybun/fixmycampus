@@ -10,6 +10,7 @@ import {
   Trash2,
 } from 'lucide-react';
 import { fetchReportDetail } from '../../services/api';
+import ReportFeedback from '../feedback/ReportFeedback';
 import './reportDetails.css';
 
 export default function ReportDetailsView({
@@ -30,7 +31,8 @@ export default function ReportDetailsView({
   // Fetch full database details including live status history and worker info
   useEffect(() => {
     let isMounted = true;
-    if (report?.id) {
+    const loadDetails = () => {
+      if (!report?.id) return;
       fetchReportDetail(report.id)
         .then((res) => {
           if (isMounted && res && res.success && res.data) {
@@ -109,10 +111,15 @@ export default function ReportDetailsView({
         .catch((err) => {
           console.error('Failed to fetch detailed report data:', err);
         });
-    }
+    };
+    loadDetails();
+    const interval = setInterval(() => {
+      if (!document.hidden) loadDetails();
+    }, 15000);
 
     return () => {
       isMounted = false;
+      clearInterval(interval);
     };
   }, [report?.id]);
 
@@ -321,6 +328,9 @@ export default function ReportDetailsView({
         <div className="rep-details-grid">
           {/* Left Column: Photo & Issue Description */}
           <div className="rep-details-col-left">
+            {['resolved', 'closed'].includes(detailedReport.status) && (
+              <ReportFeedback key={detailedReport.id} reportId={detailedReport.id} />
+            )}
             {/* Defect Photo Banner */}
             <div className="rep-details-photo-box">
               <img

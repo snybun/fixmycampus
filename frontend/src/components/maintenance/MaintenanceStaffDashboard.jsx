@@ -28,6 +28,8 @@ import { exportReportsToExcel } from '../../utils/exportToExcel';
 import ConfirmationModal from '../common/ConfirmationModal';
 import MaintenanceNotificationsView from './MaintenanceNotificationsView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
+import ReportFeedback from '../feedback/ReportFeedback';
+import FeedbackOverview from '../feedback/FeedbackOverview';
 import './maintenanceDashboard.css';
 
 // Format date helper for database timestamps
@@ -645,6 +647,9 @@ export default function MaintenanceStaffDashboard({
 
               {/* Right Column */}
               <div className="maint-details-col">
+                {['resolved', 'closed'].includes(selectedJob.status) && (
+                  <ReportFeedback key={selectedJob.id} reportId={selectedJob.id} />
+                )}
                 {/* 1. JOB ACTIONS */}
                 <div className="maint-card">
                   <h4 className="maint-card-title">JOB ACTIONS</h4>
@@ -993,6 +998,10 @@ export default function MaintenanceStaffDashboard({
                 <div className="maint-stat-value">{overdueCount}</div>
               </div>
             </div>
+
+            {(activeTab === 'dashboard' || activeTab === 'completed') && (
+              <FeedbackOverview scopeKey={currentUser?.id} maintenance />
+            )}
 
             {/* Section Header & Priority Filter Tabs */}
             <div className="maint-section-bar">

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { ArrowLeft, UploadCloud, CheckCircle2, Archive, Trash2 } from 'lucide-react';
 import ConfirmationModal from '../common/ConfirmationModal';
+import ReportFeedback from '../feedback/ReportFeedback';
 import { getRecommendedWorker } from '../../utils/recommendedWorker';
 
 export default function ReportDetails({
@@ -190,6 +191,7 @@ export default function ReportDetails({
 
         {/* Right Column: Actions */}
         <div>
+          {isFixed && <div style={{ marginBottom: 24 }}><ReportFeedback key={report.id} reportId={report.id} /></div>}
           {/* Card 1: Assign Maintenance Worker */}
           <div
             className="admin-action-card"
