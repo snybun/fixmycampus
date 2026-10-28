@@ -1000,16 +1000,57 @@
   box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.12);
 }
 
-/* Pagination */
+/* Pagination matching maintenance style */
 .admin-pagination-bar {
   display: flex;
   align-items: center;
   justify-content: space-between;
   margin-top: 20px;
-  padding-top: 16px;
-  border-top: 1px solid var(--admin-border-subtle);
+  padding: 16px 20px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
   font-size: 0.86rem;
-  color: var(--admin-text-muted);
+  color: #64748b;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.admin-pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+.admin-pagination-limit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.admin-pagination-limit span {
+  font-size: 0.82rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.admin-pagination-select {
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  background-color: #ffffff;
+  color: #0f172a;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.admin-pagination-select:focus {
+  border-color: #059669;
 }
 
 .admin-pagination-btns {
@@ -1072,6 +1113,13 @@
   width: 34px;
   min-width: 34px;
   padding: 0;
+}
+
+.admin-page-ellipsis {
+  padding: 6px 8px;
+  color: #94a3b8;
+  font-size: 0.84rem;
+  user-select: none;
 }
 
 /* Reusable Filter Symbol Button & Dropdown Menu for Admin views */
