@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   Star,
   MessageSquareQuote,
@@ -15,10 +15,21 @@ import {
   ChevronLeft,
   ChevronRight,
   Filter,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { fetchFeedback } from '../../services/api';
 import { FeedbackStars, feedbackDate } from '../feedback/ReportFeedback';
 import './adminFeedback.css';
+
+const FEEDBACK_FILTER_OPTIONS = [
+  { key: 'all', label: 'All Reviews', color: '#64748b', star: null },
+  { key: '5', label: '5 Stars (Excellent)', color: '#a855f7', star: 5 },
+  { key: '4', label: '4 Stars (Very Good)', color: '#3b82f6', star: 4 },
+  { key: '3', label: '3 Stars (Average)', color: '#059669', star: 3 },
+  { key: '2', label: '2 Stars (Poor)', color: '#f59e0b', star: 2 },
+  { key: '1', label: '1 Star (Terrible)', color: '#dc2626', star: 1 },
+];
 
 const getPageNumbers = (current, total) => {
   if (total <= 5) {
@@ -50,7 +61,19 @@ export default function AdminFeedbackView({ onViewReport }) {
   const [appliedSearch, setAppliedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const PAGE_LIMIT = 8;
+  const [pageSize, setPageSize] = useState(5);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   // Debounce search input
   useEffect(() => {
@@ -68,7 +91,7 @@ export default function AdminFeedbackView({ onViewReport }) {
 
     const params = {
       page: currentPage,
-      limit: PAGE_LIMIT,
+      limit: pageSize,
     };
     if (ratingFilter !== 'all') {
       params.rating = ratingFilter;
@@ -103,7 +126,7 @@ export default function AdminFeedbackView({ onViewReport }) {
     } finally {
       setLoading(false);
     }
-  }, [currentPage, ratingFilter, appliedSearch]);
+  }, [currentPage, pageSize, ratingFilter, appliedSearch]);
 
   useEffect(() => {
     loadFeedbackData();
@@ -290,17 +313,90 @@ export default function AdminFeedbackView({ onViewReport }) {
           </button>
         </div>
 
-        {/* Search Box */}
-        <div className="admin-feedback-search-box">
-          <Search size={16} className="admin-feedback-search-icon" />
-          <input
-            type="text"
-            className="admin-feedback-search-input"
-            placeholder="Search ticket, reporter, comment..."
-            value={searchInput}
-            onChange={(e) => setSearchInput(e.target.value)}
-            id="admin-feedback-search-input"
-          />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          {/* Search Box */}
+          <div className="admin-feedback-search-box">
+            <Search size={16} className="admin-feedback-search-icon" />
+            <input
+              type="text"
+              className="admin-feedback-search-input"
+              placeholder="Search ticket, reporter, comment..."
+              value={searchInput}
+              onChange={(e) => setSearchInput(e.target.value)}
+              id="admin-feedback-search-input"
+            />
+          </div>
+
+          {/* Filter Symbol Button & Dropdown Menu */}
+          <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
+            <button
+              type="button"
+              className={`admin-filter-btn ${isFilterOpen ? 'open' : ''} ${ratingFilter !== 'all' ? 'has-active' : ''}`}
+              onClick={() => setIsFilterOpen((prev) => !prev)}
+              aria-expanded={isFilterOpen}
+              title="Filter feedback by rating"
+              id="admin-feedback-filter-btn"
+            >
+              <Filter size={15} />
+              <span className="admin-filter-btn-text">
+                {ratingFilter === 'all'
+                  ? 'Filter'
+                  : `${ratingFilter} Star${ratingFilter === '1' ? '' : 's'}`}
+              </span>
+              {ratingFilter !== 'all' && (
+                <span className="admin-filter-badge">
+                  {summary.distribution[Number(ratingFilter)] || 0}
+                </span>
+              )}
+              <ChevronDown size={14} className={`admin-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
+            </button>
+
+            {isFilterOpen && (
+              <div className="admin-filter-menu" role="menu">
+                <div className="admin-filter-menu-header">
+                  <span>Filter by Rating</span>
+                  {ratingFilter !== 'all' && (
+                    <button
+                      type="button"
+                      className="admin-filter-reset-btn"
+                      onClick={() => {
+                        setRatingFilter('all');
+                        setIsFilterOpen(false);
+                        setCurrentPage(1);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+
+                <div className="admin-filter-menu-list">
+                  {FEEDBACK_FILTER_OPTIONS.map((opt) => {
+                    const isActive = ratingFilter === opt.key;
+                    const count = opt.key === 'all' ? summary.total : (summary.distribution[opt.star] || 0);
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        className={`admin-filter-item ${isActive ? 'active' : ''}`}
+                        onClick={() => {
+                          setRatingFilter(opt.key);
+                          setIsFilterOpen(false);
+                          setCurrentPage(1);
+                        }}
+                        role="menuitem"
+                      >
+                        <span className="admin-filter-item-dot" style={{ backgroundColor: opt.color }} />
+                        <span className="admin-filter-item-label">{opt.label}</span>
+                        <span className="admin-filter-item-count">{count}</span>
+                        {isActive && <Check size={14} className="admin-filter-check" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -448,12 +544,34 @@ export default function AdminFeedbackView({ onViewReport }) {
       {/* --------------------------------------------------------------------
           Pagination Controls
           -------------------------------------------------------------------- */}
-      {feedbackList.length > 0 && totalPages > 1 && (
+      {!loading && feedbackList.length > 0 && (
         <div className="admin-feedback-pagination" aria-label="Feedback pagination">
-          <span>
-            Showing {(currentPage - 1) * PAGE_LIMIT + 1}-
-            {Math.min(summary.filtered_total, currentPage * PAGE_LIMIT)} of {summary.filtered_total} feedback records
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+            <span>
+              Showing {(currentPage - 1) * pageSize + 1}–
+              {Math.min(summary.filtered_total, currentPage * pageSize)} of {summary.filtered_total} feedback record{summary.filtered_total === 1 ? '' : 's'}
+            </span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Per page:</span>
+              <select
+                className="admin-filter-select"
+                style={{ padding: '4px 8px', fontSize: '0.82rem', height: 32, minWidth: 'unset' }}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                aria-label="Records per page"
+              >
+                <option value={5}>5</option>
+                <option value={8}>8</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
 
           <div className="admin-feedback-pagination-controls">
             <button
