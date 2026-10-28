@@ -146,7 +146,7 @@ export default function UsersView() {
           <form
             onSubmit={handleSearchSubmit}
             className="admin-search-row"
-            style={{ flex: '1 1 360px', maxWidth: 540, margin: 0, flexWrap: 'wrap' }}
+            style={{ flex: '1 1 100%', width: '100%', margin: 0, flexWrap: 'wrap' }}
           >
             <div className="admin-search-input-wrap">
               <Search size={18} />

@@ -136,7 +136,7 @@ export default function ReportManagement({
           <form
             onSubmit={handleSearchSubmit}
             className="admin-search-row"
-            style={{ flex: '1 1 340px', maxWidth: 520, margin: 0 }}
+            style={{ flex: '1 1 100%', width: '100%', margin: 0 }}
           >
             <div className="admin-search-input-wrap">
               <Search size={18} />

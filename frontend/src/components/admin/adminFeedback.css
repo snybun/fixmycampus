@@ -215,7 +215,8 @@
 
 .admin-feedback-search-box {
   position: relative;
-  width: 320px;
+  flex: 1;
+  min-width: 220px;
   max-width: 100%;
 }
 
