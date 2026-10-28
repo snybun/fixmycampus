@@ -65,6 +65,11 @@ $payload = [
     'by_category'      => [],
     'by_building'      => [],
     'timeline_6m'      => [],
+    'avg_resolution_hours' => null,
+    'student_satisfaction' => null,
+    'feedback_count'       => 0,
+    'overall_sla_rate'     => 100.0,
+    'sla_categories'       => [],
     'timestamp'        => gmdate('Y-m-d\TH:i:s\Z'),
 ];
 
@@ -215,6 +220,71 @@ try {
                 $months[] = ['month' => $mLabel, 'count' => $count];
             }
             $payload['timeline_6m'] = $months;
+
+            // Average resolution time in hours for resolved reports from real database history
+            $avgSeconds = db_fetch_column("
+                SELECT AVG(TIMESTAMPDIFF(SECOND, r.reported_at, COALESCE(
+                    (SELECT sh.created_at FROM report_status_history sh WHERE sh.report_id = r.id AND sh.new_status = 'resolved' ORDER BY sh.id DESC LIMIT 1),
+                    rc.completed_at,
+                    r.updated_at
+                )))
+                FROM reports r
+                LEFT JOIN repair_completions rc ON rc.report_id = r.id
+                WHERE r.status IN ('resolved', 'closed')
+            ");
+            $payload['avg_resolution_hours'] = $avgSeconds !== null ? round((float)$avgSeconds / 3600, 1) : null;
+
+            // Student satisfaction rating from real report_feedback table
+            $feedbackStats = db_fetch_one("
+                SELECT COUNT(*) as total_feedback, AVG(rating) as avg_rating
+                FROM report_feedback
+            ");
+            $payload['student_satisfaction'] = $feedbackStats && (int)$feedbackStats['total_feedback'] > 0 
+                ? round((float)$feedbackStats['avg_rating'], 1) 
+                : null;
+            $payload['feedback_count'] = (int)($feedbackStats['total_feedback'] ?? 0);
+
+            // Accurate SLA compliance breakdown by category
+            $slaCategories = db_fetch_all("
+                SELECT 
+                    c.id,
+                    c.name,
+                    c.sla_hours,
+                    COUNT(r.id) as total_reports,
+                    SUM(CASE WHEN r.status IN ('resolved', 'closed') THEN 1 ELSE 0 END) as resolved_count,
+                    SUM(CASE 
+                        WHEN r.status IN ('resolved', 'closed') 
+                         AND TIMESTAMPDIFF(SECOND, r.reported_at, COALESCE(
+                             (SELECT sh.created_at FROM report_status_history sh WHERE sh.report_id = r.id AND sh.new_status = 'resolved' ORDER BY sh.id DESC LIMIT 1),
+                             r.updated_at
+                         )) <= c.sla_hours * 3600 THEN 1 
+                        ELSE 0 
+                    END) as within_sla_count
+                FROM categories c
+                LEFT JOIN reports r ON c.id = r.category_id
+                WHERE c.is_active = 1
+                GROUP BY c.id, c.name, c.sla_hours
+                ORDER BY total_reports DESC, c.name ASC
+            ");
+
+            $totalResolvedWithCategory = 0;
+            $totalWithinSla = 0;
+            foreach ($slaCategories as &$sc) {
+                $sc['total_reports'] = (int)$sc['total_reports'];
+                $sc['resolved_count'] = (int)$sc['resolved_count'];
+                $sc['within_sla_count'] = (int)$sc['within_sla_count'];
+                $sc['compliance_rate'] = $sc['resolved_count'] > 0 
+                    ? (int)round(($sc['within_sla_count'] / $sc['resolved_count']) * 100) 
+                    : 100;
+                $totalResolvedWithCategory += $sc['resolved_count'];
+                $totalWithinSla += $sc['within_sla_count'];
+            }
+            unset($sc);
+
+            $payload['overall_sla_rate'] = $totalResolvedWithCategory > 0 
+                ? round(($totalWithinSla / $totalResolvedWithCategory) * 100, 1) 
+                : 100.0;
+            $payload['sla_categories'] = $slaCategories;
         }
 
         $payload['data'] = $payload;
