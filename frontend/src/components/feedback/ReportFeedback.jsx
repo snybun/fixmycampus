@@ -1,6 +1,7 @@
 import React, { useEffect, useId, useRef, useState } from 'react';
 import { CheckCircle2, MessageSquare, Star } from 'lucide-react';
 import { fetchFeedback, submitFeedback } from '../../services/api';
+import ConfirmationModal from '../common/ConfirmationModal';
 import './feedback.css';
 
 const ratingLabels = ['Very dissatisfied', 'Dissatisfied', 'Okay', 'Satisfied', 'Very satisfied'];
@@ -27,6 +28,7 @@ export default function ReportFeedback({ reportId }) {
   const [rating, setRating] = useState(0);
   const [comments, setComments] = useState('');
   const [saving, setSaving] = useState(false);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [retry, setRetry] = useState(0);
@@ -54,23 +56,37 @@ export default function ReportFeedback({ reportId }) {
     return () => { active = false; clearInterval(interval); };
   }, [reportId, retry]);
 
-  const handleSubmit = async (event) => {
+  const handleOpenConfirm = (event) => {
     event.preventDefault();
+    if (submitting.current || !rating) return;
+    setError('');
+    setShowConfirmModal(true);
+  };
+
+  const handleConfirmSubmit = async () => {
     if (submitting.current || !rating) return;
     submitting.current = true;
     requestVersion.current += 1;
     setSaving(true);
     setError('');
-    const response = await submitFeedback({ report_id: reportId, rating, comments });
-    submitting.current = false;
-    requestVersion.current += 1;
-    setSaving(false);
-    if (response.success) {
-      setResult({ ...response, is_reporter: true });
-      setSuccess(response.message);
-    } else {
-      setError(response.message);
-      if (response.error_code === 'FEEDBACK_EXISTS') setRetry((value) => value + 1);
+    try {
+      const response = await submitFeedback({ report_id: reportId, rating, comments });
+      submitting.current = false;
+      requestVersion.current += 1;
+      setSaving(false);
+      setShowConfirmModal(false);
+      if (response.success) {
+        setResult({ ...response, is_reporter: true });
+        setSuccess(response.message);
+      } else {
+        setError(response.message);
+        if (response.error_code === 'FEEDBACK_EXISTS') setRetry((value) => value + 1);
+      }
+    } catch (err) {
+      submitting.current = false;
+      setSaving(false);
+      setShowConfirmModal(false);
+      setError(err?.message || 'Failed to submit feedback.');
     }
   };
 
@@ -95,7 +111,7 @@ export default function ReportFeedback({ reportId }) {
           <p className="feedback-muted">{feedback.reporter_name} · {feedbackDate(feedback.created_at)}</p>
         </div>
       ) : result?.can_submit ? (
-        <form onSubmit={handleSubmit}>
+        <form onSubmit={handleOpenConfirm}>
           <p className="feedback-muted">Your repair is complete. Let us know how it went. Your feedback will be visible to the admin and assigned maintenance staff.</p>
           <fieldset className="feedback-rating-field" disabled={saving}>
             <legend>How was the repair?</legend>
@@ -120,6 +136,22 @@ export default function ReportFeedback({ reportId }) {
           </div>
         </form>
       ) : result && <p className="feedback-muted">{result.is_reporter ? 'You can rate this repair once it is marked as fixed.' : 'The reporter has not submitted feedback yet.'}</p>}
+
+      {showConfirmModal && (
+        <ConfirmationModal
+          isOpen={showConfirmModal}
+          presetId="submit_feedback"
+          title="Send Repair Feedback?"
+          message={`Are you sure you want to send your ${rating}-star rating and feedback for this repair?`}
+          confirmText="Yes, Send Feedback"
+          cancelText="Cancel"
+          loading={saving}
+          onClose={() => {
+            if (!saving) setShowConfirmModal(false);
+          }}
+          onConfirm={handleConfirmSubmit}
+        />
+      )}
     </section>
   );
 }
