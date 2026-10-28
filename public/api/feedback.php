@@ -165,7 +165,7 @@ try {
 
     $filteredCountRow = db_fetch_one("SELECT COUNT(*) AS total FROM report_feedback f JOIN reports r ON r.id = f.report_id JOIN users u ON u.id = f.user_id WHERE {$where}", $params);
     $total = (int)($filteredCountRow['total'] ?? 0);
-    $limit = max(1, min(50, (int)($_GET['limit'] ?? 10)));
+    $limit = max(1, min(100, (int)($_GET['limit'] ?? 10)));
     $totalPages = max(1, (int)ceil($total / $limit));
     $page = min($totalPages, max(1, (int)($_GET['page'] ?? 1)));
     $offset = ($page - 1) * $limit;
