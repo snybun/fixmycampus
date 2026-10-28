@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
   Wrench,
   LayoutDashboard,
@@ -21,6 +21,9 @@ import {
   FileSpreadsheet,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Search,
+  Filter,
   Lock,
   MessageSquareQuote,
 } from 'lucide-react';
@@ -128,14 +131,32 @@ export default function MaintenanceStaffDashboard({
   // Navigation / active section
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard', 'assigned', 'completed', 'notifications', 'profile'
   const [selectedJobId, setSelectedJobId] = useState(null);
-  const [priorityFilter, setPriorityFilter] = useState('all'); // 'all', 'high', 'medium', 'low'
+  const [priorityFilter, setPriorityFilter] = useState('all'); // 'all', 'urgent', 'high', 'medium', 'low'
+  const [searchQuery, setSearchQuery] = useState('');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
   const [unreadNotifCount, setUnreadNotifCount] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [activeTab, priorityFilter]);
+  }, [activeTab, priorityFilter, searchQuery]);
+
+  // Close priority filter dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    if (isFilterOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isFilterOpen]);
 
   // Live Database Reports state
   const [jobs, setJobs] = useState([]);
@@ -352,16 +373,37 @@ export default function MaintenanceStaffDashboard({
   ).length;
   const overdueCount = jobs.filter(isReportOverdue).length;
 
-  // Filtered Jobs based on tab and priority
-  let displayedJobs = [];
+  // Filtered Jobs based on tab, priority, and search query
+  let tabBaseJobs = [];
   if (activeTab === 'completed') {
-    displayedJobs = jobs.filter((j) => j.status === 'resolved' || j.status === 'closed');
+    tabBaseJobs = jobs.filter((j) => j.status === 'resolved' || j.status === 'closed');
   } else if (activeTab === 'assigned') {
-    displayedJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
+    tabBaseJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
   } else {
     // Dashboard overview: show active assigned and in-progress jobs for this worker
-    displayedJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
+    tabBaseJobs = jobs.filter((j) => j.status === 'assigned' || j.status === 'in_progress');
   }
+
+  const priorityCounts = {
+    all: tabBaseJobs.length,
+    urgent: tabBaseJobs.filter((j) => {
+      const jp = (j.priority || '').toLowerCase();
+      return jp === 'urgent' || jp === 'emergency';
+    }).length,
+    high: tabBaseJobs.filter((j) => (j.priority || '').toLowerCase() === 'high').length,
+    medium: tabBaseJobs.filter((j) => (j.priority || '').toLowerCase() === 'medium').length,
+    low: tabBaseJobs.filter((j) => (j.priority || '').toLowerCase() === 'low').length,
+  };
+
+  const PRIORITY_FILTER_OPTIONS = [
+    { key: 'all', label: 'All Priorities', color: '#64748b' },
+    { key: 'urgent', label: 'Urgent', color: '#ef4444' },
+    { key: 'high', label: 'High', color: '#f97316' },
+    { key: 'medium', label: 'Medium', color: '#eab308' },
+    { key: 'low', label: 'Low', color: '#10b981' },
+  ];
+
+  let displayedJobs = [...tabBaseJobs];
 
   if (priorityFilter !== 'all') {
     displayedJobs = displayedJobs.filter((j) => {
@@ -371,6 +413,28 @@ export default function MaintenanceStaffDashboard({
         return jp === 'urgent' || jp === 'emergency';
       }
       return jp === fp;
+    });
+  }
+
+  if (searchQuery.trim()) {
+    const q = searchQuery.toLowerCase().trim();
+    displayedJobs = displayedJobs.filter((j) => {
+      const matchesTicket = j.ticket_number?.toLowerCase().includes(q);
+      const matchesTitle = j.title?.toLowerCase().includes(q);
+      const matchesLoc =
+        j.location_summary?.toLowerCase().includes(q) ||
+        j.location_name?.toLowerCase().includes(q);
+      const matchesCategory = j.category_name?.toLowerCase().includes(q);
+      const matchesDesc = j.description?.toLowerCase().includes(q);
+      const matchesReporter = j.reporter_name?.toLowerCase().includes(q);
+      return (
+        matchesTicket ||
+        matchesTitle ||
+        matchesLoc ||
+        matchesCategory ||
+        matchesDesc ||
+        matchesReporter
+      );
     });
   }
 
@@ -963,7 +1027,24 @@ export default function MaintenanceStaffDashboard({
               <h1 className="maint-greeting">Ratings &amp; Feedback</h1>
               <p className="maint-subtext">Reporter ratings and comments on your completed maintenance jobs.</p>
             </div>
-            <FeedbackOverview scopeKey={currentUser?.id} maintenance />
+            <FeedbackOverview
+              scopeKey={currentUser?.id}
+              maintenance
+              onViewReport={(item) => {
+                const matched = jobs.find(
+                  (j) =>
+                    (item.report_id && String(j.id) === String(item.report_id)) ||
+                    (item.ticket_number &&
+                      j.ticket_number &&
+                      j.ticket_number.toUpperCase() === item.ticket_number.toUpperCase())
+                );
+                if (matched) {
+                  setSelectedJobId(matched.id);
+                } else if (item.report_id) {
+                  setSelectedJobId(item.report_id);
+                }
+              }}
+            />
           </div>
         ) : (
           /* ================================================================
@@ -1023,7 +1104,7 @@ export default function MaintenanceStaffDashboard({
               </div>
             </div>
 
-            {/* Section Header & Priority Filter Tabs */}
+            {/* Section Header & Export Action */}
             <div className="maint-section-bar">
               <h3 className="maint-section-title">
                 {activeTab === 'completed'
@@ -1034,44 +1115,6 @@ export default function MaintenanceStaffDashboard({
               </h3>
 
               <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
-                <div className="maint-filter-tabs">
-                  <button
-                    type="button"
-                    className={`maint-filter-tab ${priorityFilter === 'all' ? 'active' : ''}`}
-                    onClick={() => setPriorityFilter('all')}
-                  >
-                    All Priorities
-                  </button>
-                  <button
-                    type="button"
-                    className={`maint-filter-tab ${priorityFilter === 'urgent' ? 'active' : ''}`}
-                    onClick={() => setPriorityFilter('urgent')}
-                  >
-                    Urgent
-                  </button>
-                  <button
-                    type="button"
-                    className={`maint-filter-tab ${priorityFilter === 'high' ? 'active' : ''}`}
-                    onClick={() => setPriorityFilter('high')}
-                  >
-                    High
-                  </button>
-                  <button
-                    type="button"
-                    className={`maint-filter-tab ${priorityFilter === 'medium' ? 'active' : ''}`}
-                    onClick={() => setPriorityFilter('medium')}
-                  >
-                    Medium
-                  </button>
-                  <button
-                    type="button"
-                    className={`maint-filter-tab ${priorityFilter === 'low' ? 'active' : ''}`}
-                    onClick={() => setPriorityFilter('low')}
-                  >
-                    Low
-                  </button>
-                </div>
-
                 <button
                   type="button"
                   className="maint-btn-export-excel"
@@ -1086,6 +1129,127 @@ export default function MaintenanceStaffDashboard({
               </div>
             </div>
 
+            {/* Full-Width Search & Priority Filter Toolbar Card (Consistent across Dashboard, Assigned, and Completed Jobs) */}
+            <div className="maint-notif-toolbar" style={{ marginBottom: 16 }}>
+              <form
+                className="maint-notif-toolbar-controls"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setCurrentPage(1);
+                }}
+              >
+                <div className="maint-notif-search-box">
+                  <Search size={16} className="maint-notif-search-icon" />
+                  <input
+                    type="text"
+                    className="maint-notif-search-input"
+                    placeholder="Search by ticket (e.g. FMC-202610), title, room, building, or category..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  {searchQuery && (
+                    <button
+                      type="button"
+                      className="maint-notif-search-clear"
+                      onClick={() => setSearchQuery('')}
+                      title="Clear search"
+                    >
+                      ✕
+                    </button>
+                  )}
+                </div>
+
+                <button type="submit" className="maint-notif-search-submit-btn">
+                  Search
+                </button>
+
+                {searchQuery && (
+                  <button
+                    type="button"
+                    className="maint-notif-btn-secondary"
+                    onClick={() => setSearchQuery('')}
+                    style={{ height: 38 }}
+                  >
+                    Clear
+                  </button>
+                )}
+
+                {/* Priority Filter Dropdown */}
+                <div className="maint-notif-filter-dropdown-wrap" ref={filterDropdownRef}>
+                  <button
+                    type="button"
+                    className={`maint-notif-filter-btn ${isFilterOpen ? 'open' : ''} ${priorityFilter !== 'all' ? 'has-active' : ''}`}
+                    onClick={() => setIsFilterOpen((prev) => !prev)}
+                    aria-expanded={isFilterOpen}
+                    title="Filter jobs by priority"
+                    id="maint-jobs-filter-btn"
+                  >
+                    <Filter size={15} />
+                    <span className="maint-notif-filter-btn-text">
+                      {priorityFilter === 'all'
+                        ? 'Filter'
+                        : (PRIORITY_FILTER_OPTIONS.find((o) => o.key === priorityFilter)?.label || 'Filter')}
+                    </span>
+                    {priorityFilter !== 'all' && (
+                      <span className="maint-notif-filter-badge">
+                        {priorityCounts[priorityFilter] ?? 0}
+                      </span>
+                    )}
+                    <ChevronDown size={14} className={`maint-notif-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
+                  </button>
+
+                  {isFilterOpen && (
+                    <div className="maint-notif-filter-menu" role="menu">
+                      <div className="maint-notif-filter-menu-header">
+                        <span>Filter by Priority</span>
+                        {priorityFilter !== 'all' && (
+                          <button
+                            type="button"
+                            className="maint-notif-filter-reset-btn"
+                            onClick={() => {
+                              setPriorityFilter('all');
+                              setIsFilterOpen(false);
+                              setCurrentPage(1);
+                            }}
+                          >
+                            Reset
+                          </button>
+                        )}
+                      </div>
+
+                      <div className="maint-notif-filter-menu-list">
+                        {PRIORITY_FILTER_OPTIONS.map((opt) => {
+                          const isActive = priorityFilter === opt.key;
+                          const count = priorityCounts[opt.key] ?? 0;
+                          return (
+                            <button
+                              key={opt.key}
+                              type="button"
+                              className={`maint-notif-filter-item ${isActive ? 'active' : ''}`}
+                              onClick={() => {
+                                setPriorityFilter(opt.key);
+                                setIsFilterOpen(false);
+                                setCurrentPage(1);
+                              }}
+                              role="menuitem"
+                            >
+                              <span
+                                className="maint-notif-filter-item-dot"
+                                style={{ backgroundColor: opt.color }}
+                              />
+                              <span className="maint-notif-filter-item-label">{opt.label}</span>
+                              <span className="maint-notif-filter-item-count">{count}</span>
+                              {isActive && <Check size={14} className="maint-notif-filter-item-check" />}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </form>
+            </div>
+
             {/* Job Cards List */}
             {loading ? (
               <div className="maint-empty-state">
@@ -1098,19 +1262,37 @@ export default function MaintenanceStaffDashboard({
                 <div className="maint-empty-state">
                   <ClipboardList size={40} className="maint-empty-icon" />
                   <h4 className="maint-empty-title">
-                    {priorityFilter !== 'all'
+                    {searchQuery
+                      ? 'No matching tasks found'
+                      : priorityFilter !== 'all'
                       ? `No ${priorityFilter.toUpperCase()} priority tasks`
                       : activeTab === 'completed'
                       ? 'No completed tasks yet'
                       : 'No assigned maintenance tasks'}
                   </h4>
                   <p className="maint-empty-desc">
-                    {priorityFilter !== 'all'
+                    {searchQuery
+                      ? `No maintenance tasks match your search query "${searchQuery}".`
+                      : priorityFilter !== 'all'
                       ? `There are no maintenance tasks with ${priorityFilter} priority in this queue.`
                       : activeTab === 'completed'
                       ? 'Completed repair tickets will show up here.'
                       : 'All campus defect reports have been resolved or are awaiting assignment.'}
                   </p>
+                  {(priorityFilter !== 'all' || searchQuery) && (
+                    <button
+                      type="button"
+                      className="maint-btn-details"
+                      style={{ marginTop: 16 }}
+                      onClick={() => {
+                        setPriorityFilter('all');
+                        setSearchQuery('');
+                        setCurrentPage(1);
+                      }}
+                    >
+                      Show All Tasks
+                    </button>
+                  )}
                 </div>
 
                 {/* Pagination Controls (Always present for consistent UI across Assigned and Completed Jobs) */}

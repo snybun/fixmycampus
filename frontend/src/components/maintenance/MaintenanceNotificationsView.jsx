@@ -13,6 +13,8 @@ import {
   Search,
   Filter,
   ChevronDown,
+  ChevronLeft,
+  ChevronRight,
   X,
   MapPin,
   RefreshCw,
@@ -43,6 +45,21 @@ const FILTER_OPTIONS = [
   { key: 'verified', label: 'Verified Sign-offs', color: '#047857' },
 ];
 
+const getPageNumbers = (current, total) => {
+  if (total <= 7) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages = [];
+  if (current <= 4) {
+    pages.push(1, 2, 3, 4, 5, '...', total);
+  } else if (current >= total - 3) {
+    pages.push(1, '...', total - 4, total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push(1, '...', current - 1, current, current + 1, '...', total);
+  }
+  return pages;
+};
+
 export default function MaintenanceNotificationsView({
   onViewJob,
   onStartRepair,
@@ -57,6 +74,8 @@ export default function MaintenanceNotificationsView({
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const filterDropdownRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
   const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [showDeleteAllModal, setShowDeleteAllModal] = useState(false);
@@ -309,6 +328,24 @@ export default function MaintenanceNotificationsView({
     });
   }, [notifications, filterType, searchQuery]);
 
+  // Reset to page 1 when filter or search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filterType, searchQuery]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredNotifications.length / pageSize));
+
+  useEffect(() => {
+    if (currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
+  const startIndex = (currentPage - 1) * pageSize;
+  const paginatedNotifications = useMemo(() => {
+    return filteredNotifications.slice(startIndex, startIndex + pageSize);
+  }, [filteredNotifications, startIndex, pageSize]);
+
   // Helper for notification type icon and styling
   const getTypeConfig = (type) => {
     switch (type) {
@@ -476,34 +513,19 @@ export default function MaintenanceNotificationsView({
       </div>
 
       {/* ====================================================================
-          3. Filter & Search Toolbar
+          3. Filter & Search Toolbar (Full-Width Card)
           ==================================================================== */}
       <div className="maint-notif-toolbar">
-        {/* Left: Summary Count & Active Filter Indicator */}
-        <div className="maint-notif-toolbar-left">
-          <span className="maint-notif-count-text">
-            Showing <strong>{filteredNotifications.length}</strong> of {notifications.length} alerts
-          </span>
-          {filterType !== 'all' && (
-            <div className="maint-notif-active-pill">
-              <span>{FILTER_OPTIONS.find((o) => o.key === filterType)?.label}</span>
-              <button
-                type="button"
-                onClick={() => setFilterType('all')}
-                title="Clear filter"
-                aria-label="Clear filter"
-              >
-                <X size={12} />
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* Right: Search Bar & Filter Button (docked together) */}
-        <div className="maint-notif-toolbar-controls">
+        <form
+          className="maint-notif-toolbar-controls"
+          onSubmit={(e) => {
+            e.preventDefault();
+            setCurrentPage(1);
+          }}
+        >
           {/* Search Input */}
           <div className="maint-notif-search-box">
-            <Search size={15} className="maint-notif-search-icon" />
+            <Search size={16} className="maint-notif-search-icon" />
             <input
               type="text"
               className="maint-notif-search-input"
@@ -522,6 +544,21 @@ export default function MaintenanceNotificationsView({
               </button>
             )}
           </div>
+
+          <button type="submit" className="maint-notif-search-submit-btn">
+            Search
+          </button>
+
+          {searchQuery && (
+            <button
+              type="button"
+              className="maint-notif-btn-secondary"
+              onClick={() => setSearchQuery('')}
+              style={{ height: 38 }}
+            >
+              Clear
+            </button>
+          )}
 
           {/* Filter Button & Dropdown Menu */}
           <div className="maint-notif-filter-dropdown-wrap" ref={filterDropdownRef}>
@@ -556,6 +593,7 @@ export default function MaintenanceNotificationsView({
                       onClick={() => {
                         setFilterType('all');
                         setIsFilterOpen(false);
+                        setCurrentPage(1);
                       }}
                     >
                       Reset
@@ -575,6 +613,7 @@ export default function MaintenanceNotificationsView({
                         onClick={() => {
                           setFilterType(opt.key);
                           setIsFilterOpen(false);
+                          setCurrentPage(1);
                         }}
                         role="menuitem"
                       >
@@ -592,15 +631,15 @@ export default function MaintenanceNotificationsView({
               </div>
             )}
           </div>
-        </div>
+        </form>
       </div>
 
       {/* ====================================================================
           4. Notifications List
           ==================================================================== */}
       <div className="maint-notif-list">
-        {filteredNotifications.length > 0 ? (
-          filteredNotifications.map((item) => {
+        {paginatedNotifications.length > 0 ? (
+          paginatedNotifications.map((item) => {
             const config = getTypeConfig(item.type);
             const isUnread = !item.is_read;
             const hasLinkedJob = Boolean(item.job_id || item.ticket_number);
@@ -739,6 +778,7 @@ export default function MaintenanceNotificationsView({
                 onClick={() => {
                   setFilterType('all');
                   setSearchQuery('');
+                  setCurrentPage(1);
                 }}
               >
                 Show All Notifications
@@ -746,6 +786,88 @@ export default function MaintenanceNotificationsView({
             )}
           </div>
         )}
+      </div>
+
+      {/* ====================================================================
+          5. Bottom Pagination Bar
+          ==================================================================== */}
+      <div className="maint-pagination" aria-label="Maintenance notifications pagination">
+        <div className="maint-pagination-info">
+          <span>
+            Showing {filteredNotifications.length === 0 ? 0 : startIndex + 1}–{Math.min(filteredNotifications.length, startIndex + pageSize)} of {filteredNotifications.length} alert{filteredNotifications.length === 1 ? '' : 's'}
+          </span>
+          <div className="maint-pagination-limit">
+            <span>Per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="maint-pagination-select"
+              aria-label="Alerts per page"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="maint-pagination-controls">
+          <button
+            type="button"
+            className="maint-page-btn arrow-btn"
+            disabled={currentPage <= 1 || filteredNotifications.length === 0}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            title="Previous page"
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {filteredNotifications.length === 0 ? (
+            <button
+              type="button"
+              className="maint-page-btn active"
+              disabled={true}
+              title="Page 1"
+            >
+              1
+            </button>
+          ) : (
+            getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+              pg === '...' ? (
+                <span key={`ellipsis-${idx}`} className="maint-page-ellipsis">
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={`page-${pg}`}
+                  type="button"
+                  className={`maint-page-btn ${currentPage === pg ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pg)}
+                  title={`Page ${pg}`}
+                >
+                  {pg}
+                </button>
+              )
+            )
+          )}
+
+          <button
+            type="button"
+            className="maint-page-btn arrow-btn"
+            disabled={currentPage >= totalPages || filteredNotifications.length === 0}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            title="Next page"
+            aria-label="Next page"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
       </div>
 
       {/* Archive Single Confirmation Modal */}

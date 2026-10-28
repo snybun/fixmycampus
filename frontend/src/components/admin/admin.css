@@ -945,11 +945,14 @@
 
 .admin-search-row {
   display: flex;
+  align-items: center;
   gap: 12px;
+  width: 100%;
 }
 
 .admin-search-input-wrap {
   flex: 1;
+  min-width: 200px;
   position: relative;
   display: flex;
   align-items: center;
@@ -1195,7 +1198,8 @@
 .admin-filter-menu {
   position: absolute;
   top: calc(100% + 8px);
-  left: 0;
+  right: 0;
+  left: auto;
   min-width: 240px;
   background: #ffffff;
   border: 1px solid rgba(0, 0, 0, 0.08);

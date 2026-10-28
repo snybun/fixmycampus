@@ -238,7 +238,14 @@ export default function AdminFeedbackView({ onViewReport }) {
           Filter Pills & Search Controls Card
           -------------------------------------------------------------------- */}
       <div className="admin-feedback-controls-card">
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', width: '100%', justifyContent: 'space-between' }}>
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            setAppliedSearch(searchInput.trim());
+            setCurrentPage(1);
+          }}
+          style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap', width: '100%', justifyContent: 'space-between', margin: 0 }}
+        >
           {/* Search Box */}
           <div className="admin-feedback-search-box">
             <Search size={16} className="admin-feedback-search-icon" />
@@ -251,6 +258,24 @@ export default function AdminFeedbackView({ onViewReport }) {
               id="admin-feedback-search-input"
             />
           </div>
+
+          <button type="submit" className="admin-btn-black">
+            Search
+          </button>
+
+          {searchInput && (
+            <button
+              type="button"
+              className="admin-btn-secondary"
+              onClick={() => {
+                setSearchInput('');
+                setAppliedSearch('');
+                setCurrentPage(1);
+              }}
+            >
+              Clear
+            </button>
+          )}
 
           {/* Filter Symbol Button & Dropdown Menu */}
           <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
@@ -322,7 +347,7 @@ export default function AdminFeedbackView({ onViewReport }) {
               </div>
             )}
           </div>
-        </div>
+        </form>
       </div>
 
       {/* --------------------------------------------------------------------
