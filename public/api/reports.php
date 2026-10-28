@@ -943,6 +943,65 @@ try {
     }
 
     // -------------------------------------------------------------------------
+    // POST /api/reports.php?action=update_photo -> Edit / Update report picture
+    // -------------------------------------------------------------------------
+    if ($action === 'update_photo' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $actorUser = auth_require();
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $reportId = (int)($input['report_id'] ?? $input['id'] ?? 0);
+        $photoData = $input['photo'] ?? $input['image'] ?? $input['photo_data'] ?? null;
+
+        if ($reportId <= 0 || empty($photoData)) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Valid report_id and photo data required.'], 400);
+        }
+
+        $report = db_fetch_one("SELECT id, ticket_number, title FROM `reports` WHERE `id` = :id LIMIT 1", [':id' => $reportId]);
+        if (!$report) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Report not found.'], 404);
+        }
+
+        $savedPhoto = save_report_photo($photoData, 'defect_edit');
+        if (!$savedPhoto) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Failed to process and save photo.'], 500);
+        }
+
+        $existing = db_fetch_one("SELECT id, file_path FROM `report_attachments` WHERE `report_id` = :id ORDER BY id ASC LIMIT 1", [':id' => $reportId]);
+        if ($existing) {
+            db_execute("UPDATE `report_attachments` SET `file_path` = :path, `file_name` = :name, `file_type` = :type, `file_size` = :size, `uploaded_by` = :uid WHERE `id` = :att_id", [
+                ':path'   => $savedPhoto['path'],
+                ':name'   => $savedPhoto['name'],
+                ':type'   => $savedPhoto['type'],
+                ':size'   => $savedPhoto['size'],
+                ':uid'    => (int)($actorUser['id'] ?? 1),
+                ':att_id' => (int)$existing['id'],
+            ]);
+        } else {
+            db_insert('report_attachments', [
+                'report_id'        => $reportId,
+                'uploaded_by'      => (int)($actorUser['id'] ?? 1),
+                'file_path'        => $savedPhoto['path'],
+                'file_name'        => $savedPhoto['name'],
+                'file_type'        => $savedPhoto['type'],
+                'file_size'        => $savedPhoto['size'],
+                'attachment_stage' => 'initial_defect',
+            ]);
+        }
+
+        db_execute("UPDATE `reports` SET `updated_at` = NOW() WHERE `id` = :id", [':id' => $reportId]);
+
+        \FixMyCampus\Core\Response::json([
+            'success'   => true,
+            'message'   => 'Report picture updated successfully.',
+            'image_url' => $savedPhoto['path'],
+            'report_id' => $reportId,
+        ]);
+        exit;
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/reports.php?action=archive -> Archive defect report
+    // -------------------------------------------------------------------------
+    // -------------------------------------------------------------------------
     // POST /api/reports.php?action=archive -> Archive defect report
     // -------------------------------------------------------------------------
     if ($action === 'archive' && $_SERVER['REQUEST_METHOD'] === 'POST') {
@@ -971,15 +1030,52 @@ try {
             \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Report not found.'], 404);
         }
 
+        $isAdmin = (
+            ($actorUser['role_name'] ?? '') === 'admin' ||
+            (int)($actorUser['role_id'] ?? 0) === 1 ||
+            (int)($actorUser['id'] ?? 0) === 1
+        );
+
+        $rawStatus = strtolower((string)$report['status']);
+        $isFinished = in_array($rawStatus, ['resolved', 'closed', 'fixed'], true);
+
+        // If not admin, report must be finished (resolved/fixed)
+        if (!$isAdmin && !$isFinished) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Only finished reports (Fixed / Resolved) can be archived.',
+            ], 400);
+        }
+
+        // If not admin, verify report ownership
+        if (!$isAdmin) {
+            $isReporter = ((int)$report['reporter_id'] === (int)$actorUser['id']);
+            $isConfirmed = db_fetch_one("SELECT id FROM `report_confirmations` WHERE report_id = :rid AND user_id = :uid LIMIT 1", [
+                ':rid' => $reportId,
+                ':uid' => (int)$actorUser['id'],
+            ]);
+            if (!$isReporter && !$isConfirmed) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'You can only archive your own finished reports.',
+                ], 403);
+            }
+        }
+
         db_execute("UPDATE `reports` SET `is_archived` = 1, `archived_at` = NOW(), `archived_by` = :aid WHERE `id` = :id", [
             ':aid' => (int)($actorUser['id'] ?? 1),
             ':id'  => $reportId,
         ]);
 
+        // Clean any old archived entry for this report so it shows up fresh
+        db_execute("DELETE FROM `history_logs` WHERE `log_type` = 'report_archived' AND `report_id` = :id", [
+            ':id' => $reportId,
+        ]);
+
         $location = trim(($report['building_name'] ?? 'Campus') . ' • ' . ($report['room_number'] ?: $report['specific_area'] ?: 'General Area'));
         $tNum = $report['ticket_number'] ?: "FMC-{$reportId}";
-        $actorName = $actorUser['full_name'] ?? 'Campus Administrator';
-        $actorRole = $actorUser['role_name'] ?? 'Administrator';
+        $actorName = $actorUser['full_name'] ?? ($isAdmin ? 'Campus Administrator' : 'Student Reporter');
+        $actorRole = $actorUser['role_name'] ?? ($isAdmin ? 'Administrator' : 'Student');
 
         record_history_log(
             'report_archived',
@@ -1000,7 +1096,7 @@ try {
 
         \FixMyCampus\Core\Response::json([
             'success' => true,
-            'message' => "Report {$tNum} archived successfully and recorded in History Logs.",
+            'message' => "Report {$tNum} archived successfully.",
             'id'      => $reportId,
         ]);
         exit;
@@ -1021,13 +1117,54 @@ try {
             \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Valid report_id required.'], 400);
         }
 
+        $report = db_fetch_one("
+            SELECT r.id, r.title, r.ticket_number, r.reporter_id, r.status, r.specific_area,
+                   b.name AS building_name, l.room_number
+            FROM `reports` r
+            LEFT JOIN `locations` l ON r.location_id = l.id
+            LEFT JOIN `buildings` b ON l.building_id = b.id
+            WHERE r.id = :id
+            LIMIT 1
+        ", [':id' => $reportId]);
+
+        if (!$report) {
+            \FixMyCampus\Core\Response::json(['success' => false, 'message' => 'Report not found.'], 404);
+        }
+
+        $isAdmin = (
+            ($actorUser['role_name'] ?? '') === 'admin' ||
+            (int)($actorUser['role_id'] ?? 0) === 1 ||
+            (int)($actorUser['id'] ?? 0) === 1
+        );
+
+        if (!$isAdmin) {
+            $isReporter = ((int)$report['reporter_id'] === (int)$actorUser['id']);
+            $isConfirmed = db_fetch_one("SELECT id FROM `report_confirmations` WHERE report_id = :rid AND user_id = :uid LIMIT 1", [
+                ':rid' => $reportId,
+                ':uid' => (int)$actorUser['id'],
+            ]);
+            if (!$isReporter && !$isConfirmed) {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'You can only restore your own reports.',
+                ], 403);
+            }
+        }
+
         db_execute("UPDATE `reports` SET `is_archived` = 0, `archived_at` = NULL, `archived_by` = NULL WHERE `id` = :id", [
             ':id' => $reportId,
         ]);
 
+        // When restored back to active reports, remove the archived entry from history logs
+        db_execute("DELETE FROM `history_logs` WHERE `log_type` = 'report_archived' AND `report_id` = :id", [
+            ':id' => $reportId,
+        ]);
+
+        $tNum = $report['ticket_number'] ?: "FMC-{$reportId}";
+
         \FixMyCampus\Core\Response::json([
             'success' => true,
-            'message' => "Report #{$reportId} restored to active status.",
+            'message' => "Report {$tNum} restored to active status successfully.",
             'id'      => $reportId,
         ]);
         exit;
@@ -1218,6 +1355,9 @@ try {
             r.specific_area,
             r.reported_at,
             r.updated_at,
+            r.is_archived,
+            r.archived_at,
+            r.archived_by,
             c.id AS category_id,
             c.name AS category_name,
             c.icon AS category_icon,

@@ -134,18 +134,51 @@ try {
         $where = 'EXISTS (SELECT 1 FROM report_assignments a WHERE a.report_id = f.report_id AND a.assigned_to = :uid)';
         $params[':uid'] = $userId;
     }
-    $summary = db_fetch_one("SELECT COUNT(*) AS total, AVG(f.rating) AS average_rating FROM report_feedback f WHERE {$where}", $params);
-    $total = (int)$summary['total'];
-    $limit = max(1, min(20, (int)($_GET['limit'] ?? 5)));
+
+    // Base summary stats
+    $baseSummary = db_fetch_one("SELECT COUNT(*) AS total, AVG(f.rating) AS average_rating FROM report_feedback f JOIN reports r ON r.id = f.report_id JOIN users u ON u.id = f.user_id WHERE {$where}", $params);
+    $allTotal = (int)($baseSummary['total'] ?? 0);
+    $allAverage = $allTotal ? round((float)$baseSummary['average_rating'], 1) : null;
+
+    // Rating distribution
+    $distribution = [1 => 0, 2 => 0, 3 => 0, 4 => 0, 5 => 0];
+    $distRows = db_fetch_all("SELECT f.rating, COUNT(*) as cnt FROM report_feedback f JOIN reports r ON r.id = f.report_id JOIN users u ON u.id = f.user_id WHERE {$where} GROUP BY f.rating", $params);
+    foreach ($distRows as $dr) {
+        $rKey = (int)$dr['rating'];
+        if (isset($distribution[$rKey])) {
+            $distribution[$rKey] = (int)$dr['cnt'];
+        }
+    }
+
+    // Optional rating filter
+    if (isset($_GET['rating']) && preg_match('/^[1-5]$/D', (string)$_GET['rating'])) {
+        $where .= ' AND f.rating = :rating_filter';
+        $params[':rating_filter'] = (int)$_GET['rating'];
+    }
+
+    // Optional search filter
+    if (!empty($_GET['search'])) {
+        $search = trim($_GET['search']);
+        $where .= " AND (r.ticket_number LIKE :search OR r.title LIKE :search OR u.full_name LIKE :search OR f.comments LIKE :search)";
+        $params[':search'] = "%{$search}%";
+    }
+
+    $filteredCountRow = db_fetch_one("SELECT COUNT(*) AS total FROM report_feedback f JOIN reports r ON r.id = f.report_id JOIN users u ON u.id = f.user_id WHERE {$where}", $params);
+    $total = (int)($filteredCountRow['total'] ?? 0);
+    $limit = max(1, min(50, (int)($_GET['limit'] ?? 10)));
     $totalPages = max(1, (int)ceil($total / $limit));
     $page = min($totalPages, max(1, (int)($_GET['page'] ?? 1)));
     $offset = ($page - 1) * $limit;
     $feedback = db_fetch_all("
         SELECT f.id, f.report_id, f.rating, f.comments, f.created_at,
-               r.ticket_number, r.title AS report_title, u.full_name AS reporter_name
+               r.ticket_number, r.title AS report_title, r.status AS report_status,
+               u.full_name AS reporter_name, u.email AS reporter_email,
+               w.full_name AS worker_name
         FROM report_feedback f
         JOIN reports r ON r.id = f.report_id
         JOIN users u ON u.id = f.user_id
+        LEFT JOIN report_assignments ra ON ra.report_id = r.id
+        LEFT JOIN users w ON w.id = ra.assigned_to
         WHERE {$where}
         ORDER BY f.created_at DESC, f.id DESC LIMIT {$limit} OFFSET {$offset}
     ", $params);
@@ -154,9 +187,15 @@ try {
     }
     unset($item);
     Response::json([
-        'success' => true, 'data' => $feedback,
-        'summary' => ['total' => $total, 'average_rating' => $total ? round((float)$summary['average_rating'], 1) : null],
-        'pagination' => ['page' => $page, 'total_pages' => $totalPages, 'total' => $total],
+        'success' => true,
+        'data' => $feedback,
+        'summary' => [
+            'total' => $allTotal,
+            'average_rating' => $allAverage,
+            'filtered_total' => $total,
+            'distribution' => $distribution,
+        ],
+        'pagination' => ['page' => $page, 'total_pages' => $totalPages, 'total' => $total, 'limit' => $limit],
     ]);
 } catch (Throwable $error) {
     if (isset($connection) && $connection->inTransaction()) {

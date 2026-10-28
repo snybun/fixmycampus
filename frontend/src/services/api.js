@@ -155,6 +155,21 @@ export async function restoreReport(reportId) {
   }
 }
 
+export async function updateReportPhoto(reportId, photoData) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=update_photo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ report_id: reportId, photo: photoData }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating report photo:', err);
+    return { success: false, message: 'Connection error while updating photo.' };
+  }
+}
+
 export async function fetchHistoryLogs({ page = 1, limit = 10, type = 'all', search = '' } = {}) {
   try {
     const params = new URLSearchParams({
@@ -829,4 +844,6 @@ export async function confirmReport(reportId, ticketNumber = '') {
     return { success: false, message: 'Failed to confirm report' };
   }
 }
+
+
 

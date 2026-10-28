@@ -1,5 +1,4 @@
 import React from 'react';
-import FeedbackOverview from '../feedback/FeedbackOverview';
 import {
   FileText,
   Clock,
@@ -119,8 +118,6 @@ export default function FacilitiesDashboard({
           </div>
         </div>
       </div>
-
-      <FeedbackOverview />
 
       {/* ------------------------------------------------------------------
           Row 1 of Charts: Status Donut & Category Progress Bars

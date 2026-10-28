@@ -1244,7 +1244,38 @@
   margin-bottom: 24px;
 }
 
+.admin-photo-card-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.admin-edit-photo-trigger-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f8fafc;
+  color: #0f172a;
+  border: 1px solid #cbd5e1;
+  padding: 6px 12px;
+  border-radius: 6px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-edit-photo-trigger-btn:hover {
+  background: #0f172a;
+  color: #ffffff;
+  border-color: #0f172a;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+}
+
 .admin-photo-container {
+  position: relative;
   width: 100%;
   height: 320px;
   border-radius: 8px;
@@ -1259,6 +1290,99 @@
   width: 100%;
   height: 100%;
   object-fit: cover;
+}
+
+.admin-photo-preview-badge {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  color: #f59e0b;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 999px;
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  letter-spacing: 0.02em;
+}
+
+.admin-photo-action-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.admin-save-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #059669;
+  color: #ffffff;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-save-photo-btn:hover:not(:disabled) {
+  background: #047857;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.25);
+}
+
+.admin-save-photo-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.admin-cancel-photo-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #cbd5e1;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.84rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-cancel-photo-btn:hover:not(:disabled) {
+  background: #e2e8f0;
+  color: #0f172a;
+}
+
+.admin-photo-toast-success {
+  margin-top: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: #ecfdf5;
+  color: #065f46;
+  border: 1px solid #a7f3d0;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.admin-photo-toast-error {
+  margin-top: 12px;
+  background: #fef2f2;
+  color: #b91c1c;
+  border: 1px solid #fecaca;
+  padding: 8px 12px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 500;
 }
 
 .admin-specs-card {
@@ -2854,6 +2978,89 @@
   border: 1px solid #e2e8f0;
 }
 
+.history-action-cluster {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.history-view-row-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  padding: 5px 10px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.history-view-row-btn:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+  transform: translateY(-1px);
+  box-shadow: 0 2px 4px rgba(5, 150, 105, 0.2);
+}
+
+.history-restore-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.history-restore-row-btn:hover {
+  background: #2563eb;
+  color: #ffffff;
+  border-color: #2563eb;
+}
+
+.history-ticket-badge-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #dbeafe;
+  padding: 2px 7px;
+  border-radius: 5px;
+  font-size: 0.75rem;
+  font-weight: 600;
+  font-family: inherit;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.history-ticket-badge-btn:hover {
+  background: #dbeafe;
+  border-color: #93c5fd;
+  color: #1e40af;
+}
+
+.history-clickable-title {
+  cursor: pointer;
+  transition: color 0.15s ease;
+}
+
+.history-clickable-title:hover {
+  color: #059669 !important;
+  text-decoration: underline;
+}
+
 .history-delete-row-btn {
   background: transparent;
   border: 1px solid transparent;
@@ -2871,6 +3078,104 @@
   background: #fef2f2;
   border-color: #fecaca;
   color: #dc2626;
+}
+
+.admin-archived-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  background: #fffbeb;
+  border: 1px solid #fde68a;
+  border-left: 4px solid #d97706;
+  padding: 14px 18px;
+  border-radius: 8px;
+  margin-bottom: 20px;
+}
+
+.admin-archived-banner-content {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.admin-archived-banner-icon {
+  color: #d97706;
+  flex-shrink: 0;
+}
+
+.admin-archived-banner-title {
+  margin: 0;
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: #92400e;
+}
+
+.admin-archived-banner-desc {
+  margin: 3px 0 0;
+  font-size: 0.8rem;
+  color: #b45309;
+  line-height: 1.4;
+}
+
+.admin-btn-restore-action {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #d97706;
+  color: #ffffff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: all 0.15s ease;
+}
+
+.admin-btn-restore-action:hover {
+  background: #b45309;
+  box-shadow: 0 2px 6px rgba(217, 119, 6, 0.3);
+}
+
+.admin-archived-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background: #fef3c7;
+  color: #92400e;
+  border: 1px solid #fcd34d;
+  padding: 4px 10px;
+  border-radius: 9999px;
+  font-size: 0.76rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.admin-btn-restore-report {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: #d97706;
+  color: #ffffff;
+  border: none;
+  padding: 8px 14px;
+  border-radius: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.admin-btn-restore-report:hover {
+  background: #b45309;
+}
+
+.admin-action-card-archived-status {
+  border-color: #fde68a !important;
+  background: #fffdf5 !important;
 }
 
 .history-pagination-bar {
@@ -3246,4 +3551,201 @@
     left: 0;
   }
 }
+
+/* History Logs Defect Photo Thumbnails & Actor Avatar */
+.history-actor-avatar-img {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  object-fit: cover;
+  display: block;
+}
+
+.history-details-cluster {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+}
+
+.history-report-thumb-wrapper {
+  position: relative;
+  width: 46px;
+  height: 46px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  cursor: pointer;
+  border: 1px solid #cbd5e1;
+  background: #f1f5f9;
+  transition: all 0.15s ease;
+}
+
+.history-report-thumb-wrapper:hover {
+  transform: scale(1.05);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  border-color: #059669;
+}
+
+.history-report-thumb {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.history-thumb-edit-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(15, 23, 42, 0.72);
+  color: #ffffff;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  opacity: 0;
+  transition: opacity 0.15s ease;
+}
+
+.history-report-thumb-wrapper:hover .history-thumb-edit-overlay {
+  opacity: 1;
+}
+
+.history-thumb-overlay-text {
+  font-size: 0.62rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.history-edit-photo-row-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: #f0fdf4;
+  color: #166534;
+  border: 1px solid #bbf7d0;
+  padding: 6px;
+  border-radius: 6px;
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.history-edit-photo-row-btn:hover {
+  background: #059669;
+  color: #ffffff;
+  border-color: #059669;
+}
+
+/* History Logs Edit Photo Modal */
+.history-photo-modal-dialog {
+  max-width: 600px;
+  width: 100%;
+}
+
+.history-photo-modal-body {
+  padding: 20px 24px;
+}
+
+.history-modal-photos-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+}
+
+.history-photo-label {
+  display: block;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: #475569;
+  margin-bottom: 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.history-modal-photo-preview {
+  position: relative;
+  width: 100%;
+  height: 180px;
+  border-radius: 8px;
+  overflow: hidden;
+  background: #f1f5f9;
+  border: 1px solid #cbd5e1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.history-modal-photo-preview img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.history-modal-photo-preview.new {
+  border: 2px solid #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+}
+
+.history-photo-change-btn {
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(15, 23, 42, 0.85);
+  backdrop-filter: blur(4px);
+  color: #ffffff;
+  border: none;
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+
+.history-photo-change-btn:hover {
+  background: #0f172a;
+}
+
+.history-photo-dropzone {
+  width: 100%;
+  height: 180px;
+  border: 2px dashed #cbd5e1;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 16px;
+  text-align: center;
+  cursor: pointer;
+  background: #f8fafc;
+  transition: all 0.15s ease;
+}
+
+.history-photo-dropzone:hover {
+  border-color: #059669;
+  background: #f0fdf4;
+}
+
+.history-dropzone-title {
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #0f172a;
+}
+
+.history-dropzone-sub {
+  font-size: 0.74rem;
+  color: #64748b;
+}
+
+@media (max-width: 640px) {
+  .history-modal-photos-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
 

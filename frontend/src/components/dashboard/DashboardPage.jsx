@@ -21,7 +21,7 @@ import {
   PlusCircle,
   History,
 } from 'lucide-react';
-import { fetchStats, fetchReports, deleteReport, fetchNotifications } from '../../services/api';
+import { fetchStats, fetchReports, deleteReport, fetchNotifications, archiveReport, restoreReport } from '../../services/api';
 import ConfirmationModal, { MODAL_PRESETS } from '../common/ConfirmationModal';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
@@ -46,6 +46,8 @@ export default function DashboardPage({
   const [activeModalPreset, setActiveModalPreset] = useState(null);
   const [reportToDelete, setReportToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [reportToArchive, setReportToArchive] = useState(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'modals-gallery'
   const [activeTab, setActiveTab] = useState(() => {
     const hash = window.location.hash.replace('#', '');
@@ -62,7 +64,10 @@ export default function DashboardPage({
   const [reports, setReports] = useState([]);
   const [recentPage, setRecentPage] = useState(1);
   const RECENT_ITEMS_PER_PAGE = 3;
-  const totalRecentPages = Math.max(1, Math.ceil(reports.length / RECENT_ITEMS_PER_PAGE));
+  const activeReportsForRecent = useMemo(() => {
+    return reports.filter((r) => !r.is_archived);
+  }, [reports]);
+  const totalRecentPages = Math.max(1, Math.ceil(activeReportsForRecent.length / RECENT_ITEMS_PER_PAGE));
 
   // Ensure recentPage stays within valid bounds
   useEffect(() => {
@@ -73,8 +78,8 @@ export default function DashboardPage({
 
   const paginatedRecentReports = useMemo(() => {
     const startIdx = (recentPage - 1) * RECENT_ITEMS_PER_PAGE;
-    return reports.slice(startIdx, startIdx + RECENT_ITEMS_PER_PAGE);
-  }, [reports, recentPage]);
+    return activeReportsForRecent.slice(startIdx, startIdx + RECENT_ITEMS_PER_PAGE);
+  }, [activeReportsForRecent, recentPage]);
 
   useEffect(() => {
     if (initialTab) {
@@ -178,6 +183,8 @@ export default function DashboardPage({
             ? 'badge-worker'
             : 'badge-pending',
         modalTrigger: 'update_status',
+        is_archived: Boolean(r.is_archived && r.is_archived !== '0' && r.is_archived !== 0),
+        archived_at: r.archived_at || null,
       };
     };
 
@@ -202,8 +209,8 @@ export default function DashboardPage({
       }).catch(() => {});
 
       const reportsParams = currentUser?.id 
-        ? { limit: 100, my_reports: 1, user_id: currentUser.id } 
-        : { limit: 100, my_reports: 1 };
+        ? { limit: 100, my_reports: 1, user_id: currentUser.id, include_archived: 1 } 
+        : { limit: 100, my_reports: 1, include_archived: 1 };
 
       fetchReports(reportsParams).then((res) => {
         if (isMounted && res && res.success && Array.isArray(res.data)) {
@@ -321,6 +328,53 @@ export default function DashboardPage({
         setTimeout(() => setToastMessage(''), 4000);
       } finally {
         setIsDeleting(false);
+      }
+    } else if (currentPreset === 'archive_report') {
+      if (!reportToArchive) {
+        setActiveModalPreset(null);
+        return;
+      }
+
+      const targetId = reportToArchive.id;
+      const targetTitle = reportToArchive.title || reportToArchive.ticket_number;
+      setIsArchiving(true);
+
+      try {
+        const res = await archiveReport(targetId);
+        setActiveModalPreset(null);
+        setReportToArchive(null);
+
+        if (res && res.success) {
+          setReports((prev) =>
+            prev.map((r) => (r.id === targetId ? { ...r, is_archived: true } : r))
+          );
+          setToastMessage(`Report "${targetTitle}" was archived successfully.`);
+          setTimeout(() => setToastMessage(''), 3500);
+
+          // Refresh live stats counters
+          const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+          fetchStats(statsParams).then((sRes) => {
+            if (sRes && sRes.success) {
+              const statsData = sRes.data || sRes;
+              setStats({
+                total: statsData.total_reports ?? 0,
+                pending: statsData.pending_review ?? 0,
+                in_progress: statsData.in_progress ?? 0,
+                resolved: statsData.resolved ?? 0,
+              });
+            }
+          });
+        } else {
+          setToastMessage(res?.message || 'Failed to archive report.');
+          setTimeout(() => setToastMessage(''), 4000);
+        }
+      } catch (err) {
+        setActiveModalPreset(null);
+        setReportToArchive(null);
+        setToastMessage('Error connecting to server while archiving report.');
+        setTimeout(() => setToastMessage(''), 4000);
+      } finally {
+        setIsArchiving(false);
       }
     } else if (currentPreset === 'submit_report') {
       setActiveModalPreset(null);
@@ -677,6 +731,42 @@ export default function DashboardPage({
             setReportToDelete(r);
             setActiveModalPreset('delete_report');
           }}
+          onArchiveReport={(r) => {
+            setReportToArchive(r);
+            setActiveModalPreset('archive_report');
+          }}
+          onRestoreReport={async (report) => {
+            if (!report) return;
+            try {
+              const res = await restoreReport(report.id);
+              if (res && res.success) {
+                setReports((prev) =>
+                  prev.map((r) => (r.id === report.id ? { ...r, is_archived: false } : r))
+                );
+                setToastMessage(`Report "${report.title || report.ticket_number}" restored to active reports.`);
+                setTimeout(() => setToastMessage(''), 3500);
+
+                const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+                fetchStats(statsParams).then((sRes) => {
+                  if (sRes && sRes.success) {
+                    const statsData = sRes.data || sRes;
+                    setStats({
+                      total: statsData.total_reports ?? 0,
+                      pending: statsData.pending_review ?? 0,
+                      in_progress: statsData.in_progress ?? 0,
+                      resolved: statsData.resolved ?? 0,
+                    });
+                  }
+                });
+              } else {
+                setToastMessage(res?.message || 'Failed to restore report.');
+                setTimeout(() => setToastMessage(''), 4000);
+              }
+            } catch (err) {
+              setToastMessage('Error connecting to server while restoring report.');
+              setTimeout(() => setToastMessage(''), 4000);
+            }
+          }}
           isAdmin={isAdmin}
           currentUser={currentUser}
         />
@@ -876,7 +966,7 @@ export default function DashboardPage({
             )}
           </div>
 
-          {reports.length === 0 ? (
+          {activeReportsForRecent.length === 0 ? (
             <div
               style={{
                 backgroundColor: '#ffffff',
@@ -990,13 +1080,16 @@ export default function DashboardPage({
           message={
             activeModalPreset === 'delete_report' && reportToDelete
               ? `Are you sure you want to delete report "${reportToDelete.title}"? This action cannot be undone.`
+              : activeModalPreset === 'archive_report' && reportToArchive
+              ? `Are you sure you want to archive report "${reportToArchive.title || reportToArchive.ticket_number}"? It will be safely moved from active reports to your archives.`
               : undefined
           }
-          loading={isDeleting}
+          loading={isDeleting || isArchiving}
           onClose={() => {
-            if (!isDeleting) {
+            if (!isDeleting && !isArchiving) {
               setActiveModalPreset(null);
               setReportToDelete(null);
+              setReportToArchive(null);
             }
           }}
           onConfirm={handleModalConfirm}

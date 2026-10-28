@@ -8,6 +8,8 @@ import {
   MapPin,
   Calendar,
   Trash2,
+  Archive,
+  RotateCcw,
 } from 'lucide-react';
 import { fetchReportDetail } from '../../services/api';
 import ReportFeedback from '../feedback/ReportFeedback';
@@ -17,6 +19,8 @@ export default function ReportDetailsView({
   report,
   onBack,
   onDelete,
+  onArchive,
+  onRestore,
   isAdmin = false,
 }) {
   if (!report) return null;
@@ -311,18 +315,77 @@ export default function ReportDetailsView({
             </div>
           </div>
 
-          {isReportDeletable(detailedReport) && onDelete && (
-            <button
-              type="button"
-              className="rep-details-delete-btn"
-              onClick={() => onDelete(detailedReport)}
-              title="Delete this report"
-            >
-              <Trash2 size={15} />
-              <span>Delete Report</span>
-            </button>
-          )}
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+            {/* Archive button for finished reports */}
+            {!detailedReport.is_archived &&
+              ['resolved', 'closed', 'fixed'].includes((detailedReport.status || '').toLowerCase()) &&
+              onArchive && (
+                <button
+                  type="button"
+                  className="rep-details-archive-btn"
+                  onClick={() => onArchive(detailedReport)}
+                  title="Archive finished report into History & Archives"
+                  id="rep-details-archive-btn"
+                >
+                  <Archive size={15} />
+                  <span>Archive Finished Report</span>
+                </button>
+              )}
+
+            {/* Restore button for archived reports */}
+            {Boolean(detailedReport.is_archived) && onRestore && (
+              <button
+                type="button"
+                className="rep-details-restore-btn"
+                onClick={() => onRestore(detailedReport)}
+                title="Restore this report to active list"
+                id="rep-details-restore-btn"
+              >
+                <RotateCcw size={15} />
+                <span>Restore to Active</span>
+              </button>
+            )}
+
+            {isReportDeletable(detailedReport) && onDelete && !detailedReport.is_archived && (
+              <button
+                type="button"
+                className="rep-details-delete-btn"
+                onClick={() => onDelete(detailedReport)}
+                title="Delete this report"
+              >
+                <Trash2 size={15} />
+                <span>Delete Report</span>
+              </button>
+            )}
+          </div>
         </div>
+
+        {/* Archived Notice Banner */}
+        {Boolean(detailedReport.is_archived) && (
+          <div className="rep-details-archived-banner">
+            <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+              <Archive size={20} color="#b45309" />
+              <div>
+                <h4 style={{ margin: 0, fontSize: '0.9rem', fontWeight: 600, color: '#92400e' }}>
+                  Archived Defect Record
+                </h4>
+                <p style={{ margin: '2px 0 0', fontSize: '0.82rem', color: '#78350f' }}>
+                  This report was fixed and safely archived. It is stored in your History & Archives.
+                </p>
+              </div>
+            </div>
+            {onRestore && (
+              <button
+                type="button"
+                className="rep-details-restore-banner-btn"
+                onClick={() => onRestore(detailedReport)}
+              >
+                <RotateCcw size={14} />
+                <span>Restore Report</span>
+              </button>
+            )}
+          </div>
+        )}
 
         {/* 2-Column Responsive Layout */}
         <div className="rep-details-grid">
@@ -334,7 +397,7 @@ export default function ReportDetailsView({
             {/* Defect Photo Banner */}
             <div className="rep-details-photo-box">
               <img
-                src={detailedReport.image || detailedReport.primary_photo || '/images/hero_ac_defect.jpg'}
+                src={detailedReport.image_url || detailedReport.image || detailedReport.primary_photo || '/images/hero_ac_defect.jpg'}
                 alt={detailedReport.title}
                 onError={(e) => {
                   e.target.src = '/images/hero_ac_defect.jpg';

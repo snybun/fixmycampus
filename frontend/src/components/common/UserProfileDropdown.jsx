@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { User, ChevronDown, SlidersHorizontal, LogOut, History } from 'lucide-react';
+import { User, ChevronDown, Settings, LogOut, History } from 'lucide-react';
 import './userProfileDropdown.css';
 
 export default function UserProfileDropdown({
@@ -115,6 +115,17 @@ export default function UserProfileDropdown({
 
           <div className="fmc-dropdown-divider" />
 
+          {/* Settings */}
+          <button
+            type="button"
+            className="fmc-dropdown-item"
+            onClick={handleSettings}
+            id={`${idPrefix}-dropdown-settings-btn`}
+          >
+            <Settings size={16} className="fmc-dropdown-icon" />
+            <span>Settings</span>
+          </button>
+
           {/* History */}
           <button
             type="button"
@@ -126,16 +137,7 @@ export default function UserProfileDropdown({
             <span>History</span>
           </button>
 
-          {/* Settings */}
-          <button
-            type="button"
-            className="fmc-dropdown-item"
-            onClick={handleSettings}
-            id={`${idPrefix}-dropdown-settings-btn`}
-          >
-            <SlidersHorizontal size={16} className="fmc-dropdown-icon" />
-            <span>Settings</span>
-          </button>
+          <div className="fmc-dropdown-divider" />
 
           {/* Logout */}
           <button

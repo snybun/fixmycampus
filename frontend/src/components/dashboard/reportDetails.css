@@ -532,3 +532,102 @@
     padding: 20px 16px 60px 16px;
   }
 }
+
+/* Header Action Buttons */
+.rep-details-archive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #b45309;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rep-details-archive-btn:hover {
+  background-color: #fef3c7;
+  border-color: #f59e0b;
+  color: #92400e;
+}
+
+.rep-details-restore-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rep-details-restore-btn:hover {
+  background-color: #15803d;
+  border-color: #15803d;
+  color: #ffffff;
+}
+
+.rep-details-delete-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
+  color: #dc2626;
+  font-size: 0.84rem;
+  font-weight: 600;
+  padding: 8px 14px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rep-details-delete-btn:hover {
+  background-color: #dc2626;
+  border-color: #dc2626;
+  color: #ffffff;
+}
+
+/* Archived Notice Banner */
+.rep-details-archived-banner {
+  margin-bottom: 24px;
+  padding: 14px 18px;
+  border-radius: 12px;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+
+.rep-details-restore-banner-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #ffffff;
+  border: 1px solid #d97706;
+  color: #b45309;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 6px 14px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.rep-details-restore-banner-btn:hover {
+  background-color: #b45309;
+  color: #ffffff;
+}
+

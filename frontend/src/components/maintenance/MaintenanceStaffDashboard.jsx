@@ -22,6 +22,7 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
+  MessageSquareQuote,
 } from 'lucide-react';
 import { fetchReports, updateReportStatus, fetchNotifications } from '../../services/api';
 import { exportReportsToExcel } from '../../utils/exportToExcel';
@@ -477,6 +478,21 @@ export default function MaintenanceStaffDashboard({
                 {unreadNotifCount > 0 && (
                   <span className="maint-badge-count">{unreadNotifCount}</span>
                 )}
+              </button>
+
+              <button
+                type="button"
+                className={`maint-nav-item ${activeTab === 'feedback' && selectedJobId === null ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('feedback');
+                  setSelectedJobId(null);
+                }}
+                id="maint-nav-feedback"
+              >
+                <div className="maint-nav-label-box">
+                  <MessageSquareQuote size={18} />
+                  <span>Feedback</span>
+                </div>
               </button>
             </div>
 
@@ -941,6 +957,14 @@ export default function MaintenanceStaffDashboard({
             onUnreadChange={setUnreadNotifCount}
             showToast={showToast}
           />
+        ) : activeTab === 'feedback' && selectedJobId === null ? (
+          <div>
+            <div className="maint-header">
+              <h1 className="maint-greeting">Ratings &amp; Feedback</h1>
+              <p className="maint-subtext">Reporter ratings and comments on your completed maintenance jobs.</p>
+            </div>
+            <FeedbackOverview scopeKey={currentUser?.id} maintenance />
+          </div>
         ) : (
           /* ================================================================
              SCREEN 1: Dashboard Overview (Assigned Jobs List & Metric Cards)
@@ -998,10 +1022,6 @@ export default function MaintenanceStaffDashboard({
                 <div className="maint-stat-value">{overdueCount}</div>
               </div>
             </div>
-
-            {(activeTab === 'dashboard' || activeTab === 'completed') && (
-              <FeedbackOverview scopeKey={currentUser?.id} maintenance />
-            )}
 
             {/* Section Header & Priority Filter Tabs */}
             <div className="maint-section-bar">
