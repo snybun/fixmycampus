@@ -238,79 +238,78 @@ export default function AdminFeedbackView({ onViewReport }) {
           Filter Pills & Search Controls Card
           -------------------------------------------------------------------- */}
       <div className="admin-feedback-controls-card">
-        {/* Rating Filter Pills */}
-        <div className="admin-feedback-pills" role="tablist" aria-label="Filter by star rating">
-          <button
-            type="button"
-            className={`admin-feedback-pill ${ratingFilter === 'all' ? 'active' : ''}`}
-            onClick={() => {
-              setRatingFilter('all');
-              setCurrentPage(1);
-            }}
-          >
-            <span>All Reviews</span>
-            <span className="admin-feedback-pill-count">{summary.total}</span>
-          </button>
+        {/* Upper Pagination Controls */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
+          <span style={{ fontSize: '0.86rem', color: '#64748b' }}>
+            Showing {summary.filtered_total === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
+            {Math.min(summary.filtered_total, currentPage * pageSize)} of {summary.filtered_total} review{summary.filtered_total === 1 ? '' : 's'}
+          </span>
 
-          <button
-            type="button"
-            className={`admin-feedback-pill ${ratingFilter === '5' ? 'active' : ''}`}
-            onClick={() => {
-              setRatingFilter('5');
-              setCurrentPage(1);
-            }}
-          >
-            <span>5 Stars</span>
-            <span className="admin-feedback-pill-count">{summary.distribution[5] || 0}</span>
-          </button>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+            <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Per page:</span>
+            <select
+              className="admin-filter-select"
+              style={{ padding: '4px 8px', fontSize: '0.82rem', height: 34, minWidth: 'unset' }}
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              aria-label="Reviews per page"
+            >
+              <option value={5}>5</option>
+              <option value={8}>8</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+            </select>
+          </div>
 
-          <button
-            type="button"
-            className={`admin-feedback-pill ${ratingFilter === '4' ? 'active' : ''}`}
-            onClick={() => {
-              setRatingFilter('4');
-              setCurrentPage(1);
-            }}
-          >
-            <span>4 Stars</span>
-            <span className="admin-feedback-pill-count">{summary.distribution[4] || 0}</span>
-          </button>
+          <div className="admin-feedback-pagination-controls" style={{ marginLeft: 4 }}>
+            <button
+              type="button"
+              className="admin-feedback-page-btn arrow-btn"
+              disabled={currentPage <= 1 || loading}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              title="Previous page"
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={16} />
+            </button>
 
-          <button
-            type="button"
-            className={`admin-feedback-pill ${ratingFilter === '3' ? 'active' : ''}`}
-            onClick={() => {
-              setRatingFilter('3');
-              setCurrentPage(1);
-            }}
-          >
-            <span>3 Stars</span>
-            <span className="admin-feedback-pill-count">{summary.distribution[3] || 0}</span>
-          </button>
+            {getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+              pg === '...' ? (
+                <span
+                  key={`top-ellipsis-${idx}`}
+                  style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.85rem' }}
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={`top-page-${pg}`}
+                  type="button"
+                  className={`admin-feedback-page-btn ${pg === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pg)}
+                  disabled={loading}
+                  title={`Page ${pg}`}
+                >
+                  {pg}
+                </button>
+              )
+            )}
 
-          <button
-            type="button"
-            className={`admin-feedback-pill ${ratingFilter === '2' ? 'active' : ''}`}
-            onClick={() => {
-              setRatingFilter('2');
-              setCurrentPage(1);
-            }}
-          >
-            <span>2 Stars</span>
-            <span className="admin-feedback-pill-count">{summary.distribution[2] || 0}</span>
-          </button>
-
-          <button
-            type="button"
-            className={`admin-feedback-pill ${ratingFilter === '1' ? 'active' : ''}`}
-            onClick={() => {
-              setRatingFilter('1');
-              setCurrentPage(1);
-            }}
-          >
-            <span>1 Star</span>
-            <span className="admin-feedback-pill-count">{summary.distribution[1] || 0}</span>
-          </button>
+            <button
+              type="button"
+              className="admin-feedback-page-btn arrow-btn"
+              disabled={currentPage >= totalPages || loading}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              title="Next page"
+              aria-label="Next page"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
