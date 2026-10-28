@@ -9,6 +9,7 @@ import {
   AlertTriangle,
   Wrench,
   Archive,
+  MessageSquare,
 } from 'lucide-react';
 import './modals.css';
 
@@ -142,6 +143,16 @@ export const MODAL_PRESETS = {
     cancelText: 'Cancel',
     confirmText: 'Yes, Delete Log',
     confirmClass: 'modal-btn-danger',
+  },
+  submit_feedback: {
+    id: 'submit_feedback',
+    title: 'Send Feedback?',
+    message: 'Are you sure you want to send this feedback? Your review will be submitted to campus administration and maintenance staff.',
+    icon: MessageSquare,
+    badgeClass: 'badge-green',
+    cancelText: 'Cancel',
+    confirmText: 'Yes, Send Feedback',
+    confirmClass: 'modal-btn-primary',
   },
 };
 

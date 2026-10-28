@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   History,
   Archive,
@@ -13,6 +13,8 @@ import {
   Building,
   MapPin,
   Calendar,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react';
 import {
   fetchNotifications,
@@ -22,6 +24,21 @@ import {
   restoreReport,
 } from '../../services/api';
 import './studentHistory.css';
+
+const getPageNumbers = (current, total) => {
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages = [];
+  if (current <= 3) {
+    pages.push(1, 2, 3, 4, '...', total);
+  } else if (current >= total - 2) {
+    pages.push(1, '...', total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push(1, '...', current - 1, current, current + 1, '...', total);
+  }
+  return pages;
+};
 
 export default function StudentHistoryView({
   currentUser,
@@ -36,6 +53,14 @@ export default function StudentHistoryView({
   const [loadingReports, setLoadingReports] = useState(false);
   const [restoringId, setRestoringId] = useState(null);
   const [toastMessage, setToastMessage] = useState('');
+
+  // Pagination states for Archived Notifications
+  const [notifPage, setNotifPage] = useState(1);
+  const [notifPageSize, setNotifPageSize] = useState(5);
+
+  // Pagination states for Defect Report History
+  const [reportPage, setReportPage] = useState(1);
+  const [reportPageSize, setReportPageSize] = useState(5);
 
   const showToast = (msg) => {
     setToastMessage(msg);
@@ -142,6 +167,40 @@ export default function StudentHistoryView({
       setRestoringId(null);
     }
   };
+
+  // Notifications pagination calculations
+  const notifTotalPages = Math.max(1, Math.ceil(archivedNotifs.length / notifPageSize));
+
+  useEffect(() => {
+    if (notifPage > notifTotalPages) {
+      setNotifPage(notifTotalPages);
+    }
+  }, [notifPage, notifTotalPages]);
+
+  const paginatedNotifs = useMemo(() => {
+    const start = (notifPage - 1) * notifPageSize;
+    return archivedNotifs.slice(start, start + notifPageSize);
+  }, [archivedNotifs, notifPage, notifPageSize]);
+
+  const notifStartIdx = archivedNotifs.length === 0 ? 0 : (notifPage - 1) * notifPageSize + 1;
+  const notifEndIdx = Math.min(archivedNotifs.length, notifPage * notifPageSize);
+
+  // Reports pagination calculations
+  const reportTotalPages = Math.max(1, Math.ceil(reportHistory.length / reportPageSize));
+
+  useEffect(() => {
+    if (reportPage > reportTotalPages) {
+      setReportPage(reportTotalPages);
+    }
+  }, [reportPage, reportTotalPages]);
+
+  const paginatedReports = useMemo(() => {
+    const start = (reportPage - 1) * reportPageSize;
+    return reportHistory.slice(start, start + reportPageSize);
+  }, [reportHistory, reportPage, reportPageSize]);
+
+  const reportStartIdx = reportHistory.length === 0 ? 0 : (reportPage - 1) * reportPageSize + 1;
+  const reportEndIdx = Math.min(reportHistory.length, reportPage * reportPageSize);
 
   const renderIconBadge = (type) => {
     switch (type) {
@@ -263,58 +322,136 @@ export default function StudentHistoryView({
                 <p>Retrieving your archived notifications from the system.</p>
               </div>
             ) : archivedNotifs.length > 0 ? (
-              <div className="sh-notif-list">
-                {archivedNotifs.map((item) => (
-                  <div
-                    key={item.id}
-                    className="sh-notif-card"
-                    id={`sh-archived-item-${item.id}`}
-                  >
-                    <div className="sh-notif-left">
-                      {renderIconBadge(item.type)}
-                      <div className="sh-notif-content">
-                        <div className="sh-notif-header-line">
-                          <h4 className="sh-notif-title">{item.title}</h4>
-                          <span className="sh-badge-archived">Archived</span>
-                        </div>
-                        {item.message && (
-                          <p className="sh-notif-desc">{item.message}</p>
-                        )}
-                        <div className="sh-notif-meta">
-                          <span className="sh-notif-time">{item.time_ago}</span>
-                          {item.location && (
-                            <span className="sh-notif-location">• {item.location}</span>
+              <>
+                <div className="sh-notif-list">
+                  {paginatedNotifs.map((item) => (
+                    <div
+                      key={item.id}
+                      className="sh-notif-card"
+                      id={`sh-archived-item-${item.id}`}
+                    >
+                      <div className="sh-notif-left">
+                        {renderIconBadge(item.type)}
+                        <div className="sh-notif-content">
+                          <div className="sh-notif-header-line">
+                            <h4 className="sh-notif-title">{item.title}</h4>
+                            <span className="sh-badge-archived">Archived</span>
+                          </div>
+                          {item.message && (
+                            <p className="sh-notif-desc">{item.message}</p>
                           )}
-                          {item.ticket_number && (
-                            <button
-                              type="button"
-                              className="sh-ticket-chip"
-                              onClick={() => onSelectReport && onSelectReport(item.ticket_number)}
-                              title="View related defect ticket"
-                            >
-                              {item.ticket_number}
-                            </button>
-                          )}
+                          <div className="sh-notif-meta">
+                            <span className="sh-notif-time">{item.time_ago}</span>
+                            {item.location && (
+                              <span className="sh-notif-location">• {item.location}</span>
+                            )}
+                            {item.ticket_number && (
+                              <button
+                                type="button"
+                                className="sh-ticket-chip"
+                                onClick={() => onSelectReport && onSelectReport(item.ticket_number)}
+                                title="View related defect ticket"
+                              >
+                                {item.ticket_number}
+                              </button>
+                            )}
+                          </div>
                         </div>
                       </div>
-                    </div>
 
-                    <div className="sh-notif-right">
-                      <button
-                        type="button"
-                        className="sh-restore-btn"
-                        onClick={(e) => handleRestoreNotification(item, e)}
-                        disabled={restoringId === item.id}
-                        title="Restore notification to active inbox"
-                        id={`sh-restore-btn-${item.id}`}
+                      <div className="sh-notif-right">
+                        <button
+                          type="button"
+                          className="sh-restore-btn"
+                          onClick={(e) => handleRestoreNotification(item, e)}
+                          disabled={restoringId === item.id}
+                          title="Restore notification to active inbox"
+                          id={`sh-restore-btn-${item.id}`}
+                        >
+                          <RotateCcw size={14} className={restoringId === item.id ? 'maint-spin' : ''} />
+                          <span>Restore</span>
+                        </button>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+
+                {/* Pagination Controls */}
+                <div className="sh-pagination" aria-label="Archived notifications pagination">
+                  <div className="sh-pagination-info">
+                    <span>
+                      Showing {notifStartIdx}–{notifEndIdx} of {archivedNotifs.length} {archivedNotifs.length === 1 ? 'notification' : 'notifications'}
+                    </span>
+                    <div className="sh-pagination-limit">
+                      <span>Per page:</span>
+                      <select
+                        value={notifPageSize}
+                        onChange={(e) => {
+                          setNotifPageSize(Number(e.target.value));
+                          setNotifPage(1);
+                        }}
+                        className="sh-pagination-select"
+                        aria-label="Notifications per page"
                       >
-                        <RotateCcw size={14} className={restoringId === item.id ? 'maint-spin' : ''} />
-                        <span>Restore</span>
-                      </button>
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
                     </div>
                   </div>
-                ))}
-              </div>
+
+                  <div className="sh-pagination-controls">
+                    <button
+                      type="button"
+                      className="sh-page-btn arrow-btn"
+                      disabled={notifPage <= 1 || notifTotalPages <= 1}
+                      onClick={() => setNotifPage((p) => Math.max(1, p - 1))}
+                      title="Previous page"
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {notifTotalPages === 0 ? (
+                      <button type="button" className="sh-page-btn active" disabled>
+                        1
+                      </button>
+                    ) : (
+                      getPageNumbers(notifPage, notifTotalPages).map((pg, idx) =>
+                        pg === '...' ? (
+                          <span key={`ellipsis-notif-${idx}`} className="sh-page-ellipsis">
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={`notif-page-${pg}`}
+                            type="button"
+                            className={`sh-page-btn ${notifPage === pg ? 'active' : ''}`}
+                            onClick={() => setNotifPage(pg)}
+                            title={`Page ${pg}`}
+                            aria-current={notifPage === pg ? 'page' : undefined}
+                          >
+                            {pg}
+                          </button>
+                        )
+                      )
+                    )}
+
+                    <button
+                      type="button"
+                      className="sh-page-btn arrow-btn"
+                      disabled={notifPage >= notifTotalPages || notifTotalPages <= 1}
+                      onClick={() => setNotifPage((p) => Math.min(notifTotalPages, p + 1))}
+                      title="Next page"
+                      aria-label="Next page"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="sh-empty-state">
                 <div className="sh-empty-icon-circle">
@@ -346,86 +483,164 @@ export default function StudentHistoryView({
                 <p>Fetching your past defect reports and work tickets.</p>
               </div>
             ) : reportHistory.length > 0 ? (
-              <div className="sh-reports-grid">
-                {reportHistory.map((rep) => {
-                  const rawStatus = (rep.status || '').toLowerCase();
-                  const isFixed = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
-                  const dateStr = rep.reported_at
-                    ? new Date(rep.reported_at).toLocaleDateString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        year: 'numeric',
-                      })
-                    : 'Recently';
+              <>
+                <div className="sh-reports-grid">
+                  {paginatedReports.map((rep) => {
+                    const rawStatus = (rep.status || '').toLowerCase();
+                    const isFixed = rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed';
+                    const dateStr = rep.reported_at
+                      ? new Date(rep.reported_at).toLocaleDateString('en-US', {
+                          month: 'short',
+                          day: 'numeric',
+                          year: 'numeric',
+                        })
+                      : 'Recently';
 
-                  return (
-                    <div
-                      key={rep.id}
-                      className="sh-report-card"
-                      onClick={() => onSelectReport && onSelectReport(rep.ticket_number || `FM-${rep.id}`)}
-                      role="button"
-                      tabIndex={0}
-                      id={`sh-report-item-${rep.id}`}
-                    >
-                      <div className="sh-report-top">
-                        <span className="sh-report-ticket">{rep.ticket_number || `FM-${rep.id}`}</span>
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                          {Boolean(rep.is_archived) && (
-                            <span className="sh-badge-archived">Archived</span>
-                          )}
-                          <span className={`sh-report-status-pill ${isFixed ? 'fixed' : rawStatus}`}>
-                            {isFixed ? 'Fixed' : rep.status || 'Active'}
-                          </span>
+                    return (
+                      <div
+                        key={rep.id}
+                        className="sh-report-card"
+                        onClick={() => onSelectReport && onSelectReport(rep.ticket_number || `FM-${rep.id}`)}
+                        role="button"
+                        tabIndex={0}
+                        id={`sh-report-item-${rep.id}`}
+                      >
+                        <div className="sh-report-top">
+                          <span className="sh-report-ticket">{rep.ticket_number || `FM-${rep.id}`}</span>
+                          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                            {Boolean(rep.is_archived) && (
+                              <span className="sh-badge-archived">Archived</span>
+                            )}
+                            <span className={`sh-report-status-pill ${isFixed ? 'fixed' : rawStatus}`}>
+                              {isFixed ? 'Fixed' : rep.status || 'Active'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <h4 className="sh-report-title">{rep.title}</h4>
+
+                        <div className="sh-report-meta-row">
+                          <div className="sh-report-meta-item">
+                            <Building size={13} />
+                            <span>{rep.building_name || 'Main Campus'}</span>
+                          </div>
+                          <div className="sh-report-meta-item">
+                            <MapPin size={13} />
+                            <span>{rep.room_number || rep.specific_area || 'Facility Area'}</span>
+                          </div>
+                          <div className="sh-report-meta-item">
+                            <Calendar size={13} />
+                            <span>{dateStr}</span>
+                          </div>
+                        </div>
+
+                        {/* Card Actions: Archive for finished reports or Restore for archived */}
+                        <div className="sh-report-card-actions" onClick={(e) => e.stopPropagation()}>
+                          {Boolean(rep.is_archived) ? (
+                            <button
+                              type="button"
+                              className="sh-restore-btn"
+                              onClick={(e) => handleRestoreReport(rep, e)}
+                              title="Restore report back to active reports"
+                              id={`sh-restore-rep-${rep.id}`}
+                            >
+                              <RotateCcw size={13} />
+                              <span>Restore to Active</span>
+                            </button>
+                          ) : isFixed ? (
+                            <button
+                              type="button"
+                              className="sh-archive-btn"
+                              onClick={(e) => handleArchiveReport(rep, e)}
+                              title="Archive this finished report"
+                              id={`sh-archive-rep-${rep.id}`}
+                            >
+                              <Archive size={13} />
+                              <span>Archive</span>
+                            </button>
+                          ) : null}
                         </div>
                       </div>
+                    );
+                  })}
+                </div>
 
-                      <h4 className="sh-report-title">{rep.title}</h4>
-
-                      <div className="sh-report-meta-row">
-                        <div className="sh-report-meta-item">
-                          <Building size={13} />
-                          <span>{rep.building_name || 'Main Campus'}</span>
-                        </div>
-                        <div className="sh-report-meta-item">
-                          <MapPin size={13} />
-                          <span>{rep.room_number || rep.specific_area || 'Facility Area'}</span>
-                        </div>
-                        <div className="sh-report-meta-item">
-                          <Calendar size={13} />
-                          <span>{dateStr}</span>
-                        </div>
-                      </div>
-
-                      {/* Card Actions: Archive for finished reports or Restore for archived */}
-                      <div className="sh-report-card-actions" onClick={(e) => e.stopPropagation()}>
-                        {Boolean(rep.is_archived) ? (
-                          <button
-                            type="button"
-                            className="sh-restore-btn"
-                            onClick={(e) => handleRestoreReport(rep, e)}
-                            title="Restore report back to active reports"
-                            id={`sh-restore-rep-${rep.id}`}
-                          >
-                            <RotateCcw size={13} />
-                            <span>Restore to Active</span>
-                          </button>
-                        ) : isFixed ? (
-                          <button
-                            type="button"
-                            className="sh-archive-btn"
-                            onClick={(e) => handleArchiveReport(rep, e)}
-                            title="Archive this finished report"
-                            id={`sh-archive-rep-${rep.id}`}
-                          >
-                            <Archive size={13} />
-                            <span>Archive</span>
-                          </button>
-                        ) : null}
-                      </div>
+                {/* Pagination Controls */}
+                <div className="sh-pagination" aria-label="Report history pagination">
+                  <div className="sh-pagination-info">
+                    <span>
+                      Showing {reportStartIdx}–{reportEndIdx} of {reportHistory.length} {reportHistory.length === 1 ? 'report' : 'reports'}
+                    </span>
+                    <div className="sh-pagination-limit">
+                      <span>Per page:</span>
+                      <select
+                        value={reportPageSize}
+                        onChange={(e) => {
+                          setReportPageSize(Number(e.target.value));
+                          setReportPage(1);
+                        }}
+                        className="sh-pagination-select"
+                        aria-label="Reports per page"
+                      >
+                        <option value={5}>5</option>
+                        <option value={10}>10</option>
+                        <option value={20}>20</option>
+                        <option value={50}>50</option>
+                        <option value={100}>100</option>
+                      </select>
                     </div>
-                  );
-                })}
-              </div>
+                  </div>
+
+                  <div className="sh-pagination-controls">
+                    <button
+                      type="button"
+                      className="sh-page-btn arrow-btn"
+                      disabled={reportPage <= 1 || reportTotalPages <= 1}
+                      onClick={() => setReportPage((p) => Math.max(1, p - 1))}
+                      title="Previous page"
+                      aria-label="Previous page"
+                    >
+                      <ChevronLeft size={16} />
+                    </button>
+
+                    {reportTotalPages === 0 ? (
+                      <button type="button" className="sh-page-btn active" disabled>
+                        1
+                      </button>
+                    ) : (
+                      getPageNumbers(reportPage, reportTotalPages).map((pg, idx) =>
+                        pg === '...' ? (
+                          <span key={`ellipsis-report-${idx}`} className="sh-page-ellipsis">
+                            ...
+                          </span>
+                        ) : (
+                          <button
+                            key={`report-page-${pg}`}
+                            type="button"
+                            className={`sh-page-btn ${reportPage === pg ? 'active' : ''}`}
+                            onClick={() => setReportPage(pg)}
+                            title={`Page ${pg}`}
+                            aria-current={reportPage === pg ? 'page' : undefined}
+                          >
+                            {pg}
+                          </button>
+                        )
+                      )
+                    )}
+
+                    <button
+                      type="button"
+                      className="sh-page-btn arrow-btn"
+                      disabled={reportPage >= reportTotalPages || reportTotalPages <= 1}
+                      onClick={() => setReportPage((p) => Math.min(reportTotalPages, p + 1))}
+                      title="Next page"
+                      aria-label="Next page"
+                    >
+                      <ChevronRight size={16} />
+                    </button>
+                  </div>
+                </div>
+              </>
             ) : (
               <div className="sh-empty-state">
                 <div className="sh-empty-icon-circle">

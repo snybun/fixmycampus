@@ -71,7 +71,7 @@ export async function fetchReportDetail(id) {
   }
 }
 
-export async function assignReport({ report_id, assigned_to, assigned_by = 1, expected_admin_id, notes = '' }) {
+export async function assignReport({ report_id, assigned_to, priority, assigned_by = 1, expected_admin_id, notes = '' }) {
   try {
     const session = await fetchAuthMe();
     if (!session.authenticated || session.user?.role_name !== 'admin'
@@ -86,7 +86,7 @@ export async function assignReport({ report_id, assigned_to, assigned_by = 1, ex
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ report_id, assigned_to, assigned_by, notes }),
+      body: JSON.stringify({ report_id, assigned_to, priority, assigned_by, notes }),
     });
     return await res.json();
   } catch (err) {
@@ -95,17 +95,32 @@ export async function assignReport({ report_id, assigned_to, assigned_by = 1, ex
   }
 }
 
-export async function updateReportStatus({ report_id, status, remarks = '', changed_by = 1 }) {
+export async function updateReportStatus({ report_id, status, priority, remarks = '', changed_by = 1 }) {
   try {
     const res = await fetch(`${API_BASE}/reports.php?action=update_status`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ report_id, status, remarks, changed_by }),
+      body: JSON.stringify({ report_id, status, priority, remarks, changed_by }),
     });
     return await res.json();
   } catch (err) {
     console.error('Error updating report status:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function updateReportPriority({ report_id, priority }) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=update_priority`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ report_id, priority }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating report priority:', err);
     return { success: false, message: err.message };
   }
 }

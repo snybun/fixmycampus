@@ -16,6 +16,21 @@ import { fetchReports } from '../../services/api';
 import ReportDetailsView from './ReportDetailsView';
 import './myReports.css';
 
+const getPageNumbers = (current, total) => {
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages = [];
+  if (current <= 3) {
+    pages.push(1, 2, 3, 4, '...', total);
+  } else if (current >= total - 2) {
+    pages.push(1, '...', total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push(1, '...', current - 1, current, current + 1, '...', total);
+  }
+  return pages;
+};
+
 export default function MyReportsView({
   liveReports = [],
   onNavigate,
@@ -34,7 +49,7 @@ export default function MyReportsView({
   const [localReports, setLocalReports] = useState([]);
   const [loading, setLoading] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
-  const ITEMS_PER_PAGE = 5;
+  const [pageSize, setPageSize] = useState(5);
 
   const STATUS_CONFIG = [
     { key: 'all', label: 'All Reports', dotColor: '#9ca3af' },
@@ -264,12 +279,12 @@ export default function MyReportsView({
     });
   }, [allReports, searchQuery, statusFilter]);
 
-  // Reset pagination to page 1 whenever search query or status filter changes
+  // Reset pagination to page 1 whenever search query, status filter, or page size changes
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchQuery, statusFilter]);
+  }, [searchQuery, statusFilter, pageSize]);
 
-  const totalPages = Math.max(1, Math.ceil(filteredReports.length / ITEMS_PER_PAGE));
+  const totalPages = Math.max(1, Math.ceil(filteredReports.length / pageSize));
 
   // Ensure currentPage does not exceed totalPages if reports list shrinks
   useEffect(() => {
@@ -279,9 +294,12 @@ export default function MyReportsView({
   }, [currentPage, totalPages]);
 
   const paginatedReports = useMemo(() => {
-    const startIdx = (currentPage - 1) * ITEMS_PER_PAGE;
-    return filteredReports.slice(startIdx, startIdx + ITEMS_PER_PAGE);
-  }, [filteredReports, currentPage]);
+    const startIdx = (currentPage - 1) * pageSize;
+    return filteredReports.slice(startIdx, startIdx + pageSize);
+  }, [filteredReports, currentPage, pageSize]);
+
+  const startIdx = filteredReports.length === 0 ? 0 : (currentPage - 1) * pageSize + 1;
+  const endIdx = Math.min(filteredReports.length, currentPage * pageSize);
 
   // Determine if a report is eligible for deletion
   // Admins can delete any report; students can delete only if a worker has NOT been assigned yet
@@ -552,15 +570,9 @@ export default function MyReportsView({
                       Archived
                     </span>
                   ) : (
-                    <>
-                      <span className={`myreports-priority-badge priority-${(report.priority || 'medium').toLowerCase()}`}>
-                        {report.priority}
-                      </span>
-
-                      <span className={`myreports-status-badge status-${(report.status || 'reported').toLowerCase()}`}>
-                        {report.statusLabel}
-                      </span>
-                    </>
+                    <span className={`myreports-status-badge status-${(report.status || 'reported').toLowerCase()}`}>
+                      {report.statusLabel}
+                    </span>
                   )}
 
                   {/* Archive button for finished reports */}
@@ -633,43 +645,79 @@ export default function MyReportsView({
           </div>
         )}
 
-        {/* Pagination Controls (Matching Admin Report Management) */}
-        {filteredReports.length > 0 && (
+        {/* Pagination Controls (Card style matching Admin & Maintenance dashboards) */}
+        {!loading && (
           <div className="myreports-pagination" aria-label="Reports pagination">
-            <span className="myreports-pagination-info">
-              Showing {filteredReports.length === 0 ? 0 : (currentPage - 1) * ITEMS_PER_PAGE + 1}-
-              {Math.min(filteredReports.length, currentPage * ITEMS_PER_PAGE)} of {filteredReports.length} results
-            </span>
+            <div className="myreports-pagination-info">
+              <span>
+                Showing {startIdx}–{endIdx} of {filteredReports.length} {filteredReports.length === 1 ? 'report' : 'reports'}
+              </span>
+              <div className="myreports-pagination-limit">
+                <span>Per page:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="myreports-pagination-select"
+                  aria-label="Reports per page"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+            </div>
 
             <div className="myreports-pagination-controls">
               <button
                 type="button"
-                className="myreports-page-btn"
-                disabled={currentPage <= 1}
+                className="myreports-page-btn arrow-btn"
+                disabled={currentPage <= 1 || totalPages <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                title="Previous page"
+                aria-label="Previous page"
               >
-                Previous
+                <ChevronLeft size={16} />
               </button>
 
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                <button
-                  key={pageNum}
-                  type="button"
-                  className={`myreports-page-btn ${pageNum === currentPage ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(pageNum)}
-                  aria-current={pageNum === currentPage ? 'page' : undefined}
-                >
-                  {pageNum}
+              {totalPages === 0 ? (
+                <button type="button" className="myreports-page-btn active" disabled>
+                  1
                 </button>
-              ))}
+              ) : (
+                getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+                  pg === '...' ? (
+                    <span key={`ellipsis-${idx}`} className="myreports-page-ellipsis">
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={`page-${pg}`}
+                      type="button"
+                      className={`myreports-page-btn ${currentPage === pg ? 'active' : ''}`}
+                      onClick={() => setCurrentPage(pg)}
+                      title={`Page ${pg}`}
+                      aria-current={currentPage === pg ? 'page' : undefined}
+                    >
+                      {pg}
+                    </button>
+                  )
+                )
+              )}
 
               <button
                 type="button"
-                className="myreports-page-btn"
-                disabled={currentPage >= totalPages}
+                className="myreports-page-btn arrow-btn"
+                disabled={currentPage >= totalPages || totalPages <= 1}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                title="Next page"
+                aria-label="Next page"
               >
-                Next
+                <ChevronRight size={16} />
               </button>
             </div>
           </div>

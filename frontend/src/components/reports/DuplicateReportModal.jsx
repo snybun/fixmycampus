@@ -81,11 +81,6 @@ export default function DuplicateReportModal({
                 {duplicate.ticket_number && (
                   <span className="dup-ticket-tag">{duplicate.ticket_number}</span>
                 )}
-                {duplicate.priority && (
-                  <span className={`maint-priority-badge ${duplicate.priority.toLowerCase()}`}>
-                    {duplicate.priority.toUpperCase()}
-                  </span>
-                )}
                 <span className="dup-status-tag">
                   <Wrench size={12} />
                   {statusLabel}

@@ -529,3 +529,131 @@
   color: #b45309;
 }
 
+/* --------------------------------------------------------------------------
+   Student History Pagination Controls (Card Style matching 2nd picture)
+   -------------------------------------------------------------------------- */
+.sh-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding: 16px 20px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  font-size: 0.86rem;
+  color: #64748b;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.sh-pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+.sh-pagination-limit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sh-pagination-limit span {
+  font-size: 0.82rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.sh-pagination-select {
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  background-color: #ffffff;
+  color: #0f172a;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.sh-pagination-select:focus {
+  border-color: #059669;
+}
+
+.sh-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sh-page-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #d0d7de;
+  background: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.sh-page-btn:hover:not(:disabled):not(.active) {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.sh-page-btn.active {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border-color: #059669;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.28);
+  font-weight: 700;
+}
+
+.sh-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+.sh-page-btn.arrow-btn {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+}
+
+.sh-page-ellipsis {
+  padding: 6px 8px;
+  color: #94a3b8;
+  font-size: 0.86rem;
+  user-select: none;
+}
+
+@media (max-width: 640px) {
+  .sh-pagination {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+

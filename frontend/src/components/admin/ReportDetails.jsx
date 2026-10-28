@@ -145,6 +145,7 @@ export default function ReportDetails({
   }, [activeReport?.id, activeReport?.worker_id, recommendedStaff]);
 
   const [selectedStatus, setSelectedStatus] = useState(activeReport?.status || 'in_progress');
+  const [selectedPriority, setSelectedPriority] = useState(activeReport?.priority || 'medium');
   const [remarks, setRemarks] = useState('');
   const [isAssigning, setIsAssigning] = useState(false);
   const [isUpdating, setIsUpdating] = useState(false);
@@ -156,7 +157,10 @@ export default function ReportDetails({
     if (activeReport?.status) {
       setSelectedStatus(activeReport.status);
     }
-  }, [activeReport?.status]);
+    if (activeReport?.priority) {
+      setSelectedPriority(activeReport.priority);
+    }
+  }, [activeReport?.status, activeReport?.priority]);
 
   if (!activeReport) {
     return (
@@ -183,7 +187,9 @@ export default function ReportDetails({
       await onAssignSubmit({
         report_id: activeReport.id,
         assigned_to: Number(selectedStaffId),
+        priority: selectedPriority,
       });
+      setDetailedReport((prev) => (prev ? { ...prev, priority: selectedPriority } : null));
     } finally {
       setIsAssigning(false);
     }
@@ -203,6 +209,7 @@ export default function ReportDetails({
         status: selectedStatus,
         remarks,
       });
+      setDetailedReport((prev) => (prev ? { ...prev, status: selectedStatus } : null));
     } finally {
       setIsUpdating(false);
       setShowConfirmModal(false);
@@ -422,7 +429,7 @@ export default function ReportDetails({
               <span className="admin-spec-value">{dateFormatted}</span>
 
               <span className="admin-spec-label">Priority Level</span>
-              <div>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
                 <span className={`admin-badge ${activeReport.priority || 'medium'}`}>
                   {activeReport.priority ? `${activeReport.priority.toUpperCase()} PRIORITY` : 'MEDIUM PRIORITY'}
                 </span>
@@ -487,6 +494,27 @@ export default function ReportDetails({
                 </select>
               </div>
 
+              {/* Priority Level below Assigned Staff Member, locked when worker is assigned */}
+              <div className="admin-form-group">
+                <label className="admin-form-label">
+                  {assignmentLocked ? 'Assigned Priority Level' : 'Priority Level'}
+                </label>
+                <select
+                  className="admin-select-input"
+                  value={selectedPriority}
+                  onChange={(e) => setSelectedPriority(e.target.value)}
+                  disabled={assignmentLocked || isAssigning}
+                  style={assignmentLocked ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
+                  id="admin-assign-priority-select"
+                  title={assignmentLocked ? 'Priority level is locked because worker has already been assigned' : ''}
+                >
+                  <option value="low">Low Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="high">High Priority</option>
+                  <option value="emergency">Urgent / Emergency</option>
+                </select>
+              </div>
+
               <button
                 type="submit"
                 className="admin-btn-black"
@@ -530,6 +558,7 @@ export default function ReportDetails({
                   disabled={isFixed || isArchived || isUpdating}
                   style={isFixed || isArchived ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
                   title={isArchived ? 'Status is locked because report is archived' : isFixed ? 'Status is locked because this report is already fixed / resolved' : ''}
+                  id="admin-details-status-select"
                 >
                   <option value="submitted">Submitted</option>
                   <option value="under_review">Under Review</option>

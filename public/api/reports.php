@@ -256,16 +256,16 @@ try {
 
         notify_admins_and_supervisors(
             $reportId,
-            in_array($priority, ['high', 'emergency'], true) ? 'emergency' : 'new_report',
+            'new_report',
             "New Defect Report: {$ticketNumber} - {$title}",
-            "Reported by {$user['full_name']} with " . ucfirst($priority) . " priority."
+            "Reported by {$user['full_name']} in {$logLoc}."
         );
 
         $logLoc = trim(($buildingName ?: 'Campus') . ' • ' . ($roomCoord ?: $specificArea ?: 'General Area'));
         record_history_log(
             'report_submitted',
             "Incident Reported: {$ticketNumber} - {$title}",
-            "Submitted by {$user['full_name']} with " . ucfirst($priority) . " priority. Description: {$description}",
+            "Submitted by {$user['full_name']}. Description: {$description}",
             (int)$user['id'],
             $reportId,
             $user['full_name'],
@@ -667,6 +667,21 @@ try {
                 ]);
             }
 
+            // Update priority if admin provided priority level when assigning worker
+            $newPriority = isset($input['priority']) ? strtolower(trim((string)$input['priority'])) : null;
+            if ($newPriority === 'urgent') {
+                $newPriority = 'emergency';
+            }
+            $allowedPriorities = ['low', 'medium', 'high', 'emergency'];
+            $finalPriority = ($newPriority && in_array($newPriority, $allowedPriorities, true)) ? $newPriority : ($report['priority'] ?? 'medium');
+
+            if ($newPriority && in_array($newPriority, $allowedPriorities, true) && $newPriority !== ($report['priority'] ?? '')) {
+                db_execute("UPDATE `reports` SET `priority` = :priority, `updated_at` = NOW() WHERE `id` = :id", [
+                    ':priority' => $newPriority,
+                    ':id'       => $reportId
+                ]);
+            }
+
             // Only transition report status to 'assigned' if it's currently submitted or under_review.
             // If the report is already in_progress or resolved, do NOT regress the status back to assigned!
             $finalStatus = $report['status'];
@@ -718,7 +733,8 @@ try {
                 'success'    => true,
                 'message'    => "Worker {$tech['full_name']} assigned successfully.",
                 'technician' => $tech,
-                'status'     => $finalStatus
+                'status'     => $finalStatus,
+                'priority'   => $finalPriority,
             ]);
         } catch (\Throwable $e) {
             $pdo->rollBack();
@@ -734,6 +750,12 @@ try {
         $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
         $reportId = (int)($input['report_id'] ?? 0);
         $newStatus = trim($input['status'] ?? '');
+        $newPriority = isset($input['priority']) ? strtolower(trim((string)$input['priority'])) : null;
+        if ($newPriority === 'urgent') {
+            $newPriority = 'emergency';
+        }
+        $allowedPriorities = ['low', 'medium', 'high', 'emergency'];
+        $hasPriorityUpdate = $newPriority && in_array($newPriority, $allowedPriorities, true);
         $remarks = trim($input['remarks'] ?? 'Status updated by Staff');
         $changedBy = (int)$actorUser['id'];
 
@@ -745,7 +767,7 @@ try {
             ], 400);
         }
 
-        $report = db_fetch_one("SELECT id, status, ticket_number, title, reporter_id FROM `reports` WHERE id = :id", [':id' => $reportId]);
+        $report = db_fetch_one("SELECT id, status, ticket_number, title, reporter_id, priority FROM `reports` WHERE id = :id", [':id' => $reportId]);
         if (!$report) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
@@ -779,9 +801,11 @@ try {
                     ], 403);
                 }
             }
-            db_execute("UPDATE `reports` SET `status` = :status, `updated_at` = NOW() WHERE `id` = :id", [
-                ':status' => $newStatus,
-                ':id'     => $reportId
+            $finalPriority = ($hasPriorityUpdate && $newPriority) ? $newPriority : ($report['priority'] ?? 'medium');
+            db_execute("UPDATE `reports` SET `status` = :status, `priority` = :priority, `updated_at` = NOW() WHERE `id` = :id", [
+                ':status'   => $newStatus,
+                ':priority' => $finalPriority,
+                ':id'       => $reportId
             ]);
 
             // Synchronize work order assignment status with report status transition
@@ -927,19 +951,82 @@ try {
                     'ticket_number'   => $tNum,
                     'previous_status' => $report['status'],
                     'new_status'      => $newStatus,
+                    'priority'        => $finalPriority,
                     'remarks'         => $remarks,
                 ]
             );
 
             \FixMyCampus\Core\Response::json([
-                'success' => true,
-                'message' => "Incident status successfully updated to {$newStatus}.",
-                'status'  => $newStatus
+                'success'  => true,
+                'message'  => "Incident successfully updated.",
+                'status'   => $newStatus,
+                'priority' => $finalPriority,
             ]);
         } catch (\Throwable $e) {
             $pdo->rollBack();
             throw $e;
         }
+    }
+
+    // -------------------------------------------------------------------------
+    // POST /api/reports.php?action=update_priority -> Admin sets report priority
+    // -------------------------------------------------------------------------
+    if ($action === 'update_priority' && $_SERVER['REQUEST_METHOD'] === 'POST') {
+        $actorUser = auth_require_role(['admin', 'supervisor']);
+        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        $reportId = (int)($input['report_id'] ?? 0);
+        $newPriority = strtolower(trim((string)($input['priority'] ?? '')));
+        if ($newPriority === 'urgent') {
+            $newPriority = 'emergency';
+        }
+
+        $allowedPriorities = ['low', 'medium', 'high', 'emergency'];
+        if ($reportId <= 0 || !in_array($newPriority, $allowedPriorities, true)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Invalid report_id or priority value.'
+            ], 400);
+        }
+
+        $report = db_fetch_one("SELECT id, status, ticket_number, title, reporter_id, priority FROM `reports` WHERE id = :id", [':id' => $reportId]);
+        if (!$report) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Report not found.'
+            ], 404);
+        }
+
+        $prevPriority = $report['priority'] ?? 'medium';
+        db_execute("UPDATE `reports` SET `priority` = :priority, `updated_at` = NOW() WHERE `id` = :id", [
+            ':priority' => $newPriority,
+            ':id'       => $reportId
+        ]);
+
+        $displayPriority = $newPriority === 'emergency' ? 'Urgent' : ucfirst($newPriority);
+        $prevDisplayPriority = $prevPriority === 'emergency' ? 'Urgent' : ucfirst($prevPriority);
+
+        record_history_log(
+            'status_updated',
+            "Priority Updated: {$report['ticket_number']} - {$report['title']}",
+            "Administrator ({$actorUser['full_name']}) decided priority level: changed from {$prevDisplayPriority} to {$displayPriority}.",
+            (int)$actorUser['id'],
+            $reportId,
+            $actorUser['full_name'],
+            'Administrator',
+            'Administration Portal',
+            [
+                'ticket_number'     => $report['ticket_number'],
+                'previous_priority' => $prevPriority,
+                'priority'          => $newPriority,
+            ]
+        );
+
+        \FixMyCampus\Core\Response::json([
+            'success'  => true,
+            'message'  => "Priority updated to {$displayPriority} successfully.",
+            'priority' => $newPriority
+        ]);
+        exit;
     }
 
     // -------------------------------------------------------------------------
