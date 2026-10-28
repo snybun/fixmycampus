@@ -1490,7 +1490,11 @@
   justify-content: space-between;
   gap: 16px;
   flex-wrap: wrap;
-  padding: 4px 0;
+  background-color: #ffffff;
+  border: 1px solid var(--maint-border);
+  border-radius: 12px;
+  padding: 16px 20px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
 }
 
 .maint-notif-toolbar-left {
@@ -1543,18 +1547,45 @@
 .maint-notif-toolbar-controls {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   flex-wrap: wrap;
-  margin-left: auto;
+  width: 100%;
+  flex: 1 1 100%;
+  margin: 0;
 }
 
 .maint-notif-search-box {
   position: relative;
   display: flex;
   align-items: center;
-  min-width: 280px;
-  max-width: 360px;
+  flex: 1;
+  min-width: 200px;
+  max-width: none;
+  width: 100%;
   height: 38px;
+}
+
+.maint-notif-search-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 18px;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.22);
+  transition: all 0.15s ease;
+}
+
+.maint-notif-search-submit-btn:hover {
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.32);
 }
 
 .maint-notif-search-icon {
