@@ -238,81 +238,7 @@ export default function AdminFeedbackView({ onViewReport }) {
           Filter Pills & Search Controls Card
           -------------------------------------------------------------------- */}
       <div className="admin-feedback-controls-card">
-        {/* Upper Pagination Controls */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-          <span style={{ fontSize: '0.86rem', color: '#64748b' }}>
-            Showing {summary.filtered_total === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
-            {Math.min(summary.filtered_total, currentPage * pageSize)} of {summary.filtered_total} review{summary.filtered_total === 1 ? '' : 's'}
-          </span>
-
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Per page:</span>
-            <select
-              className="admin-filter-select"
-              style={{ padding: '4px 8px', fontSize: '0.82rem', height: 34, minWidth: 'unset' }}
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              aria-label="Reviews per page"
-            >
-              <option value={5}>5</option>
-              <option value={10}>10</option>
-              <option value={20}>20</option>
-              <option value={50}>50</option>
-              <option value={100}>100</option>
-            </select>
-          </div>
-
-          <div className="admin-feedback-pagination-controls" style={{ marginLeft: 4 }}>
-            <button
-              type="button"
-              className="admin-feedback-page-btn arrow-btn"
-              disabled={currentPage <= 1 || loading}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              title="Previous page"
-              aria-label="Previous page"
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            {getPageNumbers(currentPage, totalPages).map((pg, idx) =>
-              pg === '...' ? (
-                <span
-                  key={`top-ellipsis-${idx}`}
-                  style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.85rem' }}
-                >
-                  ...
-                </span>
-              ) : (
-                <button
-                  key={`top-page-${pg}`}
-                  type="button"
-                  className={`admin-feedback-page-btn ${pg === currentPage ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(pg)}
-                  disabled={loading}
-                  title={`Page ${pg}`}
-                >
-                  {pg}
-                </button>
-              )
-            )}
-
-            <button
-              type="button"
-              className="admin-feedback-page-btn arrow-btn"
-              disabled={currentPage >= totalPages || loading}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              title="Next page"
-              aria-label="Next page"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-
-        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap', width: '100%', justifyContent: 'space-between' }}>
           {/* Search Box */}
           <div className="admin-feedback-search-box">
             <Search size={16} className="admin-feedback-search-icon" />
@@ -539,6 +465,86 @@ export default function AdminFeedbackView({ onViewReport }) {
           ))}
         </div>
       )}
+
+      {/* Bottom Pagination Bar */}
+      <div className="admin-pagination-bar" aria-label="Feedback pagination">
+        <div className="admin-pagination-info">
+          <span>
+            Showing {summary.filtered_total === 0 ? 0 : (currentPage - 1) * pageSize + 1}–
+            {Math.min(summary.filtered_total, currentPage * pageSize)} of {summary.filtered_total} review{summary.filtered_total === 1 ? '' : 's'}
+          </span>
+          <div className="admin-pagination-limit">
+            <span>Per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="admin-pagination-select"
+              aria-label="Reviews per page"
+            >
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
+
+        <div className="admin-pagination-btns">
+          <button
+            type="button"
+            className="admin-page-box arrow-btn"
+            disabled={currentPage <= 1 || loading || totalPages <= 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            title="Previous page"
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {totalPages === 0 ? (
+            <button type="button" className="admin-page-box active" disabled>
+              1
+            </button>
+          ) : (
+            getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+              pg === '...' ? (
+                <span
+                  key={`ellipsis-${idx}`}
+                  className="admin-page-ellipsis"
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={`page-${pg}`}
+                  type="button"
+                  className={`admin-page-box ${pg === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pg)}
+                  disabled={loading}
+                  title={`Page ${pg}`}
+                >
+                  {pg}
+                </button>
+              )
+            )
+          )}
+
+          <button
+            type="button"
+            className="admin-page-box arrow-btn"
+            disabled={currentPage >= totalPages || loading || totalPages <= 1}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            title="Next page"
+            aria-label="Next page"
+          >
+            <ChevronRight size={16} />
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

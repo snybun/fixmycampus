@@ -591,93 +591,6 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
               )}
             </div>
           </form>
-
-          {/* Upper Pagination Controls */}
-          {pagination.total > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                flexWrap: 'wrap',
-                marginLeft: 'auto',
-              }}
-            >
-              <span style={{ fontSize: '0.86rem', color: '#64748b' }}>
-                Showing {startRecord} to {endRecord} of {pagination.total} logs
-              </span>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Per page:</span>
-                <select
-                  className="admin-filter-select"
-                  style={{ padding: '4px 8px', fontSize: '0.82rem', height: 34, minWidth: 'unset' }}
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  title="Items per page"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-
-              <div className="history-page-nav" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <button
-                  type="button"
-                  className="history-page-btn arrow-btn"
-                  onClick={() => handlePageChange(currentPage - 1)}
-                  disabled={currentPage <= 1 || loading}
-                  title="Previous Page"
-                  aria-label="Previous Page"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-
-                {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, idx) => {
-                  let p = idx + 1;
-                  if (pagination.total_pages > 5) {
-                    if (currentPage > 3) {
-                      p = currentPage - 2 + idx;
-                    }
-                    if (p > pagination.total_pages) {
-                      p = pagination.total_pages - (4 - idx);
-                    }
-                  }
-                  if (p < 1 || p > pagination.total_pages) return null;
-
-                  return (
-                    <button
-                      key={`top-p-${p}`}
-                      type="button"
-                      className={`history-page-btn ${currentPage === p ? 'active' : ''}`}
-                      onClick={() => handlePageChange(p)}
-                      disabled={loading}
-                      title={`Page ${p}`}
-                    >
-                      {p}
-                    </button>
-                  );
-                })}
-
-                <button
-                  type="button"
-                  className="history-page-btn arrow-btn"
-                  onClick={() => handlePageChange(currentPage + 1)}
-                  disabled={currentPage >= pagination.total_pages || loading}
-                  title="Next Page"
-                  aria-label="Next Page"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -891,6 +804,88 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
           </table>
         </div>
 
+        {/* Bottom Pagination Bar */}
+        <div className="admin-pagination-bar" aria-label="History logs pagination" style={{ margin: '16px 20px 20px' }}>
+          <div className="admin-pagination-info">
+            <span>
+              Showing {pagination.total === 0 ? 0 : startRecord} to {endRecord} of {pagination.total} logs
+            </span>
+            <div className="admin-pagination-limit">
+              <span>Per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="admin-pagination-select"
+                aria-label="Logs per page"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="admin-pagination-btns">
+            <button
+              type="button"
+              className="admin-page-box arrow-btn"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1 || loading || pagination.total_pages <= 1}
+              title="Previous Page"
+              aria-label="Previous Page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {pagination.total_pages === 0 ? (
+              <button type="button" className="admin-page-box active" disabled>
+                1
+              </button>
+            ) : (
+              Array.from({ length: Math.min(5, pagination.total_pages) }, (_, idx) => {
+                let p = idx + 1;
+                if (pagination.total_pages > 5) {
+                  if (currentPage > 3) {
+                    p = currentPage - 2 + idx;
+                  }
+                  if (p > pagination.total_pages) {
+                    p = pagination.total_pages - (4 - idx);
+                  }
+                }
+                if (p < 1 || p > pagination.total_pages) return null;
+
+                return (
+                  <button
+                    key={`p-${p}`}
+                    type="button"
+                    className={`admin-page-box ${currentPage === p ? 'active' : ''}`}
+                    onClick={() => handlePageChange(p)}
+                    disabled={loading}
+                    title={`Page ${p}`}
+                  >
+                    {p}
+                  </button>
+                );
+              })
+            )}
+
+            <button
+              type="button"
+              className="admin-page-box arrow-btn"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= pagination.total_pages || loading || pagination.total_pages <= 1}
+              title="Next Page"
+              aria-label="Next Page"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
       </div>
 
       {/* Delete Confirmation Modal */}

@@ -239,86 +239,6 @@ export default function UsersView() {
               )}
             </div>
           </form>
-
-          {/* Upper Pagination Controls */}
-          {!loading && users.length > 0 && (
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: 12,
-                flexWrap: 'wrap',
-                marginLeft: 'auto',
-              }}
-            >
-              <span style={{ fontSize: '0.86rem', color: '#64748b' }}>
-                Showing {startIndex + 1}–
-                {Math.min(users.length, startIndex + pageSize)} of {users.length} user{users.length === 1 ? '' : 's'}
-              </span>
-
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Per page:</span>
-                <select
-                  className="admin-filter-select"
-                  style={{ padding: '4px 8px', fontSize: '0.82rem', height: 34, minWidth: 'unset' }}
-                  value={pageSize}
-                  onChange={(e) => handlePageSizeChange(Number(e.target.value))}
-                  aria-label="Items per page"
-                >
-                  <option value={5}>5</option>
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                  <option value={100}>100</option>
-                </select>
-              </div>
-
-              <div className="admin-pagination-btns">
-                <button
-                  type="button"
-                  className="admin-page-box arrow-btn"
-                  disabled={currentPage <= 1}
-                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                  title="Previous page"
-                  aria-label="Previous page"
-                >
-                  <ChevronLeft size={16} />
-                </button>
-
-                {getPageNumbers().map((item, idx) =>
-                  item === '...' ? (
-                    <span
-                      key={`top-ellipsis-${idx}`}
-                      style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.85rem' }}
-                    >
-                      ...
-                    </span>
-                  ) : (
-                    <button
-                      key={`top-page-${item}`}
-                      type="button"
-                      className={`admin-page-box ${currentPage === item ? 'active' : ''}`}
-                      onClick={() => setCurrentPage(item)}
-                      title={`Page ${item}`}
-                    >
-                      {item}
-                    </button>
-                  )
-                )}
-
-                <button
-                  type="button"
-                  className="admin-page-box arrow-btn"
-                  disabled={currentPage >= totalPages}
-                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                  title="Next page"
-                  aria-label="Next page"
-                >
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            </div>
-          )}
         </div>
       </div>
 
@@ -394,6 +314,80 @@ export default function UsersView() {
           </table>
         </div>
 
+        {/* Bottom Pagination Bar */}
+        <div className="admin-pagination-bar" aria-label="Users pagination">
+          <div className="admin-pagination-info">
+            <span>
+              Showing {users.length === 0 ? 0 : startIndex + 1}–{Math.min(users.length, startIndex + pageSize)} of {users.length} user{users.length === 1 ? '' : 's'}
+            </span>
+            <div className="admin-pagination-limit">
+              <span>Per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => handlePageSizeChange(Number(e.target.value))}
+                className="admin-pagination-select"
+                aria-label="Users per page"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="admin-pagination-btns">
+            <button
+              type="button"
+              className="admin-page-box arrow-btn"
+              disabled={currentPage <= 1 || totalPages <= 1}
+              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              title="Previous page"
+              aria-label="Previous page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {totalPages === 0 ? (
+              <button type="button" className="admin-page-box active" disabled>
+                1
+              </button>
+            ) : (
+              getPageNumbers().map((item, idx) =>
+                item === '...' ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="admin-page-ellipsis"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={`page-${item}`}
+                    type="button"
+                    className={`admin-page-box ${currentPage === item ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(item)}
+                    title={`Page ${item}`}
+                  >
+                    {item}
+                  </button>
+                )
+              )
+            )}
+
+            <button
+              type="button"
+              className="admin-page-box arrow-btn"
+              disabled={currentPage >= totalPages || totalPages <= 1}
+              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              title="Next page"
+              aria-label="Next page"
+            >
+              <ChevronRight size={16} />
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   );
