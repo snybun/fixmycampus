@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Bell,
   BellOff,
@@ -12,6 +12,8 @@ import {
   CheckCheck,
   Search,
   Filter,
+  ChevronDown,
+  X,
   MapPin,
   RefreshCw,
   ArrowRight,
@@ -31,6 +33,16 @@ import {
 } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 
+const FILTER_OPTIONS = [
+  { key: 'all', label: 'All Alerts', color: '#64748b' },
+  { key: 'unread', label: 'Unread', color: '#059669' },
+  { key: 'emergency', label: 'Urgent & Safety', color: '#ef4444' },
+  { key: 'work_order', label: 'Work Orders', color: '#10b981' },
+  { key: 'in_progress', label: 'In Progress', color: '#f97316' },
+  { key: 'parts', label: 'Parts & Supplies', color: '#8b5cf6' },
+  { key: 'verified', label: 'Verified Sign-offs', color: '#047857' },
+];
+
 export default function MaintenanceNotificationsView({
   onViewJob,
   onStartRepair,
@@ -42,6 +54,8 @@ export default function MaintenanceNotificationsView({
   const effectiveMaintId = currentUser?.id || null;
   const [notifications, setNotifications] = useState([]);
   const [filterType, setFilterType] = useState('all'); // 'all', 'unread', 'emergency', 'work_order', 'parts', 'verified'
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
@@ -50,6 +64,21 @@ export default function MaintenanceNotificationsView({
   const [showArchiveSingleModal, setShowArchiveSingleModal] = useState(false);
   const [itemToArchive, setItemToArchive] = useState(null);
   const [isArchivingSingle, setIsArchivingSingle] = useState(false);
+
+  // Close filter dropdown on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(e.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    if (isFilterOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [isFilterOpen]);
 
   // Sync notifications from API if available
   const loadNotifications = async () => {
@@ -131,6 +160,19 @@ export default function MaintenanceNotificationsView({
   const workOrdersCount = useMemo(() => {
     return notifications.filter((n) => n.type === 'work_order' || n.type === 'parts').length;
   }, [notifications]);
+
+  // Dynamic counts for each filter category
+  const filterCounts = useMemo(() => {
+    return {
+      all: notifications.length,
+      unread: unreadCount,
+      emergency: notifications.filter((n) => n.type === 'emergency' || n.priority === 'emergency').length,
+      work_order: notifications.filter((n) => n.type === 'work_order' || n.type === 'assignment').length,
+      in_progress: notifications.filter((n) => n.type === 'in_progress').length,
+      parts: notifications.filter((n) => n.type === 'parts').length,
+      verified: notifications.filter((n) => n.type === 'verified' || n.type === 'fixed' || n.type === 'resolved').length,
+    };
+  }, [notifications, unreadCount]);
 
   // Mark all notifications as read
   const handleMarkAllAsRead = async () => {
@@ -434,81 +476,122 @@ export default function MaintenanceNotificationsView({
       </div>
 
       {/* ====================================================================
-          3. Filter Tabs & Search Bar
+          3. Filter & Search Toolbar
           ==================================================================== */}
       <div className="maint-notif-toolbar">
-        {/* Filter Pills */}
-        <div className="maint-filter-tabs maint-notif-pills">
-          <button
-            type="button"
-            className={`maint-filter-tab ${filterType === 'all' ? 'active' : ''}`}
-            onClick={() => setFilterType('all')}
-          >
-            All Alerts ({notifications.length})
-          </button>
-          <button
-            type="button"
-            className={`maint-filter-tab ${filterType === 'unread' ? 'active' : ''}`}
-            onClick={() => setFilterType('unread')}
-          >
-            Unread ({unreadCount})
-          </button>
-          <button
-            type="button"
-            className={`maint-filter-tab ${filterType === 'emergency' ? 'active' : ''}`}
-            onClick={() => setFilterType('emergency')}
-          >
-            Urgent & Safety
-          </button>
-          <button
-            type="button"
-            className={`maint-filter-tab ${filterType === 'work_order' ? 'active' : ''}`}
-            onClick={() => setFilterType('work_order')}
-          >
-            Work Orders
-          </button>
-          <button
-            type="button"
-            className={`maint-filter-tab ${filterType === 'in_progress' ? 'active' : ''}`}
-            onClick={() => setFilterType('in_progress')}
-          >
-            In Progress
-          </button>
-          <button
-            type="button"
-            className={`maint-filter-tab ${filterType === 'parts' ? 'active' : ''}`}
-            onClick={() => setFilterType('parts')}
-          >
-            Parts & Supplies
-          </button>
-          <button
-            type="button"
-            className={`maint-filter-tab ${filterType === 'verified' ? 'active' : ''}`}
-            onClick={() => setFilterType('verified')}
-          >
-            Verified Sign-offs
-          </button>
+        {/* Left: Summary Count & Active Filter Indicator */}
+        <div className="maint-notif-toolbar-left">
+          <span className="maint-notif-count-text">
+            Showing <strong>{filteredNotifications.length}</strong> of {notifications.length} alerts
+          </span>
+          {filterType !== 'all' && (
+            <div className="maint-notif-active-pill">
+              <span>{FILTER_OPTIONS.find((o) => o.key === filterType)?.label}</span>
+              <button
+                type="button"
+                onClick={() => setFilterType('all')}
+                title="Clear filter"
+                aria-label="Clear filter"
+              >
+                <X size={12} />
+              </button>
+            </div>
+          )}
         </div>
 
-        {/* Search Input */}
-        <div className="maint-notif-search-box">
-          <Search size={15} className="maint-notif-search-icon" />
-          <input
-            type="text"
-            className="maint-notif-search-input"
-            placeholder="Search by ticket (e.g. FM-102), room, or keyword..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-          {searchQuery && (
+        {/* Right: Search Bar & Filter Button (docked together) */}
+        <div className="maint-notif-toolbar-controls">
+          {/* Search Input */}
+          <div className="maint-notif-search-box">
+            <Search size={15} className="maint-notif-search-icon" />
+            <input
+              type="text"
+              className="maint-notif-search-input"
+              placeholder="Search by ticket (e.g. FM-102), room, or keyword..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+            />
+            {searchQuery && (
+              <button
+                type="button"
+                className="maint-notif-search-clear"
+                onClick={() => setSearchQuery('')}
+                title="Clear search"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+
+          {/* Filter Button & Dropdown Menu */}
+          <div className="maint-notif-filter-dropdown-wrap" ref={filterDropdownRef}>
             <button
               type="button"
-              className="maint-notif-search-clear"
-              onClick={() => setSearchQuery('')}
+              className={`maint-notif-filter-btn ${isFilterOpen ? 'open' : ''} ${filterType !== 'all' ? 'has-active' : ''}`}
+              onClick={() => setIsFilterOpen((prev) => !prev)}
+              aria-expanded={isFilterOpen}
+              title="Filter alerts by category"
+              id="maint-notif-filter-btn"
             >
-              ✕
+              <Filter size={15} />
+              <span className="maint-notif-filter-btn-text">
+                {filterType === 'all' ? 'Filter' : (FILTER_OPTIONS.find((o) => o.key === filterType)?.label || 'Filter')}
+              </span>
+              {filterType !== 'all' && (
+                <span className="maint-notif-filter-badge">
+                  {filterCounts[filterType] ?? 0}
+                </span>
+              )}
+              <ChevronDown size={14} className={`maint-notif-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
             </button>
-          )}
+
+            {isFilterOpen && (
+              <div className="maint-notif-filter-menu" role="menu">
+                <div className="maint-notif-filter-menu-header">
+                  <span>Filter by Category</span>
+                  {filterType !== 'all' && (
+                    <button
+                      type="button"
+                      className="maint-notif-filter-reset-btn"
+                      onClick={() => {
+                        setFilterType('all');
+                        setIsFilterOpen(false);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+
+                <div className="maint-notif-filter-menu-list">
+                  {FILTER_OPTIONS.map((opt) => {
+                    const isActive = filterType === opt.key;
+                    const count = filterCounts[opt.key] ?? 0;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        className={`maint-notif-filter-item ${isActive ? 'active' : ''}`}
+                        onClick={() => {
+                          setFilterType(opt.key);
+                          setIsFilterOpen(false);
+                        }}
+                        role="menuitem"
+                      >
+                        <span
+                          className="maint-notif-filter-item-dot"
+                          style={{ backgroundColor: opt.color }}
+                        />
+                        <span className="maint-notif-filter-item-label">{opt.label}</span>
+                        <span className="maint-notif-filter-item-count">{count}</span>
+                        {isActive && <Check size={14} className="maint-notif-filter-item-check" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -560,20 +643,6 @@ export default function MaintenanceNotificationsView({
                           </span>
                         )}
                       </div>
-
-                      <div className="maint-notif-time-row">
-                        {isUnread && (
-                          <span
-                            className="maint-notif-unread-dot"
-                            title="Unread notification"
-                            aria-label="Unread"
-                          />
-                        )}
-                        <span className="maint-notif-time">
-                          <Clock size={12} />
-                          {item.time_ago || 'Recently'}
-                        </span>
-                      </div>
                     </div>
 
                     {/* Notification Title */}
@@ -592,11 +661,25 @@ export default function MaintenanceNotificationsView({
                   </div>
                 </div>
 
-                {/* Right Section: Action Controls */}
+                {/* Right Section: Action Controls & Timestamp (Horizontally Organized) */}
                 <div
                   className="maint-notif-card-right"
                   onClick={(e) => e.stopPropagation()}
                 >
+                  <div className="maint-notif-time-row">
+                    {isUnread && (
+                      <span
+                        className="maint-notif-unread-dot"
+                        title="Unread notification"
+                        aria-label="Unread"
+                      />
+                    )}
+                    <span className="maint-notif-time">
+                      <Clock size={13} />
+                      {item.time_ago || 'Recently'}
+                    </span>
+                  </div>
+
                   {/* View Job / Work Order Button */}
                   {hasLinkedJob && (
                     <button

@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import {
   History,
   Search,
@@ -16,18 +16,46 @@ import {
   Shield,
   User,
   LogIn,
+  Eye,
+  RotateCcw,
+  Camera,
+  UploadCloud,
+  Filter,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
-import { fetchHistoryLogs, deleteHistoryLog } from '../../services/api';
+import { fetchHistoryLogs, deleteHistoryLog, updateReportPhoto } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 
-export default function HistoryLogView({ onViewReport }) {
+const HISTORY_FILTER_OPTIONS = [
+  { key: 'all', label: 'All Logs', color: '#64748b' },
+  { key: 'user_login', label: 'User Sign-ins', color: '#059669' },
+  { key: 'user_registration', label: 'User Sign-ups', color: '#3b82f6' },
+  { key: 'report_submitted', label: 'Reports Logged', color: '#f59e0b' },
+  { key: 'status_change', label: 'Status Updates', color: '#8b5cf6' },
+  { key: 'report_archived', label: 'Archived Reports', color: '#c2410c' },
+];
+
+export default function HistoryLogView({ onViewReport, onRestoreReport }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
   const [searchInput, setSearchInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const [summary, setSummary] = useState({
     all: 0,
     user_login: 0,
@@ -47,9 +75,77 @@ export default function HistoryLogView({ onViewReport }) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [toastMessage, setToastMessage] = useState('');
 
+  // Photo editing state
+  const logPhotoInputRef = useRef(null);
+  const [editingPhotoLog, setEditingPhotoLog] = useState(null);
+  const [photoModalPreview, setPhotoModalPreview] = useState(null);
+  const [isSavingLogPhoto, setIsSavingLogPhoto] = useState(false);
+  const [photoModalError, setPhotoModalError] = useState('');
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(''), 3500);
+  };
+
+  const handleOpenEditPhotoModal = (log) => {
+    setEditingPhotoLog(log);
+    setPhotoModalPreview(null);
+    setPhotoModalError('');
+  };
+
+  const handleCloseEditPhotoModal = () => {
+    if (isSavingLogPhoto) return;
+    setEditingPhotoLog(null);
+    setPhotoModalPreview(null);
+    setPhotoModalError('');
+    if (logPhotoInputRef.current) logPhotoInputRef.current.value = '';
+  };
+
+  const handleLogPhotoSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (!file.type.startsWith('image/')) {
+      setPhotoModalError('Please choose a valid image file (JPG, PNG, WebP).');
+      return;
+    }
+    if (file.size > 8 * 1024 * 1024) {
+      setPhotoModalError('Image size cannot exceed 8MB.');
+      return;
+    }
+    setPhotoModalError('');
+    const reader = new FileReader();
+    reader.onload = () => {
+      setPhotoModalPreview(reader.result);
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveLogPhoto = async () => {
+    if (!photoModalPreview || !editingPhotoLog?.report_id) return;
+    setIsSavingLogPhoto(true);
+    setPhotoModalError('');
+    try {
+      const res = await updateReportPhoto(editingPhotoLog.report_id, photoModalPreview);
+      if (res?.success) {
+        const newUrl = res.image_url || photoModalPreview;
+        setLogs((prev) =>
+          prev.map((item) =>
+            item.report_id === editingPhotoLog.report_id
+              ? { ...item, report_photo: newUrl }
+              : item
+          )
+        );
+        showToast(`Defect picture for #${editingPhotoLog.ticket_number || editingPhotoLog.title} updated successfully.`);
+        handleCloseEditPhotoModal();
+      } else {
+        setPhotoModalError(res?.message || 'Failed to update photo.');
+      }
+    } catch (err) {
+      console.error('Error saving photo from history logs:', err);
+      setPhotoModalError('Network error while saving photo.');
+    } finally {
+      setIsSavingLogPhoto(false);
+    }
   };
 
   const loadLogs = useCallback(async () => {
@@ -118,6 +214,29 @@ export default function HistoryLogView({ onViewReport }) {
     } finally {
       setIsDeleting(false);
     }
+  };
+
+  const handleOpenReportWindow = (log) => {
+    if (!onViewReport || !log.report_id) return;
+    onViewReport(
+      {
+        id: log.report_id,
+        ticket_number: log.ticket_number,
+        title: log.report_title || log.title,
+        is_archived: log.is_archived ?? (log.log_type === 'report_archived' ? 1 : 0),
+      },
+      'history-logs'
+    );
+  };
+
+  const handleRestoreDirect = async (log) => {
+    if (!onRestoreReport || !log.report_id) return;
+    await onRestoreReport({
+      id: log.report_id,
+      ticket_number: log.ticket_number,
+      title: log.report_title || log.title,
+    });
+    await loadLogs();
   };
 
   const formatLogDate = (dateStr) => {
@@ -360,71 +479,119 @@ export default function HistoryLogView({ onViewReport }) {
 
       {/* Filter and Search Controls */}
       <div className="history-controls-card">
-        {/* Search & Filter Row */}
-        <form onSubmit={handleSearchSubmit} className="admin-search-row" style={{ flexWrap: 'wrap' }}>
-          <div className="admin-search-input-wrap">
-            <Search size={18} />
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search by keywords, user name, student ID, location, ticket number..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
-
-          <button type="submit" className="admin-btn-black">
-            Search
-          </button>
-          {appliedSearch && (
-            <button
-              type="button"
-              className="admin-btn-secondary"
-              onClick={() => {
-                setSearchInput('');
-                setAppliedSearch('');
-                setCurrentPage(1);
-              }}
-            >
-              Clear
-            </button>
-          )}
-
-          <select
-            className="admin-filter-select"
-            value={activeType}
-            onChange={(e) => handleTypeChange(e.target.value)}
-            title="Filter by log category"
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* Search & Filter Row */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="admin-search-row"
+            style={{ flex: '1 1 360px', maxWidth: 540, margin: 0, flexWrap: 'wrap' }}
           >
-            <option value="all">All Logs ({summary.all})</option>
-            <option value="user_login">User Sign-ins ({summary.user_login || 0})</option>
-            <option value="user_registration">User Sign-ups ({summary.user_registration})</option>
-            <option value="report_submitted">Reports Logged ({summary.report_submitted})</option>
-            <option value="status_change">Status Updates ({summary.status_change})</option>
-            <option value="report_archived">Archived Reports ({summary.report_archived})</option>
-          </select>
+            <div className="admin-search-input-wrap">
+              <Search size={18} />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search by keywords, user name, student ID, location, ticket number..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
-              Limit:
-            </span>
-            <select
-              className="admin-filter-select"
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              title="Items per page limit"
-            >
-              <option value={5}>5 per page</option>
-              <option value={10}>10 per page</option>
-              <option value={20}>20 per page</option>
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-            </select>
-          </div>
-        </form>
+            <button type="submit" className="admin-btn-black">
+              Search
+            </button>
+            {appliedSearch && (
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={() => {
+                  setSearchInput('');
+                  setAppliedSearch('');
+                  setCurrentPage(1);
+                }}
+              >
+                Clear
+              </button>
+            )}
+
+            {/* Filter Symbol Button & Dropdown Menu */}
+            <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
+              <button
+                type="button"
+                className={`admin-filter-btn ${isFilterOpen ? 'open' : ''} ${activeType !== 'all' ? 'has-active' : ''}`}
+                onClick={() => setIsFilterOpen((prev) => !prev)}
+                aria-expanded={isFilterOpen}
+                title="Filter logs by category"
+                id="history-filter-btn"
+              >
+                <Filter size={15} />
+                <span className="admin-filter-btn-text">
+                  {activeType === 'all'
+                    ? 'Filter'
+                    : (HISTORY_FILTER_OPTIONS.find((o) => o.key === activeType)?.label || 'Filter')}
+                </span>
+                {activeType !== 'all' && (
+                  <span className="admin-filter-badge">
+                    {summary[activeType] ?? 0}
+                  </span>
+                )}
+                <ChevronDown size={14} className={`admin-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
+              </button>
+
+              {isFilterOpen && (
+                <div className="admin-filter-menu" role="menu">
+                  <div className="admin-filter-menu-header">
+                    <span>Filter by Category</span>
+                    {activeType !== 'all' && (
+                      <button
+                        type="button"
+                        className="admin-filter-reset-btn"
+                        onClick={() => {
+                          handleTypeChange('all');
+                          setIsFilterOpen(false);
+                        }}
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="admin-filter-menu-list">
+                    {HISTORY_FILTER_OPTIONS.map((opt) => {
+                      const isActive = activeType === opt.key;
+                      const count = opt.key === 'all' ? summary.all : (summary[opt.key] ?? 0);
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          className={`admin-filter-item ${isActive ? 'active' : ''}`}
+                          onClick={() => {
+                            handleTypeChange(opt.key);
+                            setIsFilterOpen(false);
+                          }}
+                          role="menuitem"
+                        >
+                          <span className="admin-filter-item-dot" style={{ backgroundColor: opt.color }} />
+                          <span className="admin-filter-item-label">{opt.label}</span>
+                          <span className="admin-filter-item-count">{count}</span>
+                          {isActive && <Check size={14} className="admin-filter-check" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </form>
+        </div>
       </div>
 
       {/* Main Table */}
@@ -492,7 +659,20 @@ export default function HistoryLogView({ onViewReport }) {
                       {/* Actor / User */}
                       <td>
                         <div className="history-actor-cell">
-                          <div className="history-actor-avatar">{actorInitials}</div>
+                          <div className="history-actor-avatar">
+                            {log.actor_avatar ? (
+                              <img
+                                src={log.actor_avatar}
+                                alt={log.actor_name}
+                                className="history-actor-avatar-img"
+                                onError={(e) => {
+                                  e.target.style.display = 'none';
+                                }}
+                              />
+                            ) : (
+                              actorInitials
+                            )}
+                          </div>
                           <div>
                             <div className="history-actor-name">{log.actor_name}</div>
                             <div className="history-actor-role">{log.actor_role || 'Campus User'}</div>
@@ -512,49 +692,109 @@ export default function HistoryLogView({ onViewReport }) {
 
                       {/* Details */}
                       <td>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: 4 }}>
-                          <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                            <span style={{ fontWeight: 600, color: '#0f172a' }}>{log.title}</span>
-                            {log.ticket_number && (
+                        <div className="history-details-cluster">
+                          {log.report_id && (
+                            <div
+                              className="history-report-thumb-wrapper"
+                              onClick={() => handleOpenEditPhotoModal(log)}
+                              title="Click to view or edit this defect report's photo"
+                            >
+                              <img
+                                src={log.report_photo || '/images/hero_ac_defect.jpg'}
+                                alt={log.report_title || 'Defect thumbnail'}
+                                className="history-report-thumb"
+                                onError={(e) => {
+                                  e.target.src = '/images/hero_ac_defect.jpg';
+                                }}
+                              />
+                              <div className="history-thumb-edit-overlay">
+                                <Camera size={13} />
+                                <span className="history-thumb-overlay-text">Edit</span>
+                              </div>
+                            </div>
+                          )}
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: 4, flex: 1, minWidth: 0 }}>
+                            <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
                               <span
-                                className="admin-ticket-id"
+                                className={log.report_id ? 'history-clickable-title' : ''}
                                 style={{
-                                  fontSize: '0.74rem',
-                                  padding: '1px 6px',
-                                  background: '#eff6ff',
-                                  borderRadius: 4,
-                                  cursor: onViewReport && log.report_id ? 'pointer' : 'default',
+                                  fontWeight: 600,
+                                  color: '#0f172a',
+                                  cursor: log.report_id && onViewReport ? 'pointer' : 'default',
                                 }}
-                                onClick={() => {
-                                  if (onViewReport && log.report_id) {
-                                    onViewReport({ id: log.report_id });
-                                  }
-                                }}
-                                title={log.report_id ? 'Click to inspect defect ticket' : ''}
+                                onClick={() => handleOpenReportWindow(log)}
+                                title={log.report_id ? 'Click to inspect defect ticket window' : ''}
                               >
-                                {log.ticket_number}
+                                {log.title}
                               </span>
+                              {log.ticket_number && (
+                                <button
+                                  type="button"
+                                  className="history-ticket-badge-btn"
+                                  onClick={() => handleOpenReportWindow(log)}
+                                  title="View defect report window"
+                                >
+                                  <FileText size={12} />
+                                  <span>{log.ticket_number}</span>
+                                </button>
+                              )}
+                            </div>
+                            {log.description && (
+                              <p style={{ margin: 0, fontSize: '0.82rem', color: '#475569', lineHeight: 1.45 }}>
+                                {log.description}
+                              </p>
                             )}
                           </div>
-                          {log.description && (
-                            <p style={{ margin: 0, fontSize: '0.82rem', color: '#475569', lineHeight: 1.45 }}>
-                              {log.description}
-                            </p>
-                          )}
                         </div>
                       </td>
 
-                      {/* Action: Delete */}
+                      {/* Action: View, Edit Photo, Restore, Delete */}
                       <td style={{ textAlign: 'center' }}>
-                        <button
-                          type="button"
-                          className="history-delete-row-btn"
-                          onClick={() => setLogToDelete(log)}
-                          title="Delete this history log entry"
-                          id={`history-del-${log.id}`}
-                        >
-                          <Trash2 size={15} />
-                        </button>
+                        <div className="history-action-cluster">
+                          {log.report_id && onViewReport && (
+                            <button
+                              type="button"
+                              className="history-view-row-btn"
+                              onClick={() => handleOpenReportWindow(log)}
+                              title="View defect report window and full specifications"
+                              id={`history-view-${log.id}`}
+                            >
+                              <Eye size={14} />
+                              <span>View</span>
+                            </button>
+                          )}
+                          {log.report_id && (
+                            <button
+                              type="button"
+                              className="history-edit-photo-row-btn"
+                              onClick={() => handleOpenEditPhotoModal(log)}
+                              title="Edit defect photo for this report"
+                              id={`history-edit-photo-${log.id}`}
+                            >
+                              <Camera size={14} />
+                            </button>
+                          )}
+                          {log.log_type === 'report_archived' && log.report_id && onRestoreReport && (
+                            <button
+                              type="button"
+                              className="history-restore-row-btn"
+                              onClick={() => handleRestoreDirect(log)}
+                              title="Restore this archived report back to active reports"
+                              id={`history-restore-${log.id}`}
+                            >
+                              <RotateCcw size={14} />
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="history-delete-row-btn"
+                            onClick={() => setLogToDelete(log)}
+                            title="Delete this history log entry"
+                            id={`history-del-${log.id}`}
+                          >
+                            <Trash2 size={15} />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   );
@@ -564,48 +804,50 @@ export default function HistoryLogView({ onViewReport }) {
           </table>
         </div>
 
-        {/* Pagination Bar */}
-        {pagination.total > 0 && (
-          <div className="history-pagination-bar">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <span className="history-page-info">
-                Showing <strong>{startRecord}</strong> to <strong>{endRecord}</strong> of{' '}
-                <strong>{pagination.total}</strong> logs
-              </span>
-
-              <div className="history-perpage-wrap">
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Per page:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="history-perpage-select"
-                  title="Items per page"
-                >
-                  <option value={5}>5 per page</option>
-                  <option value={10}>10 per page</option>
-                  <option value={20}>20 per page</option>
-                  <option value={50}>50 per page</option>
-                  <option value={100}>100 per page</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="history-page-nav">
-              <button
-                type="button"
-                className="history-page-btn"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage <= 1 || loading}
-                title="Previous Page"
+        {/* Bottom Pagination Bar */}
+        <div className="admin-pagination-bar" aria-label="History logs pagination" style={{ margin: '16px 20px 20px' }}>
+          <div className="admin-pagination-info">
+            <span>
+              Showing {pagination.total === 0 ? 0 : startRecord} to {endRecord} of {pagination.total} logs
+            </span>
+            <div className="admin-pagination-limit">
+              <span>Per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="admin-pagination-select"
+                aria-label="Logs per page"
               >
-                <ChevronLeft size={16} />
-                <span>Prev</span>
-              </button>
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
 
-              {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, idx) => {
+          <div className="admin-pagination-btns">
+            <button
+              type="button"
+              className="admin-page-box arrow-btn"
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage <= 1 || loading || pagination.total_pages <= 1}
+              title="Previous Page"
+              aria-label="Previous Page"
+            >
+              <ChevronLeft size={16} />
+            </button>
+
+            {pagination.total_pages === 0 ? (
+              <button type="button" className="admin-page-box active" disabled>
+                1
+              </button>
+            ) : (
+              Array.from({ length: Math.min(5, pagination.total_pages) }, (_, idx) => {
                 let p = idx + 1;
                 if (pagination.total_pages > 5) {
                   if (currentPage > 3) {
@@ -619,30 +861,31 @@ export default function HistoryLogView({ onViewReport }) {
 
                 return (
                   <button
-                    key={p}
+                    key={`p-${p}`}
                     type="button"
-                    className={`history-page-btn ${currentPage === p ? 'active' : ''}`}
+                    className={`admin-page-box ${currentPage === p ? 'active' : ''}`}
                     onClick={() => handlePageChange(p)}
                     disabled={loading}
+                    title={`Page ${p}`}
                   >
                     {p}
                   </button>
                 );
-              })}
+              })
+            )}
 
-              <button
-                type="button"
-                className="history-page-btn"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= pagination.total_pages || loading}
-                title="Next Page"
-              >
-                <span>Next</span>
-                <ChevronRight size={16} />
-              </button>
-            </div>
+            <button
+              type="button"
+              className="admin-page-box arrow-btn"
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage >= pagination.total_pages || loading || pagination.total_pages <= 1}
+              title="Next Page"
+              aria-label="Next Page"
+            >
+              <ChevronRight size={16} />
+            </button>
           </div>
-        )}
+        </div>
       </div>
 
       {/* Delete Confirmation Modal */}
@@ -660,6 +903,119 @@ export default function HistoryLogView({ onViewReport }) {
           }}
           onConfirm={handleConfirmDelete}
         />
+      )}
+
+      {/* Edit Defect Photo Modal */}
+      {editingPhotoLog && (
+        <div className="admin-modal-backdrop" onClick={handleCloseEditPhotoModal}>
+          <div
+            className="admin-modal-dialog history-photo-modal-dialog"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="admin-modal-header">
+              <div>
+                <h3 className="admin-modal-title" style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Camera size={18} color="#059669" />
+                  <span>Edit Defect Photo</span>
+                </h3>
+                <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
+                  Ticket: <strong>{editingPhotoLog.ticket_number || `FM-${editingPhotoLog.report_id}`}</strong> &bull; {editingPhotoLog.report_title || editingPhotoLog.title}
+                </p>
+              </div>
+              <button
+                type="button"
+                className="admin-modal-close-btn"
+                onClick={handleCloseEditPhotoModal}
+                disabled={isSavingLogPhoto}
+              >
+                &times;
+              </button>
+            </div>
+
+            <div className="history-photo-modal-body">
+              <input
+                type="file"
+                ref={logPhotoInputRef}
+                style={{ display: 'none' }}
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                onChange={handleLogPhotoSelect}
+              />
+
+              <div className="history-modal-photos-grid">
+                <div>
+                  <label className="history-photo-label">Current Photo</label>
+                  <div className="history-modal-photo-preview">
+                    <img
+                      src={editingPhotoLog.report_photo || '/images/hero_ac_defect.jpg'}
+                      alt="Current defect"
+                      onError={(e) => {
+                        e.target.src = '/images/hero_ac_defect.jpg';
+                      }}
+                    />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="history-photo-label">
+                    {photoModalPreview ? 'New Photo Preview' : 'Select Replacement Photo'}
+                  </label>
+                  {photoModalPreview ? (
+                    <div className="history-modal-photo-preview new">
+                      <img src={photoModalPreview} alt="New defect preview" />
+                      <button
+                        type="button"
+                        className="history-photo-change-btn"
+                        onClick={() => logPhotoInputRef.current?.click()}
+                      >
+                        Choose Different
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className="history-photo-dropzone"
+                      onClick={() => logPhotoInputRef.current?.click()}
+                      role="button"
+                      tabIndex={0}
+                    >
+                      <UploadCloud size={32} color="#059669" />
+                      <span className="history-dropzone-title">Click to upload new picture</span>
+                      <span className="history-dropzone-sub">Supports JPG, PNG, WebP (max 8MB)</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {photoModalError && (
+                <div className="admin-photo-toast-error" style={{ marginTop: 12 }}>
+                  <span>{photoModalError}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="admin-modal-footer">
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={handleCloseEditPhotoModal}
+                disabled={isSavingLogPhoto}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="admin-btn-black"
+                onClick={handleSaveLogPhoto}
+                disabled={!photoModalPreview || isSavingLogPhoto}
+                style={{
+                  background: photoModalPreview ? '#059669' : undefined,
+                  borderColor: photoModalPreview ? '#059669' : undefined,
+                }}
+              >
+                {isSavingLogPhoto ? 'Saving Picture...' : 'Save New Picture'}
+              </button>
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

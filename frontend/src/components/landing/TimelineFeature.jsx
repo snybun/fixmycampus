@@ -29,7 +29,6 @@ export default function TimelineFeature() {
     <section className="landing-section-dark">
       <div className="section-container">
         <div className="split-layout">
-          {/* Dark Timeline Card on Left */}
           <div className="split-visual-col">
             <div className="dark-timeline-card reveal-on-scroll">
               <div className="dark-card-header">

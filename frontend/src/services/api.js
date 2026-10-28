@@ -5,6 +5,30 @@
 
 const API_BASE = '/api';
 
+export async function fetchFeedback(params = {}) {
+  try {
+    const res = await fetch(`${API_BASE}/feedback.php?${new URLSearchParams(params)}`, {
+      credentials: 'include', cache: 'no-store',
+    });
+    return { ...await res.json(), httpStatus: res.status };
+  } catch {
+    return { success: false, message: 'Unable to load feedback. Please try again.' };
+  }
+}
+
+export async function submitFeedback({ report_id, rating, comments }) {
+  try {
+    const res = await fetch(`${API_BASE}/feedback.php`, {
+      method: 'POST', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id, rating, comments }),
+    });
+    return { ...await res.json(), httpStatus: res.status };
+  } catch {
+    return { success: false, message: 'Unable to submit feedback. Please check your connection and try again.' };
+  }
+}
+
 export async function fetchStats(params = {}) {
   try {
     const query = new URLSearchParams(params).toString();
@@ -128,6 +152,21 @@ export async function restoreReport(reportId) {
   } catch (err) {
     console.error('Error restoring report:', err);
     return { success: false, message: 'Connection error while restoring report.' };
+  }
+}
+
+export async function updateReportPhoto(reportId, photoData) {
+  try {
+    const res = await fetch(`${API_BASE}/reports.php?action=update_photo`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({ report_id: reportId, photo: photoData }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error updating report photo:', err);
+    return { success: false, message: 'Connection error while updating photo.' };
   }
 }
 
@@ -805,4 +844,6 @@ export async function confirmReport(reportId, ticketNumber = '') {
     return { success: false, message: 'Failed to confirm report' };
   }
 }
+
+
 

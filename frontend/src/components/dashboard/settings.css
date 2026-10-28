@@ -59,12 +59,34 @@
 }
 
 .settings-top-bar {
-  max-width: 580px;
+  max-width: 620px;
   width: 100%;
-  margin: 0 auto 1.5rem;
+  margin: 0 auto 1.25rem;
   display: flex;
   align-items: center;
   justify-content: space-between;
+}
+
+.settings-page-header {
+  max-width: 620px;
+  width: 100%;
+  margin: 0 auto 1.5rem;
+  text-align: left;
+}
+
+.settings-page-title {
+  font-size: 1.65rem;
+  font-weight: 700;
+  color: #0f172a;
+  margin: 0 0 6px 0;
+  letter-spacing: -0.02em;
+}
+
+.settings-page-subtitle {
+  font-size: 0.92rem;
+  color: #64748b;
+  margin: 0;
+  line-height: 1.45;
 }
 
 .settings-back-btn {
@@ -92,7 +114,7 @@
 
 /* Centered Card Container */
 .settings-card {
-  max-width: 580px;
+  max-width: 620px;
   width: 100%;
   margin: 0 auto;
   background: #ffffff;

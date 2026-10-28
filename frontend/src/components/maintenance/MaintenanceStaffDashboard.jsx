@@ -22,12 +22,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Lock,
+  MessageSquareQuote,
 } from 'lucide-react';
 import { fetchReports, updateReportStatus, fetchNotifications } from '../../services/api';
 import { exportReportsToExcel } from '../../utils/exportToExcel';
 import ConfirmationModal from '../common/ConfirmationModal';
 import MaintenanceNotificationsView from './MaintenanceNotificationsView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
+import ReportFeedback from '../feedback/ReportFeedback';
+import FeedbackOverview from '../feedback/FeedbackOverview';
 import './maintenanceDashboard.css';
 
 // Format date helper for database timestamps
@@ -476,6 +479,21 @@ export default function MaintenanceStaffDashboard({
                   <span className="maint-badge-count">{unreadNotifCount}</span>
                 )}
               </button>
+
+              <button
+                type="button"
+                className={`maint-nav-item ${activeTab === 'feedback' && selectedJobId === null ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('feedback');
+                  setSelectedJobId(null);
+                }}
+                id="maint-nav-feedback"
+              >
+                <div className="maint-nav-label-box">
+                  <MessageSquareQuote size={18} />
+                  <span>Feedback</span>
+                </div>
+              </button>
             </div>
 
             {/* Section 2: Management */}
@@ -645,6 +663,9 @@ export default function MaintenanceStaffDashboard({
 
               {/* Right Column */}
               <div className="maint-details-col">
+                {['resolved', 'closed'].includes(selectedJob.status) && (
+                  <ReportFeedback key={selectedJob.id} reportId={selectedJob.id} />
+                )}
                 {/* 1. JOB ACTIONS */}
                 <div className="maint-card">
                   <h4 className="maint-card-title">JOB ACTIONS</h4>
@@ -936,6 +957,14 @@ export default function MaintenanceStaffDashboard({
             onUnreadChange={setUnreadNotifCount}
             showToast={showToast}
           />
+        ) : activeTab === 'feedback' && selectedJobId === null ? (
+          <div>
+            <div className="maint-header">
+              <h1 className="maint-greeting">Ratings &amp; Feedback</h1>
+              <p className="maint-subtext">Reporter ratings and comments on your completed maintenance jobs.</p>
+            </div>
+            <FeedbackOverview scopeKey={currentUser?.id} maintenance />
+          </div>
         ) : (
           /* ================================================================
              SCREEN 1: Dashboard Overview (Assigned Jobs List & Metric Cards)
@@ -1103,6 +1132,7 @@ export default function MaintenanceStaffDashboard({
                         <option value={10}>10</option>
                         <option value={20}>20</option>
                         <option value={50}>50</option>
+                        <option value={100}>100</option>
                       </select>
                     </div>
                   </div>
@@ -1110,12 +1140,12 @@ export default function MaintenanceStaffDashboard({
                   <div className="maint-pagination-controls">
                     <button
                       type="button"
-                      className="maint-page-btn"
+                      className="maint-page-btn arrow-btn"
                       disabled={true}
                       title="Previous page"
+                      aria-label="Previous page"
                     >
-                      <ChevronLeft size={15} />
-                      <span>Previous</span>
+                      <ChevronLeft size={16} />
                     </button>
                     <button
                       type="button"
@@ -1127,12 +1157,12 @@ export default function MaintenanceStaffDashboard({
                     </button>
                     <button
                       type="button"
-                      className="maint-page-btn"
+                      className="maint-page-btn arrow-btn"
                       disabled={true}
                       title="Next page"
+                      aria-label="Next page"
                     >
-                      <span>Next</span>
-                      <ChevronRight size={15} />
+                      <ChevronRight size={16} />
                     </button>
                   </div>
                 </div>
@@ -1229,6 +1259,7 @@ export default function MaintenanceStaffDashboard({
                         <option value={10}>10</option>
                         <option value={20}>20</option>
                         <option value={50}>50</option>
+                        <option value={100}>100</option>
                       </select>
                     </div>
                   </div>
@@ -1236,13 +1267,13 @@ export default function MaintenanceStaffDashboard({
                   <div className="maint-pagination-controls">
                     <button
                       type="button"
-                      className="maint-page-btn"
+                      className="maint-page-btn arrow-btn"
                       disabled={currentPage <= 1}
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       title="Previous page"
+                      aria-label="Previous page"
                     >
-                      <ChevronLeft size={15} />
-                      <span>Previous</span>
+                      <ChevronLeft size={16} />
                     </button>
 
                     {getPageNumbers().map((item, idx) =>
@@ -1265,13 +1296,13 @@ export default function MaintenanceStaffDashboard({
 
                     <button
                       type="button"
-                      className="maint-page-btn"
+                      className="maint-page-btn arrow-btn"
                       disabled={currentPage >= totalPages}
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       title="Next page"
+                      aria-label="Next page"
                     >
-                      <span>Next</span>
-                      <ChevronRight size={15} />
+                      <ChevronRight size={16} />
                     </button>
                   </div>
                 </div>

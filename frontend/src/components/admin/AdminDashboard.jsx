@@ -6,7 +6,6 @@ import {
   Building2,
   BarChart2,
   UserCheck,
-  Settings,
   Wrench,
   LogOut,
   User,
@@ -17,6 +16,7 @@ import {
   Bell,
   History,
   Archive,
+  MessageSquareQuote,
 } from 'lucide-react';
 import { getRecommendedWorker } from '../../utils/recommendedWorker';
 import {
@@ -30,6 +30,7 @@ import {
   updateReportStatus,
   deleteReport,
   archiveReport,
+  restoreReport,
   addStaffMember,
   removeStaffMember,
   addBuilding,
@@ -46,15 +47,16 @@ import MaintenanceStaff from './MaintenanceStaff';
 import BuildingsAndRooms from './BuildingsAndRooms';
 import AnalyticsView from './AnalyticsView';
 import UsersView from './UsersView';
-import AdminSettings from './AdminSettings';
 import AdminNotificationsView from './AdminNotificationsView';
 import HistoryLogView from './HistoryLogView';
+import AdminFeedbackView from './AdminFeedbackView';
 import ModalsGalleryView from '../common/ModalsGalleryView';
 import UserProfileDropdown from '../common/UserProfileDropdown';
 import './admin.css';
 
 export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUpdateUser }) {
   const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'reports' | 'report-details' | 'staff' | 'buildings' | 'analytics' | 'users' | 'settings'
+  const [returnTab, setReturnTab] = useState('reports');
   const [selectedReport, setSelectedReport] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
@@ -157,8 +159,13 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
   };
 
   // View Report in Details View
-  const handleViewReport = (report) => {
+  const handleViewReport = (report, fromTab = null) => {
     setSelectedReport(report);
+    if (fromTab) {
+      setReturnTab(fromTab);
+    } else if (activeTab !== 'report-details') {
+      setReturnTab(activeTab);
+    }
     setActiveTab('report-details');
     setMobileMenuOpen(false);
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -285,7 +292,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
         setReports((prev) => prev.filter((r) => !archivedIds.has(r.id)));
         if (selectedReport && archivedIds.has(selectedReport.id)) {
           setSelectedReport(null);
-          setActiveTab('reports');
+          setActiveTab(returnTab || 'reports');
         }
         refreshData();
       }
@@ -295,6 +302,24 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
     } finally {
       setIsArchiving(false);
       setReportToArchive(null);
+    }
+  };
+
+  // Restore Archived Report Handler
+  const handleRestoreReport = async (report) => {
+    if (!report?.id) return;
+    try {
+      const res = await restoreReport(report.id);
+      if (res?.success) {
+        showToast(res.message || 'Report restored to active status successfully.');
+        setSelectedReport((prev) => (prev ? { ...prev, is_archived: 0, archived_at: null } : null));
+        await refreshData();
+      } else {
+        alert(res?.message || 'Failed to restore report.');
+      }
+    } catch (err) {
+      console.error('Error restoring report:', err);
+      showToast('Error restoring report.');
     }
   };
 
@@ -412,8 +437,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
           <UserProfileDropdown
             currentUser={currentUser}
             onNavigate={onNavigate}
-            onHistoryClick={() => handleNavTabClick('logs')}
-            onSettingsClick={() => handleNavTabClick('settings')}
+            onHistoryClick={() => handleNavTabClick('history-logs')}
+            onSettingsClick={() => onNavigate('settings')}
             onLogout={() => setShowLogoutModal(true)}
             idPrefix="admin-mobile-profile"
           />
@@ -506,6 +531,16 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
               <BarChart2 size={18} />
               <span>Analytics</span>
             </button>
+
+            <button
+              type="button"
+              className={`admin-nav-item ${activeTab === 'feedback' ? 'active' : ''}`}
+              onClick={() => handleNavTabClick('feedback')}
+              id="admin-nav-feedback"
+            >
+              <MessageSquareQuote size={18} />
+              <span>Feedback</span>
+            </button>
           </div>
 
           {/* Section 2: Management */}
@@ -555,15 +590,6 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
 
             <button
               type="button"
-              className={`admin-nav-item ${activeTab === 'settings' ? 'active' : ''}`}
-              onClick={() => handleNavTabClick('settings')}
-            >
-              <Settings size={18} />
-              <span>Settings</span>
-            </button>
-
-            <button
-              type="button"
               className={`admin-nav-item ${activeTab === 'history-logs' ? 'active' : ''}`}
               onClick={() => handleNavTabClick('history-logs')}
               id="admin-nav-history-logs"
@@ -579,8 +605,8 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
           <UserProfileDropdown
             currentUser={currentUser}
             onNavigate={onNavigate}
-            onHistoryClick={() => handleNavTabClick('logs')}
-            onSettingsClick={() => handleNavTabClick('settings')}
+            onHistoryClick={() => handleNavTabClick('history-logs')}
+            onSettingsClick={() => onNavigate('settings')}
             onLogout={() => setShowLogoutModal(true)}
             direction="up"
             fullWidth={true}
@@ -664,11 +690,23 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
           <ReportDetails
             report={selectedReport}
             staff={staff}
-            onBack={() => setActiveTab('reports')}
+            returnTab={returnTab}
+            onBack={() => {
+              setActiveTab(returnTab || 'reports');
+              window.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
             onAssignSubmit={handleAssignSubmit}
             onStatusSubmit={handleStatusSubmit}
             onArchive={handleRequestArchiveReport}
+            onRestore={handleRestoreReport}
             onDelete={handleRequestArchiveReport}
+            onPhotoUpdated={(repId, newUrl) => {
+              setReports((prev) =>
+                prev.map((r) =>
+                  r.id === repId ? { ...r, image_url: newUrl, primary_photo: newUrl } : r
+                )
+              );
+            }}
           />
         )}
 
@@ -700,19 +738,19 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
         {/* View 7: Users */}
         {activeTab === 'users' && <UsersView />}
 
-        {/* View 8: Settings */}
-        {activeTab === 'settings' && (
-          <AdminSettings
-            currentUser={currentUser}
-            onNavigate={(view) => view === 'admin' ? handleNavTabClick('dashboard') : onNavigate(view)}
-            onLogout={onLogout}
-            onUpdateUser={onUpdateUser}
+        {/* View 8: History Logs */}
+        {activeTab === 'history-logs' && (
+          <HistoryLogView
+            onViewReport={(rep, fromTab) => handleViewReport(rep, fromTab || 'history-logs')}
+            onRestoreReport={handleRestoreReport}
           />
         )}
 
-        {/* View 9: History Logs */}
-        {activeTab === 'history-logs' && (
-          <HistoryLogView onViewReport={handleViewReport} />
+        {/* View 9: Repair Feedback & Ratings */}
+        {activeTab === 'feedback' && (
+          <AdminFeedbackView
+            onViewReport={(rep) => handleViewReport(rep, 'feedback')}
+          />
         )}
 
         {/* View 10: System Modals & States Gallery */}

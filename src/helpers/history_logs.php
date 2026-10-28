@@ -84,6 +84,9 @@ if (!function_exists('ensure_history_logs_synced')) {
 
             $count = (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs`");
 
+            // Clean up any unarchived report records that might have stale report_archived logs
+            db_execute("DELETE hl FROM `history_logs` hl INNER JOIN `reports` r ON hl.report_id = r.id WHERE hl.log_type = 'report_archived' AND (r.is_archived = 0 OR r.is_archived IS NULL)");
+
             // If there are existing logs, check if we need to backfill initial user_login entries
             if ($count > 0) {
                 $loginCount = (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'user_login'");

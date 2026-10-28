@@ -18,6 +18,8 @@ import {
   fetchNotifications,
   unarchiveNotification,
   fetchReports,
+  archiveReport,
+  restoreReport,
 } from '../../services/api';
 import './studentHistory.css';
 
@@ -40,6 +42,42 @@ export default function StudentHistoryView({
     setTimeout(() => {
       setToastMessage('');
     }, 3000);
+  };
+
+  const handleArchiveReport = async (rep, e) => {
+    if (e) e.stopPropagation();
+    try {
+      const res = await archiveReport(rep.id);
+      if (res && res.success) {
+        showToast(`Report #${rep.ticket_number || rep.id} archived successfully.`);
+        setReportHistory((prev) =>
+          prev.map((r) => (r.id === rep.id ? { ...r, is_archived: 1 } : r))
+        );
+      } else {
+        showToast(res?.message || 'Failed to archive report.');
+      }
+    } catch (err) {
+      console.error('Error archiving report:', err);
+      showToast('Error connecting to server.');
+    }
+  };
+
+  const handleRestoreReport = async (rep, e) => {
+    if (e) e.stopPropagation();
+    try {
+      const res = await restoreReport(rep.id);
+      if (res && res.success) {
+        showToast(`Report #${rep.ticket_number || rep.id} restored to active.`);
+        setReportHistory((prev) =>
+          prev.map((r) => (r.id === rep.id ? { ...r, is_archived: 0 } : r))
+        );
+      } else {
+        showToast(res?.message || 'Failed to restore report.');
+      }
+    } catch (err) {
+      console.error('Error restoring report:', err);
+      showToast('Error connecting to server.');
+    }
   };
 
   const loadArchivedNotifications = async () => {
@@ -331,9 +369,14 @@ export default function StudentHistoryView({
                     >
                       <div className="sh-report-top">
                         <span className="sh-report-ticket">{rep.ticket_number || `FM-${rep.id}`}</span>
-                        <span className={`sh-report-status-pill ${isFixed ? 'fixed' : rawStatus}`}>
-                          {isFixed ? 'Fixed' : rep.status || 'Active'}
-                        </span>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                          {Boolean(rep.is_archived) && (
+                            <span className="sh-badge-archived">Archived</span>
+                          )}
+                          <span className={`sh-report-status-pill ${isFixed ? 'fixed' : rawStatus}`}>
+                            {isFixed ? 'Fixed' : rep.status || 'Active'}
+                          </span>
+                        </div>
                       </div>
 
                       <h4 className="sh-report-title">{rep.title}</h4>
@@ -351,6 +394,33 @@ export default function StudentHistoryView({
                           <Calendar size={13} />
                           <span>{dateStr}</span>
                         </div>
+                      </div>
+
+                      {/* Card Actions: Archive for finished reports or Restore for archived */}
+                      <div className="sh-report-card-actions" onClick={(e) => e.stopPropagation()}>
+                        {Boolean(rep.is_archived) ? (
+                          <button
+                            type="button"
+                            className="sh-restore-btn"
+                            onClick={(e) => handleRestoreReport(rep, e)}
+                            title="Restore report back to active reports"
+                            id={`sh-restore-rep-${rep.id}`}
+                          >
+                            <RotateCcw size={13} />
+                            <span>Restore to Active</span>
+                          </button>
+                        ) : isFixed ? (
+                          <button
+                            type="button"
+                            className="sh-archive-btn"
+                            onClick={(e) => handleArchiveReport(rep, e)}
+                            title="Archive this finished report"
+                            id={`sh-archive-rep-${rep.id}`}
+                          >
+                            <Archive size={13} />
+                            <span>Archive</span>
+                          </button>
+                        ) : null}
                       </div>
                     </div>
                   );

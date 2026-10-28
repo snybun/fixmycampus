@@ -9,6 +9,8 @@ import {
   Trash2,
   Check,
   X,
+  Archive,
+  RotateCcw,
 } from 'lucide-react';
 import { fetchReports } from '../../services/api';
 import ReportDetailsView from './ReportDetailsView';
@@ -19,13 +21,15 @@ export default function MyReportsView({
   onNavigate,
   initialSelectedReport = null,
   onDeleteReport = null,
+  onArchiveReport = null,
+  onRestoreReport = null,
   isAdmin = false,
   currentUser = null,
 }) {
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'reported', 'verified', 'worker_assigned', 'in_progress', 'resolved'
-  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const [statusFilter, setStatusFilter] = useState('all'); // 'all', 'reported', 'verified', 'worker_assigned', 'in_progress', 'resolved', 'archived'
   const filterDropdownRef = useRef(null);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [selectedReport, setSelectedReport] = useState(initialSelectedReport);
   const [localReports, setLocalReports] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -39,6 +43,7 @@ export default function MyReportsView({
     { key: 'worker_assigned', label: 'Worker Assigned', dotColor: '#6366f1' },
     { key: 'in_progress', label: 'Repair Ongoing', dotColor: '#8b5cf6' },
     { key: 'resolved', label: 'Fixed', dotColor: '#10b981' },
+    { key: 'archived', label: 'Archived', dotColor: '#d97706' },
   ];
 
   // Close filter dropdown on outside click or Escape
@@ -188,14 +193,20 @@ export default function MyReportsView({
   // Compute ticket counts per status for the filter dropdown
   const statusCounts = useMemo(() => {
     const counts = {
-      all: allReports.length,
+      all: 0,
       reported: 0,
       verified: 0,
       worker_assigned: 0,
       in_progress: 0,
       resolved: 0,
+      archived: 0,
     };
     allReports.forEach((report) => {
+      if (report.is_archived) {
+        counts.archived += 1;
+        return;
+      }
+      counts.all += 1;
       if (report.status === 'submitted' || report.status === 'pending' || report.statusLabel === 'Reported') {
         counts.reported += 1;
       } else if (report.status === 'under_review' || report.statusLabel === 'Verified') {
@@ -228,6 +239,11 @@ export default function MyReportsView({
       }
 
       // Tab filtering
+      if (statusFilter === 'archived') {
+        return Boolean(report.is_archived);
+      }
+      if (report.is_archived) return false;
+
       if (statusFilter === 'all') return true;
       if (statusFilter === 'reported') {
         return report.status === 'submitted' || report.status === 'pending' || report.statusLabel === 'Reported';
@@ -295,6 +311,18 @@ export default function MyReportsView({
         report={selectedReport}
         onBack={() => setSelectedReport(null)}
         onDelete={onDeleteReport}
+        onArchive={(rep) => {
+          if (onArchiveReport) {
+            onArchiveReport(rep);
+            setSelectedReport(null);
+          }
+        }}
+        onRestore={(rep) => {
+          if (onRestoreReport) {
+            onRestoreReport(rep);
+            setSelectedReport(null);
+          }
+        }}
         isAdmin={isAdmin}
       />
     );
@@ -516,17 +544,64 @@ export default function MyReportsView({
                   </div>
                 </div>
 
-                {/* Right Side: Priority Pill + Status Pill + Delete Button + Arrow Button */}
+                {/* Right Side: Priority Pill + Status Pill + Archive/Restore Button + Delete Button + Arrow Button */}
                 <div className="myreports-card-right">
-                  <span className={`myreports-priority-badge priority-${report.priority.toLowerCase()}`}>
-                    {report.priority}
-                  </span>
+                  {report.is_archived ? (
+                    <span className="myreports-status-badge status-archived">
+                      <Archive size={12} style={{ marginRight: 4 }} />
+                      Archived
+                    </span>
+                  ) : (
+                    <>
+                      <span className={`myreports-priority-badge priority-${(report.priority || 'medium').toLowerCase()}`}>
+                        {report.priority}
+                      </span>
 
-                  <span className={`myreports-status-badge status-${report.status.toLowerCase()}`}>
-                    {report.statusLabel}
-                  </span>
+                      <span className={`myreports-status-badge status-${(report.status || 'reported').toLowerCase()}`}>
+                        {report.statusLabel}
+                      </span>
+                    </>
+                  )}
 
-                  {isReportDeletable(report) && onDeleteReport && (
+                  {/* Archive button for finished reports */}
+                  {!report.is_archived &&
+                    (report.status === 'resolved' || report.status === 'closed' || report.status === 'fixed' || report.statusLabel === 'Fixed') &&
+                    onArchiveReport && (
+                      <button
+                        type="button"
+                        className="myreports-archive-btn"
+                        title="Archive this finished report into History & Archives"
+                        aria-label="Archive report"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          onArchiveReport(report);
+                        }}
+                        id={`myreports-archive-btn-${report.id}`}
+                      >
+                        <Archive size={13} />
+                        <span>Archive</span>
+                      </button>
+                    )}
+
+                  {/* Restore button for archived reports */}
+                  {Boolean(report.is_archived) && onRestoreReport && (
+                    <button
+                      type="button"
+                      className="myreports-restore-btn"
+                      title="Restore report back to active list"
+                      aria-label="Restore report"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onRestoreReport(report);
+                      }}
+                      id={`myreports-restore-btn-${report.id}`}
+                    >
+                      <RotateCcw size={13} />
+                      <span>Restore</span>
+                    </button>
+                  )}
+
+                  {isReportDeletable(report) && onDeleteReport && !report.is_archived && (
                     <button
                       type="button"
                       className="myreports-delete-btn"

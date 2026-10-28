@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Bell,
   AlertTriangle,
@@ -19,6 +19,8 @@ import {
   RotateCcw,
   ChevronLeft,
   ChevronRight,
+  Filter,
+  ChevronDown,
 } from 'lucide-react';
 import {
   fetchNotifications,
@@ -29,6 +31,30 @@ import {
   archiveAllNotifications,
 } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
+
+const NOTIF_FILTER_OPTIONS = [
+  { key: 'all', label: 'All Alerts', color: '#64748b' },
+  { key: 'unread', label: 'Unread', color: '#059669' },
+  { key: 'emergency', label: 'Urgent & Safety', color: '#dc2626' },
+  { key: 'new_report', label: 'New Defect Reports', color: '#f59e0b' },
+  { key: 'work_order', label: 'Dispatches & Tasks', color: '#3b82f6' },
+  { key: 'archived', label: 'Archived Alerts', color: '#c2410c' },
+];
+
+const getPageNumbers = (current, total) => {
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages = [];
+  if (current <= 3) {
+    pages.push(1, 2, 3, 4, '...', total);
+  } else if (current >= total - 2) {
+    pages.push(1, '...', total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push(1, '...', current - 1, current, current + 1, '...', total);
+  }
+  return pages;
+};
 
 export default function AdminNotificationsView({
   reports = [],
@@ -45,12 +71,24 @@ export default function AdminNotificationsView({
   const [pageSize, setPageSize] = useState(5);
   const [currentPage, setCurrentPage] = useState(1);
   const [loading, setLoading] = useState(true);
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
   const [showArchiveAllModal, setShowArchiveAllModal] = useState(false);
   const [isArchivingAll, setIsArchivingAll] = useState(false);
   const [showArchiveSingleModal, setShowArchiveSingleModal] = useState(false);
   const [itemToArchive, setItemToArchive] = useState(null);
   const [isArchivingSingle, setIsArchivingSingle] = useState(false);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const loadNotifications = async () => {
     setLoading(true);
@@ -305,31 +343,6 @@ export default function AdminNotificationsView({
     return filteredNotifications.slice(startIndex, startIndex + pageSize);
   }, [filteredNotifications, startIndex, pageSize]);
 
-  const getPageNumbers = () => {
-    if (totalPages <= 7) {
-      return Array.from({ length: totalPages }, (_, i) => i + 1);
-    }
-    const pages = [];
-    if (currentPage <= 4) {
-      for (let i = 1; i <= 5; i++) pages.push(i);
-      pages.push('...');
-      pages.push(totalPages);
-    } else if (currentPage >= totalPages - 3) {
-      pages.push(1);
-      pages.push('...');
-      for (let i = totalPages - 4; i <= totalPages; i++) pages.push(i);
-    } else {
-      pages.push(1);
-      pages.push('...');
-      pages.push(currentPage - 1);
-      pages.push(currentPage);
-      pages.push(currentPage + 1);
-      pages.push('...');
-      pages.push(totalPages);
-    }
-    return pages;
-  };
-
   const getTypeConfig = (type) => {
     switch (type) {
       case 'emergency':
@@ -537,69 +550,118 @@ export default function AdminNotificationsView({
         </div>
       </div>
 
-      {/* Toolbar: Search input, Green Search button, Category Dropdown, Limit Dropdown */}
+      {/* Toolbar: Search input, Green Search button, Category Dropdown, Upper Pagination */}
       <div className="admin-filter-card" style={{ marginBottom: 20 }}>
-        <form onSubmit={handleSearchSubmit} className="admin-search-row" style={{ flexWrap: 'wrap' }}>
-          <div className="admin-search-input-wrap">
-            <Search size={18} />
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search ticket, room, keyword..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
-
-          <button type="submit" className="admin-btn-black">
-            Search
-          </button>
-          {appliedSearch && (
-            <button
-              type="button"
-              className="admin-btn-secondary"
-              onClick={handleClearSearch}
-            >
-              Clear
-            </button>
-          )}
-
-          <select
-            className="admin-filter-select"
-            value={filterType}
-            onChange={(e) => {
-              setFilterType(e.target.value);
-              setCurrentPage(1);
-            }}
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          <form
+            onSubmit={handleSearchSubmit}
+            className="admin-search-row"
+            style={{ flex: '1 1 360px', maxWidth: 540, margin: 0, flexWrap: 'wrap' }}
           >
-            <option value="all">All Alerts ({filterTabsCounts.all})</option>
-            <option value="unread">Unread ({filterTabsCounts.unread})</option>
-            <option value="emergency">Urgent &amp; Safety ({filterTabsCounts.emergency})</option>
-            <option value="new_report">New Defect Reports ({filterTabsCounts.new_report})</option>
-            <option value="work_order">Dispatches &amp; Tasks ({filterTabsCounts.work_order})</option>
-            <option value="archived">Archived Alerts ({filterTabsCounts.archived})</option>
-          </select>
+            <div className="admin-search-input-wrap">
+              <Search size={18} />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search ticket, room, keyword..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
-              Limit:
-            </span>
-            <select
-              className="admin-filter-select"
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              title="Items per page limit"
-            >
-              <option value={5}>5 per page</option>
-              <option value={10}>10 per page</option>
-              <option value={20}>20 per page</option>
-              <option value={50}>50 per page</option>
-            </select>
-          </div>
-        </form>
+            <button type="submit" className="admin-btn-black">
+              Search
+            </button>
+            {appliedSearch && (
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={handleClearSearch}
+              >
+                Clear
+              </button>
+            )}
+
+            {/* Filter Symbol Button & Dropdown Menu */}
+            <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
+              <button
+                type="button"
+                className={`admin-filter-btn ${isFilterOpen ? 'open' : ''} ${filterType !== 'all' ? 'has-active' : ''}`}
+                onClick={() => setIsFilterOpen((prev) => !prev)}
+                aria-expanded={isFilterOpen}
+                title="Filter alerts by category"
+                id="admin-notif-filter-btn"
+              >
+                <Filter size={15} />
+                <span className="admin-filter-btn-text">
+                  {filterType === 'all'
+                    ? 'Filter'
+                    : (NOTIF_FILTER_OPTIONS.find((o) => o.key === filterType)?.label || 'Filter')}
+                </span>
+                {filterType !== 'all' && (
+                  <span className="admin-filter-badge">
+                    {filterTabsCounts[filterType] ?? 0}
+                  </span>
+                )}
+                <ChevronDown size={14} className={`admin-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
+              </button>
+
+              {isFilterOpen && (
+                <div className="admin-filter-menu" role="menu">
+                  <div className="admin-filter-menu-header">
+                    <span>Filter by Category</span>
+                    {filterType !== 'all' && (
+                      <button
+                        type="button"
+                        className="admin-filter-reset-btn"
+                        onClick={() => {
+                          setFilterType('all');
+                          setIsFilterOpen(false);
+                          setCurrentPage(1);
+                        }}
+                      >
+                        Reset
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="admin-filter-menu-list">
+                    {NOTIF_FILTER_OPTIONS.map((opt) => {
+                      const isActive = filterType === opt.key;
+                      const count = filterTabsCounts[opt.key] ?? 0;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          className={`admin-filter-item ${isActive ? 'active' : ''}`}
+                          onClick={() => {
+                            setFilterType(opt.key);
+                            setIsFilterOpen(false);
+                            setCurrentPage(1);
+                          }}
+                          role="menuitem"
+                        >
+                          <span className="admin-filter-item-dot" style={{ backgroundColor: opt.color }} />
+                          <span className="admin-filter-item-label">{opt.label}</span>
+                          <span className="admin-filter-item-count">{count}</span>
+                          {isActive && <Check size={14} className="admin-filter-check" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </form>
+        </div>
       </div>
 
       {/* Notifications List */}
@@ -963,91 +1025,85 @@ export default function AdminNotificationsView({
         )}
       </div>
 
-      {/* Pagination Bar */}
-      {filteredNotifications.length > 0 && (
-        <div className="admin-pagination" style={{ marginTop: 20 }}>
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 16,
-              fontSize: '0.86rem',
-              color: 'var(--admin-text-muted)',
-            }}
-          >
-            <span>
-              Showing {startIndex + 1}–
-              {Math.min(filteredNotifications.length, startIndex + pageSize)} of {filteredNotifications.length} alert{filteredNotifications.length === 1 ? '' : 's'}
-            </span>
-
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: '0.82rem', color: 'var(--admin-text-muted)' }}>Per page:</span>
-              <select
-                className="admin-filter-select"
-                style={{ padding: '4px 8px', fontSize: '0.82rem', height: 'auto', minWidth: 'unset' }}
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                aria-label="Items per page"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="admin-pagination-btns">
-            <button
-              type="button"
-              className="admin-page-btn"
-              disabled={currentPage <= 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              title="Previous page"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+      {/* Bottom Pagination Bar */}
+      <div className="admin-pagination-bar" aria-label="Notifications pagination">
+        <div className="admin-pagination-info">
+          <span>
+            Showing {filteredNotifications.length === 0 ? 0 : startIndex + 1}–{Math.min(filteredNotifications.length, startIndex + pageSize)} of {filteredNotifications.length} alert{filteredNotifications.length === 1 ? '' : 's'}
+          </span>
+          <div className="admin-pagination-limit">
+            <span>Per page:</span>
+            <select
+              value={pageSize}
+              onChange={(e) => {
+                setPageSize(Number(e.target.value));
+                setCurrentPage(1);
+              }}
+              className="admin-pagination-select"
+              aria-label="Alerts per page"
             >
-              <ChevronLeft size={14} />
-              <span>Previous</span>
-            </button>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+              <option value={50}>50</option>
+              <option value={100}>100</option>
+            </select>
+          </div>
+        </div>
 
-            {getPageNumbers().map((item, idx) =>
-              item === '...' ? (
+        <div className="admin-pagination-btns">
+          <button
+            type="button"
+            className="admin-page-box arrow-btn"
+            disabled={currentPage <= 1 || totalPages <= 1}
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            title="Previous page"
+            aria-label="Previous page"
+          >
+            <ChevronLeft size={16} />
+          </button>
+
+          {totalPages === 0 ? (
+            <button type="button" className="admin-page-box active" disabled>
+              1
+            </button>
+          ) : (
+            getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+              pg === '...' ? (
                 <span
                   key={`ellipsis-${idx}`}
-                  style={{ padding: '6px 8px', color: 'var(--admin-text-muted)', fontSize: '0.84rem' }}
+                  className="admin-page-ellipsis"
                 >
                   ...
                 </span>
               ) : (
                 <button
-                  key={item}
+                  key={`page-${pg}`}
                   type="button"
-                  className={`admin-page-btn ${currentPage === item ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(item)}
-                  title={`Page ${item}`}
+                  className={`admin-page-box ${currentPage === pg ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pg)}
+                  title={`Page ${pg}`}
                 >
-                  {item}
+                  {pg}
                 </button>
               )
-            )}
+            )
+          )}
 
-            <button
-              type="button"
-              className="admin-page-btn"
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              title="Next page"
-              style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
-            >
-              <span>Next</span>
-              <ChevronRight size={14} />
-            </button>
-          </div>
+          <button
+            type="button"
+            className="admin-page-box arrow-btn"
+            disabled={currentPage >= totalPages || totalPages <= 1}
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            title="Next page"
+            aria-label="Next page"
+          >
+            <ChevronRight size={16} />
+          </button>
         </div>
-      )}
+      </div>
+
+
 
       {/* Archive Single Confirmation Modal */}
       {showArchiveSingleModal && (

@@ -306,10 +306,21 @@ export default function SettingsPage({
             className="settings-back-btn"
             onClick={() => onNavigate(isMaintenance ? 'maintenance' : isAdmin ? 'admin' : 'dashboard')}
             title="Return to Dashboard"
+            id="settings-back-btn"
           >
             <ArrowLeft size={16} />
             <span>Back to Dashboard</span>
           </button>
+        </div>
+      )}
+
+      {/* Page Header (Title & Subtitle for Standalone Window) */}
+      {!embedded && (
+        <div className="settings-page-header">
+          <h1 className="settings-page-title">Account Settings</h1>
+          <p className="settings-page-subtitle">
+            Manage your profile details, profile photo, and password.
+          </p>
         </div>
       )}
 

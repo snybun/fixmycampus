@@ -123,6 +123,9 @@ try {
     if (!empty($type) && $type !== 'all') {
         $where[] = "hl.log_type = :log_type";
         $params[':log_type'] = $type;
+        if ($type === 'report_archived') {
+            $where[] = "(r.is_archived = 1 OR r.id IS NULL)";
+        }
     }
 
     if (!empty($search)) {
@@ -160,9 +163,12 @@ try {
             r.title AS report_title,
             r.status AS report_status,
             r.priority AS report_priority,
-            r.is_archived
+            r.is_archived,
+            u.avatar_url AS actor_avatar,
+            (SELECT file_path FROM `report_attachments` WHERE report_id = hl.report_id ORDER BY id ASC LIMIT 1) AS report_photo
         FROM `history_logs` hl
         LEFT JOIN `reports` r ON hl.report_id = r.id
+        LEFT JOIN `users` u ON hl.user_id = u.id
         WHERE {$whereSql}
         ORDER BY hl.created_at DESC, hl.id DESC
         LIMIT {$limit} OFFSET {$offset}
@@ -180,6 +186,8 @@ try {
             'report_id'     => $r['report_id'] ? (int)$r['report_id'] : null,
             'actor_name'    => $r['actor_name'] ?: 'System',
             'actor_role'    => $r['actor_role'] ?: 'System',
+            'actor_avatar'  => $r['actor_avatar'] ?: null,
+            'report_photo'  => $r['report_photo'] ?: null,
             'title'         => $r['title'],
             'description'   => $r['description'],
             'location_info' => $r['location_info'] ?: 'Campus',
@@ -195,12 +203,22 @@ try {
 
     // Also calculate type summary counters
     $summary = [
-        'all'               => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs`"),
+        'all'               => (int)db_fetch_column("
+            SELECT COUNT(*) 
+            FROM `history_logs` hl 
+            LEFT JOIN `reports` r ON hl.report_id = r.id 
+            WHERE hl.log_type != 'report_archived' OR (r.is_archived = 1 OR r.id IS NULL)
+        "),
         'user_login'        => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'user_login'"),
         'user_registration' => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'user_registration'"),
         'report_submitted'  => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'report_submitted'"),
         'status_change'     => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'status_change'"),
-        'report_archived'   => (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'report_archived'"),
+        'report_archived'   => (int)db_fetch_column("
+            SELECT COUNT(*) 
+            FROM `history_logs` hl 
+            LEFT JOIN `reports` r ON hl.report_id = r.id 
+            WHERE hl.log_type = 'report_archived' AND (r.is_archived = 1 OR r.id IS NULL)
+        "),
     ];
 
     \FixMyCampus\Core\Response::json([

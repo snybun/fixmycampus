@@ -1,6 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { Search, FileSpreadsheet, MapPin } from 'lucide-react';
+import { Search, FileSpreadsheet, MapPin, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { exportReportsToExcel } from '../../utils/exportToExcel';
+
+const getPageNumbers = (current, total) => {
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages = [];
+  if (current <= 3) {
+    pages.push(1, 2, 3, 4, '...', total);
+  } else if (current >= total - 2) {
+    pages.push(1, '...', total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push(1, '...', current - 1, current, current + 1, '...', total);
+  }
+  return pages;
+};
 
 export default function ReportManagement({
   reports = [],
@@ -22,7 +37,7 @@ export default function ReportManagement({
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(10);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const canArchive = (report) => ['resolved', 'closed'].includes(report.status);
@@ -109,23 +124,66 @@ export default function ReportManagement({
 
       {/* Filter and Search Card */}
       <div className="admin-filter-card">
-        <form onSubmit={handleSearchSubmit} className="admin-search-row">
-          <div className="admin-search-input-wrap">
-            <Search size={18} />
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search by keyword, reporter name, ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <button type="submit" className="admin-btn-black">
-            Search
-          </button>
-        </form>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          <form
+            onSubmit={handleSearchSubmit}
+            className="admin-search-row"
+            style={{ flex: '1 1 340px', maxWidth: 520, margin: 0 }}
+          >
+            <div className="admin-search-input-wrap">
+              <Search size={18} />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search by keyword, reporter name, ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <button type="submit" className="admin-btn-black">
+              Search
+            </button>
+            {activeSearch && (
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={() => {
+                  setSearchTerm('');
+                  setActiveSearch('');
+                  setCurrentPage(1);
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </form>
+        </div>
 
-        <div className="admin-filters-row">
+        <div className="admin-filters-row" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 10px',
+              borderRadius: 8,
+              backgroundColor: '#f1f5f9',
+              color: '#334155',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+            }}
+          >
+            <Filter size={14} style={{ color: '#059669' }} />
+            <span>Filters:</span>
+          </div>
           {/* Status */}
           <select
             className="admin-filter-select"
@@ -538,41 +596,80 @@ export default function ReportManagement({
           )}
         </div>
 
-        {/* Pagination */}
-        <div className="admin-pagination-bar">
-          <span>
-            Showing {filtered.length === 0 ? 0 : startIndex + 1}-
-            {Math.min(filtered.length, startIndex + pageSize)} of {filtered.length} results
-          </span>
+        {/* Bottom Pagination Bar */}
+        <div className="admin-pagination-bar" aria-label="Reports pagination">
+          <div className="admin-pagination-info">
+            <span>
+              Showing {filtered.length === 0 ? 0 : startIndex + 1}–{Math.min(filtered.length, startIndex + pageSize)} of {filtered.length} {filtered.length === 1 ? 'task' : 'tasks'}
+            </span>
+            <div className="admin-pagination-limit">
+              <span>Per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                className="admin-pagination-select"
+                aria-label="Tasks per page"
+              >
+                <option value={5}>5</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
 
           <div className="admin-pagination-btns">
             <button
               type="button"
-              className="admin-page-btn"
-              disabled={currentPage <= 1}
+              className="admin-page-box arrow-btn"
+              disabled={currentPage <= 1 || totalPages <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              title="Previous page"
+              aria-label="Previous page"
             >
-              Previous
+              <ChevronLeft size={16} />
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
-              <button
-                key={pg}
-                type="button"
-                className={`admin-page-btn ${currentPage === pg ? 'active' : ''}`}
-                onClick={() => setCurrentPage(pg)}
-              >
-                {pg}
+            {totalPages === 0 ? (
+              <button type="button" className="admin-page-box active" disabled>
+                1
               </button>
-            ))}
+            ) : (
+              getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+                pg === '...' ? (
+                  <span
+                    key={`ellipsis-${idx}`}
+                    className="admin-page-ellipsis"
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={`page-${pg}`}
+                    type="button"
+                    className={`admin-page-box ${currentPage === pg ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(pg)}
+                    title={`Page ${pg}`}
+                  >
+                    {pg}
+                  </button>
+                )
+              )
+            )}
 
             <button
               type="button"
-              className="admin-page-btn"
-              disabled={currentPage >= totalPages}
+              className="admin-page-box arrow-btn"
+              disabled={currentPage >= totalPages || totalPages <= 1}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              title="Next page"
+              aria-label="Next page"
             >
-              Next
+              <ChevronRight size={16} />
             </button>
           </div>
         </div>
