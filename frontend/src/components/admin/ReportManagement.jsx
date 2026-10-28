@@ -37,7 +37,7 @@ export default function ReportManagement({
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const pageSize = 8;
+  const [pageSize, setPageSize] = useState(8);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const canArchive = (report) => ['resolved', 'closed'].includes(report.status);
@@ -124,21 +124,129 @@ export default function ReportManagement({
 
       {/* Filter and Search Card */}
       <div className="admin-filter-card">
-        <form onSubmit={handleSearchSubmit} className="admin-search-row">
-          <div className="admin-search-input-wrap">
-            <Search size={18} />
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search by keyword, reporter name, ID..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          <form
+            onSubmit={handleSearchSubmit}
+            className="admin-search-row"
+            style={{ flex: '1 1 340px', maxWidth: 520, margin: 0 }}
+          >
+            <div className="admin-search-input-wrap">
+              <Search size={18} />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search by keyword, reporter name, ID..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <button type="submit" className="admin-btn-black">
+              Search
+            </button>
+            {activeSearch && (
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={() => {
+                  setSearchTerm('');
+                  setActiveSearch('');
+                  setCurrentPage(1);
+                }}
+              >
+                Clear
+              </button>
+            )}
+          </form>
+
+          {/* Upper Pagination Controls */}
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'center',
+              gap: 12,
+              flexWrap: 'wrap',
+              marginLeft: 'auto',
+            }}
+          >
+            <span style={{ fontSize: '0.86rem', color: '#64748b' }}>
+              Showing {filtered.length === 0 ? 0 : startIndex + 1}–
+              {Math.min(filtered.length, startIndex + pageSize)} of {filtered.length} results
+            </span>
+
+            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Per page:</span>
+              <select
+                className="admin-filter-select"
+                style={{ padding: '4px 8px', fontSize: '0.82rem', height: 34, minWidth: 'unset' }}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                aria-label="Reports per page"
+              >
+                <option value={5}>5</option>
+                <option value={8}>8</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+
+            <div className="admin-pagination-btns">
+              <button
+                type="button"
+                className="admin-page-box arrow-btn"
+                disabled={currentPage <= 1}
+                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                title="Previous page"
+                aria-label="Previous page"
+              >
+                <ChevronLeft size={16} />
+              </button>
+
+              {getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+                pg === '...' ? (
+                  <span
+                    key={`top-ellipsis-${idx}`}
+                    style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.85rem' }}
+                  >
+                    ...
+                  </span>
+                ) : (
+                  <button
+                    key={`top-page-${pg}`}
+                    type="button"
+                    className={`admin-page-box ${currentPage === pg ? 'active' : ''}`}
+                    onClick={() => setCurrentPage(pg)}
+                    title={`Page ${pg}`}
+                  >
+                    {pg}
+                  </button>
+                )
+              )}
+
+              <button
+                type="button"
+                className="admin-page-box arrow-btn"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                title="Next page"
+                aria-label="Next page"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
           </div>
-          <button type="submit" className="admin-btn-black">
-            Search
-          </button>
-        </form>
+        </div>
 
         <div className="admin-filters-row" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
           <div
@@ -571,10 +679,31 @@ export default function ReportManagement({
 
         {/* Pagination */}
         <div className="admin-pagination-bar">
-          <span>
-            Showing {filtered.length === 0 ? 0 : startIndex + 1}-
-            {Math.min(filtered.length, startIndex + pageSize)} of {filtered.length} results
-          </span>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+            <span>
+              Showing {filtered.length === 0 ? 0 : startIndex + 1}–
+              {Math.min(filtered.length, startIndex + pageSize)} of {filtered.length} results
+            </span>
+            <div style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+              <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Per page:</span>
+              <select
+                className="admin-filter-select"
+                style={{ padding: '3px 8px', fontSize: '0.82rem', height: 32, minWidth: 'unset' }}
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setCurrentPage(1);
+                }}
+                aria-label="Reports per page"
+              >
+                <option value={5}>5</option>
+                <option value={8}>8</option>
+                <option value={10}>10</option>
+                <option value={20}>20</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
 
           <div className="admin-pagination-btns">
             <button
