@@ -185,13 +185,15 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
         ? String(report.worker_id)
         : (recWorker ? String(recWorker.id) : (staff[0] ? String(staff[0].id) : ''))
     );
+    setSelectedNewPriority(report.priority || 'medium');
   };
 
   // Submit Worker Assignment
-  const handleAssignSubmit = async ({ report_id, assigned_to, notes }) => {
+  const handleAssignSubmit = async ({ report_id, assigned_to, priority, notes }) => {
     const res = await assignReport({
       report_id,
       assigned_to,
+      priority,
       assigned_by: currentUser?.id || 1,
       expected_admin_id: currentUser?.id,
       notes,
@@ -205,6 +207,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
         setSelectedReport((prev) => ({
           ...prev,
           status: res.status || prev.status,
+          priority: res.priority || priority || prev.priority,
           worker_id: assigned_to,
           worker_name: res.technician?.full_name,
         }));
@@ -803,6 +806,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
                   handleAssignSubmit({
                     report_id: quickAssignModal.id,
                     assigned_to: Number(selectedTechnicianId),
+                    priority: selectedNewPriority,
                   });
                 }}
               >
@@ -822,6 +826,21 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
                         </option>
                       );
                     })}
+                  </select>
+                </div>
+
+                <div className="admin-form-group">
+                  <label className="admin-form-label">Priority Level (Admin Decision)</label>
+                  <select
+                    className="admin-select-input"
+                    value={selectedNewPriority}
+                    onChange={(e) => setSelectedNewPriority(e.target.value)}
+                    id="admin-quick-assign-priority-select"
+                  >
+                    <option value="low">Low Priority</option>
+                    <option value="medium">Medium Priority</option>
+                    <option value="high">High Priority</option>
+                    <option value="emergency">Urgent / Emergency</option>
                   </select>
                 </div>
 

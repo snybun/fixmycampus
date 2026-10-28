@@ -187,7 +187,9 @@ export default function ReportDetails({
       await onAssignSubmit({
         report_id: activeReport.id,
         assigned_to: Number(selectedStaffId),
+        priority: selectedPriority,
       });
+      setDetailedReport((prev) => (prev ? { ...prev, priority: selectedPriority } : null));
     } finally {
       setIsAssigning(false);
     }
@@ -205,10 +207,9 @@ export default function ReportDetails({
       await onStatusSubmit({
         report_id: activeReport.id,
         status: selectedStatus,
-        priority: selectedPriority,
         remarks,
       });
-      setDetailedReport((prev) => (prev ? { ...prev, status: selectedStatus, priority: selectedPriority } : null));
+      setDetailedReport((prev) => (prev ? { ...prev, status: selectedStatus } : null));
     } finally {
       setIsUpdating(false);
       setShowConfirmModal(false);
@@ -493,6 +494,27 @@ export default function ReportDetails({
                 </select>
               </div>
 
+              {/* Priority Level below Assigned Staff Member, locked when worker is assigned */}
+              <div className="admin-form-group">
+                <label className="admin-form-label">
+                  {assignmentLocked ? 'Assigned Priority Level' : 'Priority Level'}
+                </label>
+                <select
+                  className="admin-select-input"
+                  value={selectedPriority}
+                  onChange={(e) => setSelectedPriority(e.target.value)}
+                  disabled={assignmentLocked || isAssigning}
+                  style={assignmentLocked ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
+                  id="admin-assign-priority-select"
+                  title={assignmentLocked ? 'Priority level is locked because worker has already been assigned' : ''}
+                >
+                  <option value="low">Low Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="high">High Priority</option>
+                  <option value="emergency">Urgent / Emergency</option>
+                </select>
+              </div>
+
               <button
                 type="submit"
                 className="admin-btn-black"
@@ -517,33 +539,14 @@ export default function ReportDetails({
             </form>
           </div>
 
-          {/* Card 2: Update Incident Status & Priority */}
+          {/* Card 2: Update Incident Status */}
           <div
             className="admin-action-card"
             style={isFixed || isArchived ? { opacity: 0.85, backgroundColor: '#f8fafc', borderColor: '#e2e8f0' } : {}}
           >
-            <h3 className="admin-action-card-title">Update Status & Priority</h3>
+            <h3 className="admin-action-card-title">Update Incident Status</h3>
 
             <form onSubmit={handleUpdate}>
-              <div className="admin-form-group">
-                <label className="admin-form-label">
-                  {isArchived ? 'Archived Priority' : 'Priority Level'}
-                </label>
-                <select
-                  className="admin-select-input"
-                  value={selectedPriority}
-                  onChange={(e) => setSelectedPriority(e.target.value)}
-                  disabled={isFixed || isArchived || isUpdating}
-                  style={isFixed || isArchived ? { cursor: 'not-allowed', backgroundColor: '#f1f5f9', color: '#64748b' } : {}}
-                  id="admin-details-priority-select"
-                >
-                  <option value="low">Low Priority</option>
-                  <option value="medium">Medium Priority</option>
-                  <option value="high">High Priority</option>
-                  <option value="emergency">Urgent / Emergency</option>
-                </select>
-              </div>
-
               <div className="admin-form-group">
                 <label className="admin-form-label">
                   {isArchived ? 'Archived Status' : isFixed ? 'Incident Status' : 'Select New Status'}
@@ -665,7 +668,7 @@ export default function ReportDetails({
           message={
             selectedStatus === 'resolved' || selectedStatus === 'closed'
               ? `Are you sure you want to mark ticket #${activeReport.ticket_number || `FM-${activeReport.id}`} (${activeReport.title}) as Fixed / Resolved?`
-              : `Are you sure you want to update ticket #${activeReport.ticket_number || `FM-${activeReport.id}`} to status "${selectedStatus.replace('_', ' ')}" with ${selectedPriority.toUpperCase()} priority?`
+              : `Are you sure you want to update the status of ticket #${activeReport.ticket_number || `FM-${activeReport.id}`} to "${selectedStatus.replace('_', ' ')}"?`
           }
           confirmText="Yes, Update Report"
           cancelText="Di pa 'ko ready"

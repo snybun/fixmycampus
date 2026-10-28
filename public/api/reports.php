@@ -667,6 +667,21 @@ try {
                 ]);
             }
 
+            // Update priority if admin provided priority level when assigning worker
+            $newPriority = isset($input['priority']) ? strtolower(trim((string)$input['priority'])) : null;
+            if ($newPriority === 'urgent') {
+                $newPriority = 'emergency';
+            }
+            $allowedPriorities = ['low', 'medium', 'high', 'emergency'];
+            $finalPriority = ($newPriority && in_array($newPriority, $allowedPriorities, true)) ? $newPriority : ($report['priority'] ?? 'medium');
+
+            if ($newPriority && in_array($newPriority, $allowedPriorities, true) && $newPriority !== ($report['priority'] ?? '')) {
+                db_execute("UPDATE `reports` SET `priority` = :priority, `updated_at` = NOW() WHERE `id` = :id", [
+                    ':priority' => $newPriority,
+                    ':id'       => $reportId
+                ]);
+            }
+
             // Only transition report status to 'assigned' if it's currently submitted or under_review.
             // If the report is already in_progress or resolved, do NOT regress the status back to assigned!
             $finalStatus = $report['status'];
@@ -718,7 +733,8 @@ try {
                 'success'    => true,
                 'message'    => "Worker {$tech['full_name']} assigned successfully.",
                 'technician' => $tech,
-                'status'     => $finalStatus
+                'status'     => $finalStatus,
+                'priority'   => $finalPriority,
             ]);
         } catch (\Throwable $e) {
             $pdo->rollBack();

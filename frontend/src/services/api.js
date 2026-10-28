@@ -71,7 +71,7 @@ export async function fetchReportDetail(id) {
   }
 }
 
-export async function assignReport({ report_id, assigned_to, assigned_by = 1, expected_admin_id, notes = '' }) {
+export async function assignReport({ report_id, assigned_to, priority, assigned_by = 1, expected_admin_id, notes = '' }) {
   try {
     const session = await fetchAuthMe();
     if (!session.authenticated || session.user?.role_name !== 'admin'
@@ -86,7 +86,7 @@ export async function assignReport({ report_id, assigned_to, assigned_by = 1, ex
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
-      body: JSON.stringify({ report_id, assigned_to, assigned_by, notes }),
+      body: JSON.stringify({ report_id, assigned_to, priority, assigned_by, notes }),
     });
     return await res.json();
   } catch (err) {
