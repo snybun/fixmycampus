@@ -550,104 +550,201 @@ export default function AdminNotificationsView({
         </div>
       </div>
 
-      {/* Toolbar: Search input, Green Search button, Category Dropdown, Limit Dropdown */}
+      {/* Toolbar: Search input, Green Search button, Category Dropdown, Upper Pagination */}
       <div className="admin-filter-card" style={{ marginBottom: 20 }}>
-        <form onSubmit={handleSearchSubmit} className="admin-search-row" style={{ flexWrap: 'wrap' }}>
-          <div className="admin-search-input-wrap">
-            <Search size={18} />
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search ticket, room, keyword..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          <form
+            onSubmit={handleSearchSubmit}
+            className="admin-search-row"
+            style={{ flex: '1 1 360px', maxWidth: 540, margin: 0, flexWrap: 'wrap' }}
+          >
+            <div className="admin-search-input-wrap">
+              <Search size={18} />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search ticket, room, keyword..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
 
-          <button type="submit" className="admin-btn-black">
-            Search
-          </button>
-          {appliedSearch && (
-            <button
-              type="button"
-              className="admin-btn-secondary"
-              onClick={handleClearSearch}
-            >
-              Clear
+            <button type="submit" className="admin-btn-black">
+              Search
             </button>
-          )}
+            {appliedSearch && (
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={handleClearSearch}
+              >
+                Clear
+              </button>
+            )}
 
-          {/* Filter Symbol Button & Dropdown Menu */}
-          <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
-            <button
-              type="button"
-              className={`admin-filter-btn ${isFilterOpen ? 'open' : ''} ${filterType !== 'all' ? 'has-active' : ''}`}
-              onClick={() => setIsFilterOpen((prev) => !prev)}
-              aria-expanded={isFilterOpen}
-              title="Filter alerts by category"
-              id="admin-notif-filter-btn"
-            >
-              <Filter size={15} />
-              <span className="admin-filter-btn-text">
-                {filterType === 'all'
-                  ? 'Filter'
-                  : (NOTIF_FILTER_OPTIONS.find((o) => o.key === filterType)?.label || 'Filter')}
-              </span>
-              {filterType !== 'all' && (
-                <span className="admin-filter-badge">
-                  {filterTabsCounts[filterType] ?? 0}
+            {/* Filter Symbol Button & Dropdown Menu */}
+            <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
+              <button
+                type="button"
+                className={`admin-filter-btn ${isFilterOpen ? 'open' : ''} ${filterType !== 'all' ? 'has-active' : ''}`}
+                onClick={() => setIsFilterOpen((prev) => !prev)}
+                aria-expanded={isFilterOpen}
+                title="Filter alerts by category"
+                id="admin-notif-filter-btn"
+              >
+                <Filter size={15} />
+                <span className="admin-filter-btn-text">
+                  {filterType === 'all'
+                    ? 'Filter'
+                    : (NOTIF_FILTER_OPTIONS.find((o) => o.key === filterType)?.label || 'Filter')}
                 </span>
-              )}
-              <ChevronDown size={14} className={`admin-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
-            </button>
+                {filterType !== 'all' && (
+                  <span className="admin-filter-badge">
+                    {filterTabsCounts[filterType] ?? 0}
+                  </span>
+                )}
+                <ChevronDown size={14} className={`admin-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
+              </button>
 
-            {isFilterOpen && (
-              <div className="admin-filter-menu" role="menu">
-                <div className="admin-filter-menu-header">
-                  <span>Filter by Category</span>
-                  {filterType !== 'all' && (
-                    <button
-                      type="button"
-                      className="admin-filter-reset-btn"
-                      onClick={() => {
-                        setFilterType('all');
-                        setIsFilterOpen(false);
-                        setCurrentPage(1);
-                      }}
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-
-                <div className="admin-filter-menu-list">
-                  {NOTIF_FILTER_OPTIONS.map((opt) => {
-                    const isActive = filterType === opt.key;
-                    const count = filterTabsCounts[opt.key] ?? 0;
-                    return (
+              {isFilterOpen && (
+                <div className="admin-filter-menu" role="menu">
+                  <div className="admin-filter-menu-header">
+                    <span>Filter by Category</span>
+                    {filterType !== 'all' && (
                       <button
-                        key={opt.key}
                         type="button"
-                        className={`admin-filter-item ${isActive ? 'active' : ''}`}
+                        className="admin-filter-reset-btn"
                         onClick={() => {
-                          setFilterType(opt.key);
+                          setFilterType('all');
                           setIsFilterOpen(false);
                           setCurrentPage(1);
                         }}
-                        role="menuitem"
                       >
-                        <span className="admin-filter-item-dot" style={{ backgroundColor: opt.color }} />
-                        <span className="admin-filter-item-label">{opt.label}</span>
-                        <span className="admin-filter-item-count">{count}</span>
-                        {isActive && <Check size={14} className="admin-filter-check" />}
+                        Reset
                       </button>
-                    );
-                  })}
+                    )}
+                  </div>
+
+                  <div className="admin-filter-menu-list">
+                    {NOTIF_FILTER_OPTIONS.map((opt) => {
+                      const isActive = filterType === opt.key;
+                      const count = filterTabsCounts[opt.key] ?? 0;
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          className={`admin-filter-item ${isActive ? 'active' : ''}`}
+                          onClick={() => {
+                            setFilterType(opt.key);
+                            setIsFilterOpen(false);
+                            setCurrentPage(1);
+                          }}
+                          role="menuitem"
+                        >
+                          <span className="admin-filter-item-dot" style={{ backgroundColor: opt.color }} />
+                          <span className="admin-filter-item-label">{opt.label}</span>
+                          <span className="admin-filter-item-count">{count}</span>
+                          {isActive && <Check size={14} className="admin-filter-check" />}
+                        </button>
+                      );
+                    })}
+                  </div>
                 </div>
+              )}
+            </div>
+          </form>
+
+          {/* Upper Pagination Controls */}
+          {!loading && filteredNotifications.length > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                flexWrap: 'wrap',
+                marginLeft: 'auto',
+              }}
+            >
+              <span style={{ fontSize: '0.86rem', color: '#64748b' }}>
+                Showing {startIndex + 1}–
+                {Math.min(filteredNotifications.length, startIndex + pageSize)} of {filteredNotifications.length} alert{filteredNotifications.length === 1 ? '' : 's'}
+              </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Per page:</span>
+                <select
+                  className="admin-filter-select"
+                  style={{ padding: '4px 8px', fontSize: '0.82rem', height: 34, minWidth: 'unset' }}
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  aria-label="Alerts per page"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
               </div>
-            )}
-          </div>
-        </form>
+
+              <div className="admin-pagination-btns">
+                <button
+                  type="button"
+                  className="admin-page-box arrow-btn"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+                  title="Previous page"
+                  aria-label="Previous page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                {getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+                  pg === '...' ? (
+                    <span
+                      key={`top-ellipsis-${idx}`}
+                      style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.85rem' }}
+                    >
+                      ...
+                    </span>
+                  ) : (
+                    <button
+                      key={`top-page-${pg}`}
+                      type="button"
+                      className={`admin-page-box ${currentPage === pg ? 'active' : ''}`}
+                      onClick={() => setCurrentPage(pg)}
+                      title={`Page ${pg}`}
+                    >
+                      {pg}
+                    </button>
+                  )
+                )}
+
+                <button
+                  type="button"
+                  className="admin-page-box arrow-btn"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+                  title="Next page"
+                  aria-label="Next page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Notifications List */}
@@ -1011,85 +1108,7 @@ export default function AdminNotificationsView({
         )}
       </div>
 
-      {/* Bottom Boxed Pagination Bar */}
-      {!loading && filteredNotifications.length > 0 && (
-        <div
-          className="admin-pagination-bar"
-          style={{ marginTop: 24, paddingTop: 18, flexWrap: 'wrap', gap: 12 }}
-        >
-          <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-            <span>
-              Showing {startIndex + 1}–
-              {Math.min(filteredNotifications.length, startIndex + pageSize)} of {filteredNotifications.length} alert{filteredNotifications.length === 1 ? '' : 's'}
-            </span>
 
-            <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-              <span style={{ fontSize: '0.82rem', color: 'var(--admin-text-muted)' }}>Per page:</span>
-              <select
-                className="admin-filter-select"
-                style={{ padding: '4px 8px', fontSize: '0.82rem', height: 32, minWidth: 'unset' }}
-                value={pageSize}
-                onChange={(e) => {
-                  setPageSize(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                aria-label="Alerts per page"
-              >
-                <option value={5}>5</option>
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-                <option value={1000}>All</option>
-              </select>
-            </div>
-          </div>
-
-          <div className="admin-pagination-btns">
-            <button
-              type="button"
-              className="admin-page-box arrow-btn"
-              disabled={currentPage <= 1}
-              onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              title="Previous page"
-              aria-label="Previous page"
-            >
-              <ChevronLeft size={16} />
-            </button>
-
-            {getPageNumbers(currentPage, totalPages).map((pg, idx) =>
-              pg === '...' ? (
-                <span
-                  key={`ellipsis-${idx}`}
-                  style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.85rem' }}
-                >
-                  ...
-                </span>
-              ) : (
-                <button
-                  key={pg}
-                  type="button"
-                  className={`admin-page-box ${currentPage === pg ? 'active' : ''}`}
-                  onClick={() => setCurrentPage(pg)}
-                  title={`Page ${pg}`}
-                >
-                  {pg}
-                </button>
-              )
-            )}
-
-            <button
-              type="button"
-              className="admin-page-box arrow-btn"
-              disabled={currentPage >= totalPages}
-              onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              title="Next page"
-              aria-label="Next page"
-            >
-              <ChevronRight size={16} />
-            </button>
-          </div>
-        </div>
-      )}
 
       {/* Archive Single Confirmation Modal */}
       {showArchiveSingleModal && (

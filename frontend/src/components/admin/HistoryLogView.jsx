@@ -479,126 +479,206 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
 
       {/* Filter and Search Controls */}
       <div className="history-controls-card">
-        {/* Search & Filter Row */}
-        <form onSubmit={handleSearchSubmit} className="admin-search-row" style={{ flexWrap: 'wrap' }}>
-          <div className="admin-search-input-wrap">
-            <Search size={18} />
-            <input
-              type="text"
-              className="admin-search-input"
-              placeholder="Search by keywords, user name, student ID, location, ticket number..."
-              value={searchInput}
-              onChange={(e) => setSearchInput(e.target.value)}
-            />
-          </div>
+        <div
+          style={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'space-between',
+            gap: 16,
+            flexWrap: 'wrap',
+          }}
+        >
+          {/* Search & Filter Row */}
+          <form
+            onSubmit={handleSearchSubmit}
+            className="admin-search-row"
+            style={{ flex: '1 1 360px', maxWidth: 540, margin: 0, flexWrap: 'wrap' }}
+          >
+            <div className="admin-search-input-wrap">
+              <Search size={18} />
+              <input
+                type="text"
+                className="admin-search-input"
+                placeholder="Search by keywords, user name, student ID, location, ticket number..."
+                value={searchInput}
+                onChange={(e) => setSearchInput(e.target.value)}
+              />
+            </div>
 
-          <button type="submit" className="admin-btn-black">
-            Search
-          </button>
-          {appliedSearch && (
-            <button
-              type="button"
-              className="admin-btn-secondary"
-              onClick={() => {
-                setSearchInput('');
-                setAppliedSearch('');
-                setCurrentPage(1);
-              }}
-            >
-              Clear
+            <button type="submit" className="admin-btn-black">
+              Search
             </button>
-          )}
+            {appliedSearch && (
+              <button
+                type="button"
+                className="admin-btn-secondary"
+                onClick={() => {
+                  setSearchInput('');
+                  setAppliedSearch('');
+                  setCurrentPage(1);
+                }}
+              >
+                Clear
+              </button>
+            )}
 
-          {/* Filter Symbol Button & Dropdown Menu */}
-          <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
-            <button
-              type="button"
-              className={`admin-filter-btn ${isFilterOpen ? 'open' : ''} ${activeType !== 'all' ? 'has-active' : ''}`}
-              onClick={() => setIsFilterOpen((prev) => !prev)}
-              aria-expanded={isFilterOpen}
-              title="Filter logs by category"
-              id="history-filter-btn"
-            >
-              <Filter size={15} />
-              <span className="admin-filter-btn-text">
-                {activeType === 'all'
-                  ? 'Filter'
-                  : (HISTORY_FILTER_OPTIONS.find((o) => o.key === activeType)?.label || 'Filter')}
-              </span>
-              {activeType !== 'all' && (
-                <span className="admin-filter-badge">
-                  {summary[activeType] ?? 0}
+            {/* Filter Symbol Button & Dropdown Menu */}
+            <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
+              <button
+                type="button"
+                className={`admin-filter-btn ${isFilterOpen ? 'open' : ''} ${activeType !== 'all' ? 'has-active' : ''}`}
+                onClick={() => setIsFilterOpen((prev) => !prev)}
+                aria-expanded={isFilterOpen}
+                title="Filter logs by category"
+                id="history-filter-btn"
+              >
+                <Filter size={15} />
+                <span className="admin-filter-btn-text">
+                  {activeType === 'all'
+                    ? 'Filter'
+                    : (HISTORY_FILTER_OPTIONS.find((o) => o.key === activeType)?.label || 'Filter')}
                 </span>
-              )}
-              <ChevronDown size={14} className={`admin-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
-            </button>
+                {activeType !== 'all' && (
+                  <span className="admin-filter-badge">
+                    {summary[activeType] ?? 0}
+                  </span>
+                )}
+                <ChevronDown size={14} className={`admin-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
+              </button>
 
-            {isFilterOpen && (
-              <div className="admin-filter-menu" role="menu">
-                <div className="admin-filter-menu-header">
-                  <span>Filter by Category</span>
-                  {activeType !== 'all' && (
-                    <button
-                      type="button"
-                      className="admin-filter-reset-btn"
-                      onClick={() => {
-                        handleTypeChange('all');
-                        setIsFilterOpen(false);
-                      }}
-                    >
-                      Reset
-                    </button>
-                  )}
-                </div>
-
-                <div className="admin-filter-menu-list">
-                  {HISTORY_FILTER_OPTIONS.map((opt) => {
-                    const isActive = activeType === opt.key;
-                    const count = opt.key === 'all' ? summary.all : (summary[opt.key] ?? 0);
-                    return (
+              {isFilterOpen && (
+                <div className="admin-filter-menu" role="menu">
+                  <div className="admin-filter-menu-header">
+                    <span>Filter by Category</span>
+                    {activeType !== 'all' && (
                       <button
-                        key={opt.key}
                         type="button"
-                        className={`admin-filter-item ${isActive ? 'active' : ''}`}
+                        className="admin-filter-reset-btn"
                         onClick={() => {
-                          handleTypeChange(opt.key);
+                          handleTypeChange('all');
                           setIsFilterOpen(false);
                         }}
-                        role="menuitem"
                       >
-                        <span className="admin-filter-item-dot" style={{ backgroundColor: opt.color }} />
-                        <span className="admin-filter-item-label">{opt.label}</span>
-                        <span className="admin-filter-item-count">{count}</span>
-                        {isActive && <Check size={14} className="admin-filter-check" />}
+                        Reset
                       </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-          </div>
+                    )}
+                  </div>
 
-          <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
-            <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
-              Limit:
-            </span>
-            <select
-              className="admin-filter-select"
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
+                  <div className="admin-filter-menu-list">
+                    {HISTORY_FILTER_OPTIONS.map((opt) => {
+                      const isActive = activeType === opt.key;
+                      const count = opt.key === 'all' ? summary.all : (summary[opt.key] ?? 0);
+                      return (
+                        <button
+                          key={opt.key}
+                          type="button"
+                          className={`admin-filter-item ${isActive ? 'active' : ''}`}
+                          onClick={() => {
+                            handleTypeChange(opt.key);
+                            setIsFilterOpen(false);
+                          }}
+                          role="menuitem"
+                        >
+                          <span className="admin-filter-item-dot" style={{ backgroundColor: opt.color }} />
+                          <span className="admin-filter-item-label">{opt.label}</span>
+                          <span className="admin-filter-item-count">{count}</span>
+                          {isActive && <Check size={14} className="admin-filter-check" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+          </form>
+
+          {/* Upper Pagination Controls */}
+          {pagination.total > 0 && (
+            <div
+              style={{
+                display: 'flex',
+                alignItems: 'center',
+                gap: 12,
+                flexWrap: 'wrap',
+                marginLeft: 'auto',
               }}
-              title="Items per page limit"
             >
-              <option value={5}>5 per page</option>
-              <option value={10}>10 per page</option>
-              <option value={20}>20 per page</option>
-              <option value={50}>50 per page</option>
-              <option value={100}>100 per page</option>
-            </select>
-          </div>
-        </form>
+              <span style={{ fontSize: '0.86rem', color: '#64748b' }}>
+                Showing {startRecord} to {endRecord} of {pagination.total} logs
+              </span>
+
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <span style={{ fontSize: '0.82rem', color: '#64748b' }}>Per page:</span>
+                <select
+                  className="admin-filter-select"
+                  style={{ padding: '4px 8px', fontSize: '0.82rem', height: 34, minWidth: 'unset' }}
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  title="Items per page"
+                >
+                  <option value={5}>5</option>
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                  <option value={100}>100</option>
+                </select>
+              </div>
+
+              <div className="history-page-nav" style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <button
+                  type="button"
+                  className="history-page-btn arrow-btn"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1 || loading}
+                  title="Previous Page"
+                  aria-label="Previous Page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+
+                {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, idx) => {
+                  let p = idx + 1;
+                  if (pagination.total_pages > 5) {
+                    if (currentPage > 3) {
+                      p = currentPage - 2 + idx;
+                    }
+                    if (p > pagination.total_pages) {
+                      p = pagination.total_pages - (4 - idx);
+                    }
+                  }
+                  if (p < 1 || p > pagination.total_pages) return null;
+
+                  return (
+                    <button
+                      key={`top-p-${p}`}
+                      type="button"
+                      className={`history-page-btn ${currentPage === p ? 'active' : ''}`}
+                      onClick={() => handlePageChange(p)}
+                      disabled={loading}
+                      title={`Page ${p}`}
+                    >
+                      {p}
+                    </button>
+                  );
+                })}
+
+                <button
+                  type="button"
+                  className="history-page-btn arrow-btn"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= pagination.total_pages || loading}
+                  title="Next Page"
+                  aria-label="Next Page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Main Table */}
@@ -811,86 +891,6 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
           </table>
         </div>
 
-        {/* Pagination Bar */}
-        {pagination.total > 0 && (
-          <div className="history-pagination-bar">
-            <div style={{ display: 'flex', alignItems: 'center', gap: 14, flexWrap: 'wrap' }}>
-              <span className="history-page-info">
-                Showing <strong>{startRecord}</strong> to <strong>{endRecord}</strong> of{' '}
-                <strong>{pagination.total}</strong> logs
-              </span>
-
-              <div className="history-perpage-wrap">
-                <span style={{ fontSize: '0.8rem', color: '#64748b' }}>Per page:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="history-perpage-select"
-                  title="Items per page"
-                >
-                  <option value={5}>5 per page</option>
-                  <option value={10}>10 per page</option>
-                  <option value={20}>20 per page</option>
-                  <option value={50}>50 per page</option>
-                  <option value={100}>100 per page</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="history-page-nav">
-              <button
-                type="button"
-                className="history-page-btn arrow-btn"
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage <= 1 || loading}
-                title="Previous Page"
-                aria-label="Previous Page"
-              >
-                <ChevronLeft size={16} />
-              </button>
-
-              {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, idx) => {
-                let p = idx + 1;
-                if (pagination.total_pages > 5) {
-                  if (currentPage > 3) {
-                    p = currentPage - 2 + idx;
-                  }
-                  if (p > pagination.total_pages) {
-                    p = pagination.total_pages - (4 - idx);
-                  }
-                }
-                if (p < 1 || p > pagination.total_pages) return null;
-
-                return (
-                  <button
-                    key={p}
-                    type="button"
-                    className={`history-page-btn ${currentPage === p ? 'active' : ''}`}
-                    onClick={() => handlePageChange(p)}
-                    disabled={loading}
-                    title={`Page ${p}`}
-                  >
-                    {p}
-                  </button>
-                );
-              })}
-
-              <button
-                type="button"
-                className="history-page-btn arrow-btn"
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage >= pagination.total_pages || loading}
-                title="Next Page"
-                aria-label="Next Page"
-              >
-                <ChevronRight size={16} />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
 
       {/* Delete Confirmation Modal */}
