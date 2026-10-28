@@ -2,6 +2,8 @@ import React, { useState, useMemo, useEffect, useRef } from 'react';
 import {
   Search,
   SlidersHorizontal,
+  Filter,
+  ChevronDown,
   ChevronRight,
   ChevronLeft,
   FileQuestion,
@@ -350,7 +352,7 @@ export default function MyReportsView({
     <div className="myreports-page-wrapper">
       <div className="myreports-container">
         {/* ------------------------------------------------------------------
-            Header Row: Title, Subtitle, Search Box & Filter Button
+            Header Row: Title & Subtitle
             ------------------------------------------------------------------ */}
         <div className="myreports-header-row">
           <div>
@@ -359,19 +361,54 @@ export default function MyReportsView({
               View and track status updates on facility issues you have raised.
             </p>
           </div>
+        </div>
 
-          <div className="myreports-search-wrap">
+        {/* ------------------------------------------------------------------
+            Full-Width Search & Status Filter Toolbar Card
+            ------------------------------------------------------------------ */}
+        <div className="myreports-toolbar-card">
+          <form
+            className="myreports-search-wrap"
+            onSubmit={(e) => {
+              e.preventDefault();
+              setCurrentPage(1);
+            }}
+          >
             <div className="myreports-search-box">
               <Search size={16} className="myreports-search-icon" />
               <input
                 type="text"
                 className="myreports-search-input"
-                placeholder="Search reports..."
+                placeholder="Search by ticket (e.g. FMC-202610), title, room, building, or category..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 aria-label="Search reports"
               />
+              {searchQuery && (
+                <button
+                  type="button"
+                  className="myreports-search-clear-icon"
+                  onClick={() => setSearchQuery('')}
+                  title="Clear search"
+                >
+                  ✕
+                </button>
+              )}
             </div>
+
+            <button type="submit" className="myreports-search-submit-btn">
+              Search
+            </button>
+
+            {searchQuery && (
+              <button
+                type="button"
+                className="myreports-search-reset-btn"
+                onClick={() => setSearchQuery('')}
+              >
+                Clear
+              </button>
+            )}
 
             {/* Filter Dropdown Button */}
             <div className="myreports-filter-dropdown-wrap" ref={filterDropdownRef}>
@@ -384,8 +421,18 @@ export default function MyReportsView({
                 onClick={() => setIsFilterOpen((prev) => !prev)}
                 id="myreports-filter-toggle-btn"
               >
-                <SlidersHorizontal size={16} />
-                {statusFilter !== 'all' && <span className="myreports-filter-active-dot" />}
+                <Filter size={15} />
+                <span className="myreports-filter-btn-text">
+                  {statusFilter === 'all'
+                    ? 'Filter'
+                    : (STATUS_CONFIG.find((s) => s.key === statusFilter)?.label || 'Filter')}
+                </span>
+                {statusFilter !== 'all' && (
+                  <span className="myreports-filter-badge">
+                    {statusCounts[statusFilter] ?? 0}
+                  </span>
+                )}
+                <ChevronDown size={14} className={`myreports-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
               </button>
 
               {isFilterOpen && (
@@ -398,6 +445,7 @@ export default function MyReportsView({
                         className="myreports-filter-reset-link"
                         onClick={() => {
                           setStatusFilter('all');
+                          setIsFilterOpen(false);
                         }}
                       >
                         Reset
@@ -433,7 +481,7 @@ export default function MyReportsView({
                 </div>
               )}
             </div>
-          </div>
+          </form>
         </div>
 
         {/* Active Filter Pill Row (if not 'all') */}

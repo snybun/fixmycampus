@@ -1027,7 +1027,24 @@ export default function MaintenanceStaffDashboard({
               <h1 className="maint-greeting">Ratings &amp; Feedback</h1>
               <p className="maint-subtext">Reporter ratings and comments on your completed maintenance jobs.</p>
             </div>
-            <FeedbackOverview scopeKey={currentUser?.id} maintenance />
+            <FeedbackOverview
+              scopeKey={currentUser?.id}
+              maintenance
+              onViewReport={(item) => {
+                const matched = jobs.find(
+                  (j) =>
+                    (item.report_id && String(j.id) === String(item.report_id)) ||
+                    (item.ticket_number &&
+                      j.ticket_number &&
+                      j.ticket_number.toUpperCase() === item.ticket_number.toUpperCase())
+                );
+                if (matched) {
+                  setSelectedJobId(matched.id);
+                } else if (item.report_id) {
+                  setSelectedJobId(item.report_id);
+                }
+              }}
+            />
           </div>
         ) : (
           /* ================================================================
