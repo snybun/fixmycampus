@@ -20,18 +20,42 @@ import {
   RotateCcw,
   Camera,
   UploadCloud,
+  Filter,
+  ChevronDown,
+  Check,
 } from 'lucide-react';
 import { fetchHistoryLogs, deleteHistoryLog, updateReportPhoto } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
+
+const HISTORY_FILTER_OPTIONS = [
+  { key: 'all', label: 'All Logs', color: '#64748b' },
+  { key: 'user_login', label: 'User Sign-ins', color: '#059669' },
+  { key: 'user_registration', label: 'User Sign-ups', color: '#3b82f6' },
+  { key: 'report_submitted', label: 'Reports Logged', color: '#f59e0b' },
+  { key: 'status_change', label: 'Status Updates', color: '#8b5cf6' },
+  { key: 'report_archived', label: 'Archived Reports', color: '#c2410c' },
+];
 
 export default function HistoryLogView({ onViewReport, onRestoreReport }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
   const [searchInput, setSearchInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
   const [summary, setSummary] = useState({
     all: 0,
     user_login: 0,
@@ -485,19 +509,74 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
             </button>
           )}
 
-          <select
-            className="admin-filter-select"
-            value={activeType}
-            onChange={(e) => handleTypeChange(e.target.value)}
-            title="Filter by log category"
-          >
-            <option value="all">All Logs ({summary.all})</option>
-            <option value="user_login">User Sign-ins ({summary.user_login || 0})</option>
-            <option value="user_registration">User Sign-ups ({summary.user_registration})</option>
-            <option value="report_submitted">Reports Logged ({summary.report_submitted})</option>
-            <option value="status_change">Status Updates ({summary.status_change})</option>
-            <option value="report_archived">Archived Reports ({summary.report_archived})</option>
-          </select>
+          {/* Filter Symbol Button & Dropdown Menu */}
+          <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
+            <button
+              type="button"
+              className={`admin-filter-btn ${isFilterOpen ? 'open' : ''} ${activeType !== 'all' ? 'has-active' : ''}`}
+              onClick={() => setIsFilterOpen((prev) => !prev)}
+              aria-expanded={isFilterOpen}
+              title="Filter logs by category"
+              id="history-filter-btn"
+            >
+              <Filter size={15} />
+              <span className="admin-filter-btn-text">
+                {activeType === 'all'
+                  ? 'Filter'
+                  : (HISTORY_FILTER_OPTIONS.find((o) => o.key === activeType)?.label || 'Filter')}
+              </span>
+              {activeType !== 'all' && (
+                <span className="admin-filter-badge">
+                  {summary[activeType] ?? 0}
+                </span>
+              )}
+              <ChevronDown size={14} className={`admin-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
+            </button>
+
+            {isFilterOpen && (
+              <div className="admin-filter-menu" role="menu">
+                <div className="admin-filter-menu-header">
+                  <span>Filter by Category</span>
+                  {activeType !== 'all' && (
+                    <button
+                      type="button"
+                      className="admin-filter-reset-btn"
+                      onClick={() => {
+                        handleTypeChange('all');
+                        setIsFilterOpen(false);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+
+                <div className="admin-filter-menu-list">
+                  {HISTORY_FILTER_OPTIONS.map((opt) => {
+                    const isActive = activeType === opt.key;
+                    const count = opt.key === 'all' ? summary.all : (summary[opt.key] ?? 0);
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        className={`admin-filter-item ${isActive ? 'active' : ''}`}
+                        onClick={() => {
+                          handleTypeChange(opt.key);
+                          setIsFilterOpen(false);
+                        }}
+                        role="menuitem"
+                      >
+                        <span className="admin-filter-item-dot" style={{ backgroundColor: opt.color }} />
+                        <span className="admin-filter-item-label">{opt.label}</span>
+                        <span className="admin-filter-item-count">{count}</span>
+                        {isActive && <Check size={14} className="admin-filter-check" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
@@ -764,13 +843,13 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
             <div className="history-page-nav">
               <button
                 type="button"
-                className="history-page-btn"
+                className="history-page-btn arrow-btn"
                 onClick={() => handlePageChange(currentPage - 1)}
                 disabled={currentPage <= 1 || loading}
                 title="Previous Page"
+                aria-label="Previous Page"
               >
                 <ChevronLeft size={16} />
-                <span>Prev</span>
               </button>
 
               {Array.from({ length: Math.min(5, pagination.total_pages) }, (_, idx) => {
@@ -792,6 +871,7 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
                     className={`history-page-btn ${currentPage === p ? 'active' : ''}`}
                     onClick={() => handlePageChange(p)}
                     disabled={loading}
+                    title={`Page ${p}`}
                   >
                     {p}
                   </button>
@@ -800,12 +880,12 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
 
               <button
                 type="button"
-                className="history-page-btn"
+                className="history-page-btn arrow-btn"
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage >= pagination.total_pages || loading}
                 title="Next Page"
+                aria-label="Next Page"
               >
-                <span>Next</span>
                 <ChevronRight size={16} />
               </button>
             </div>

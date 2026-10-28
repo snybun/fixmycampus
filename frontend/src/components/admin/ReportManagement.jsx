@@ -1,6 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import { Search, FileSpreadsheet, MapPin } from 'lucide-react';
+import { Search, FileSpreadsheet, MapPin, Filter, ChevronLeft, ChevronRight } from 'lucide-react';
 import { exportReportsToExcel } from '../../utils/exportToExcel';
+
+const getPageNumbers = (current, total) => {
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages = [];
+  if (current <= 3) {
+    pages.push(1, 2, 3, 4, '...', total);
+  } else if (current >= total - 2) {
+    pages.push(1, '...', total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push(1, '...', current - 1, current, current + 1, '...', total);
+  }
+  return pages;
+};
 
 export default function ReportManagement({
   reports = [],
@@ -125,7 +140,23 @@ export default function ReportManagement({
           </button>
         </form>
 
-        <div className="admin-filters-row">
+        <div className="admin-filters-row" style={{ display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
+          <div
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 6,
+              padding: '6px 10px',
+              borderRadius: 8,
+              backgroundColor: '#f1f5f9',
+              color: '#334155',
+              fontSize: '0.82rem',
+              fontWeight: 700,
+            }}
+          >
+            <Filter size={14} style={{ color: '#059669' }} />
+            <span>Filters:</span>
+          </div>
           {/* Status */}
           <select
             className="admin-filter-select"
@@ -548,31 +579,45 @@ export default function ReportManagement({
           <div className="admin-pagination-btns">
             <button
               type="button"
-              className="admin-page-btn"
+              className="admin-page-box arrow-btn"
               disabled={currentPage <= 1}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              title="Previous page"
+              aria-label="Previous page"
             >
-              Previous
+              <ChevronLeft size={16} />
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
-              <button
-                key={pg}
-                type="button"
-                className={`admin-page-btn ${currentPage === pg ? 'active' : ''}`}
-                onClick={() => setCurrentPage(pg)}
-              >
-                {pg}
-              </button>
-            ))}
+            {getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+              pg === '...' ? (
+                <span
+                  key={`ellipsis-${idx}`}
+                  style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.85rem' }}
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={pg}
+                  type="button"
+                  className={`admin-page-box ${currentPage === pg ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pg)}
+                  title={`Page ${pg}`}
+                >
+                  {pg}
+                </button>
+              )
+            )}
 
             <button
               type="button"
-              className="admin-page-btn"
+              className="admin-page-box arrow-btn"
               disabled={currentPage >= totalPages}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              title="Next page"
+              aria-label="Next page"
             >
-              Next
+              <ChevronRight size={16} />
             </button>
           </div>
         </div>

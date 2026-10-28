@@ -1,10 +1,21 @@
-import React, { useState, useEffect } from 'react';
-import { Search, ChevronLeft, ChevronRight } from 'lucide-react';
+import React, { useState, useEffect, useRef } from 'react';
+import { Search, ChevronLeft, ChevronRight, Filter, ChevronDown, Check } from 'lucide-react';
 import { fetchUsers } from '../../services/api';
+
+const USER_ROLE_OPTIONS = [
+  { key: 'all', label: 'All Roles', color: '#64748b' },
+  { key: 'admin', label: 'Administrator', color: '#0f172a' },
+  { key: 'supervisor', label: 'Maintenance Staff', color: '#3b82f6' },
+  { key: 'technician', label: 'Technician / Worker', color: '#10b981' },
+  { key: 'faculty', label: 'Faculty Member', color: '#8b5cf6' },
+  { key: 'student', label: 'Student', color: '#f59e0b' },
+];
 
 export default function UsersView() {
   const [users, setUsers] = useState([]);
   const [roleFilter, setRoleFilter] = useState('all');
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
+  const filterDropdownRef = useRef(null);
   const [searchInput, setSearchInput] = useState('');
   const [appliedSearch, setAppliedSearch] = useState('');
   const [loading, setLoading] = useState(true);
@@ -12,6 +23,16 @@ export default function UsersView() {
   // Pagination & limit selection state
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (filterDropdownRef.current && !filterDropdownRef.current.contains(event.target)) {
+        setIsFilterOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   useEffect(() => {
     let isMounted = true;
@@ -138,18 +159,72 @@ export default function UsersView() {
             </button>
           )}
 
-          <select
-            className="admin-filter-select"
-            value={roleFilter}
-            onChange={handleRoleChange}
-          >
-            <option value="all">All Roles</option>
-            <option value="admin">Administrator</option>
-            <option value="supervisor">Maintenance Staff</option>
-            <option value="technician">Technician / Worker</option>
-            <option value="faculty">Faculty Member</option>
-            <option value="student">Student</option>
-          </select>
+          {/* Filter Symbol Button & Dropdown Menu */}
+          <div className="admin-filter-dropdown-wrap" ref={filterDropdownRef}>
+            <button
+              type="button"
+              className={`admin-filter-btn ${isFilterOpen ? 'open' : ''} ${roleFilter !== 'all' ? 'has-active' : ''}`}
+              onClick={() => setIsFilterOpen((prev) => !prev)}
+              aria-expanded={isFilterOpen}
+              title="Filter users by role"
+              id="users-filter-btn"
+            >
+              <Filter size={15} />
+              <span className="admin-filter-btn-text">
+                {roleFilter === 'all'
+                  ? 'Filter'
+                  : (USER_ROLE_OPTIONS.find((o) => o.key === roleFilter)?.label || 'Filter')}
+              </span>
+              {roleFilter !== 'all' && (
+                <span className="admin-filter-badge">
+                  {users.length}
+                </span>
+              )}
+              <ChevronDown size={14} className={`admin-filter-chevron ${isFilterOpen ? 'rotate' : ''}`} />
+            </button>
+
+            {isFilterOpen && (
+              <div className="admin-filter-menu" role="menu">
+                <div className="admin-filter-menu-header">
+                  <span>Filter by Role</span>
+                  {roleFilter !== 'all' && (
+                    <button
+                      type="button"
+                      className="admin-filter-reset-btn"
+                      onClick={() => {
+                        handleRoleChange({ target: { value: 'all' } });
+                        setIsFilterOpen(false);
+                      }}
+                    >
+                      Reset
+                    </button>
+                  )}
+                </div>
+
+                <div className="admin-filter-menu-list">
+                  {USER_ROLE_OPTIONS.map((opt) => {
+                    const isActive = roleFilter === opt.key;
+                    return (
+                      <button
+                        key={opt.key}
+                        type="button"
+                        className={`admin-filter-item ${isActive ? 'active' : ''}`}
+                        onClick={() => {
+                          handleRoleChange({ target: { value: opt.key } });
+                          setIsFilterOpen(false);
+                        }}
+                        role="menuitem"
+                      >
+                        <span className="admin-filter-item-dot" style={{ backgroundColor: opt.color }} />
+                        <span className="admin-filter-item-label">{opt.label}</span>
+                        {isActive && <Check size={14} className="admin-filter-check" />}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+          </div>
 
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <span style={{ fontSize: '0.85rem', color: 'var(--admin-text-muted)', whiteSpace: 'nowrap' }}>
@@ -273,21 +348,20 @@ export default function UsersView() {
             <div className="admin-pagination-btns">
               <button
                 type="button"
-                className="admin-page-btn"
+                className="admin-page-box arrow-btn"
                 disabled={currentPage <= 1}
                 onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                 title="Previous page"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                aria-label="Previous page"
               >
-                <ChevronLeft size={14} />
-                <span>Previous</span>
+                <ChevronLeft size={16} />
               </button>
 
               {getPageNumbers().map((item, idx) =>
                 item === '...' ? (
                   <span
                     key={`ellipsis-${idx}`}
-                    style={{ padding: '6px 8px', color: 'var(--admin-text-muted)', fontSize: '0.84rem' }}
+                    style={{ padding: '0 6px', color: 'var(--admin-text-muted)', fontSize: '0.85rem' }}
                   >
                     ...
                   </span>
@@ -295,7 +369,7 @@ export default function UsersView() {
                   <button
                     key={item}
                     type="button"
-                    className={`admin-page-btn ${currentPage === item ? 'active' : ''}`}
+                    className={`admin-page-box ${currentPage === item ? 'active' : ''}`}
                     onClick={() => setCurrentPage(item)}
                     title={`Page ${item}`}
                   >
@@ -306,14 +380,13 @@ export default function UsersView() {
 
               <button
                 type="button"
-                className="admin-page-btn"
+                className="admin-page-box arrow-btn"
                 disabled={currentPage >= totalPages}
                 onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                 title="Next page"
-                style={{ display: 'inline-flex', alignItems: 'center', gap: 4 }}
+                aria-label="Next page"
               >
-                <span>Next</span>
-                <ChevronRight size={14} />
+                <ChevronRight size={16} />
               </button>
             </div>
           </div>

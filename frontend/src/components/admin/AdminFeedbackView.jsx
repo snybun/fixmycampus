@@ -12,10 +12,28 @@ import {
   Award,
   Sparkles,
   MessageSquare,
+  ChevronLeft,
+  ChevronRight,
+  Filter,
 } from 'lucide-react';
 import { fetchFeedback } from '../../services/api';
 import { FeedbackStars, feedbackDate } from '../feedback/ReportFeedback';
 import './adminFeedback.css';
+
+const getPageNumbers = (current, total) => {
+  if (total <= 5) {
+    return Array.from({ length: total }, (_, i) => i + 1);
+  }
+  const pages = [];
+  if (current <= 3) {
+    pages.push(1, 2, 3, 4, '...', total);
+  } else if (current >= total - 2) {
+    pages.push(1, '...', total - 3, total - 2, total - 1, total);
+  } else {
+    pages.push(1, '...', current - 1, current, current + 1, '...', total);
+  }
+  return pages;
+};
 
 export default function AdminFeedbackView({ onViewReport }) {
   const [feedbackList, setFeedbackList] = useState([]);
@@ -440,32 +458,46 @@ export default function AdminFeedbackView({ onViewReport }) {
           <div className="admin-feedback-pagination-controls">
             <button
               type="button"
-              className="admin-feedback-page-btn"
+              className="admin-feedback-page-btn arrow-btn"
               disabled={currentPage <= 1 || loading}
               onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+              title="Previous page"
+              aria-label="Previous page"
             >
-              Previous
+              <ChevronLeft size={16} />
             </button>
 
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((pg) => (
-              <button
-                key={pg}
-                type="button"
-                className={`admin-feedback-page-btn ${pg === currentPage ? 'active' : ''}`}
-                onClick={() => setCurrentPage(pg)}
-                disabled={loading}
-              >
-                {pg}
-              </button>
-            ))}
+            {getPageNumbers(currentPage, totalPages).map((pg, idx) =>
+              pg === '...' ? (
+                <span
+                  key={`ellipsis-${idx}`}
+                  style={{ padding: '0 6px', color: '#94a3b8', fontSize: '0.85rem' }}
+                >
+                  ...
+                </span>
+              ) : (
+                <button
+                  key={pg}
+                  type="button"
+                  className={`admin-feedback-page-btn ${pg === currentPage ? 'active' : ''}`}
+                  onClick={() => setCurrentPage(pg)}
+                  disabled={loading}
+                  title={`Page ${pg}`}
+                >
+                  {pg}
+                </button>
+              )
+            )}
 
             <button
               type="button"
-              className="admin-feedback-page-btn"
+              className="admin-feedback-page-btn arrow-btn"
               disabled={currentPage >= totalPages || loading}
               onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+              title="Next page"
+              aria-label="Next page"
             >
-              Next
+              <ChevronRight size={16} />
             </button>
           </div>
         </div>

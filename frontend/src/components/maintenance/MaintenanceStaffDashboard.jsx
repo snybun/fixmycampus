@@ -1139,12 +1139,12 @@ export default function MaintenanceStaffDashboard({
                   <div className="maint-pagination-controls">
                     <button
                       type="button"
-                      className="maint-page-btn"
+                      className="maint-page-btn arrow-btn"
                       disabled={true}
                       title="Previous page"
+                      aria-label="Previous page"
                     >
-                      <ChevronLeft size={15} />
-                      <span>Previous</span>
+                      <ChevronLeft size={16} />
                     </button>
                     <button
                       type="button"
@@ -1156,12 +1156,12 @@ export default function MaintenanceStaffDashboard({
                     </button>
                     <button
                       type="button"
-                      className="maint-page-btn"
+                      className="maint-page-btn arrow-btn"
                       disabled={true}
                       title="Next page"
+                      aria-label="Next page"
                     >
-                      <span>Next</span>
-                      <ChevronRight size={15} />
+                      <ChevronRight size={16} />
                     </button>
                   </div>
                 </div>
@@ -1265,13 +1265,13 @@ export default function MaintenanceStaffDashboard({
                   <div className="maint-pagination-controls">
                     <button
                       type="button"
-                      className="maint-page-btn"
+                      className="maint-page-btn arrow-btn"
                       disabled={currentPage <= 1}
                       onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
                       title="Previous page"
+                      aria-label="Previous page"
                     >
-                      <ChevronLeft size={15} />
-                      <span>Previous</span>
+                      <ChevronLeft size={16} />
                     </button>
 
                     {getPageNumbers().map((item, idx) =>
@@ -1294,13 +1294,13 @@ export default function MaintenanceStaffDashboard({
 
                     <button
                       type="button"
-                      className="maint-page-btn"
+                      className="maint-page-btn arrow-btn"
                       disabled={currentPage >= totalPages}
                       onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
                       title="Next page"
+                      aria-label="Next page"
                     >
-                      <span>Next</span>
-                      <ChevronRight size={15} />
+                      <ChevronRight size={16} />
                     </button>
                   </div>
                 </div>
