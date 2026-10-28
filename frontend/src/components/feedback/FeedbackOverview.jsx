@@ -245,7 +245,75 @@ export default function FeedbackOverview({ scopeKey = 'admin', maintenance = fal
         </div>
       </form>
 
-      {/* Upper Pagination Toolbar */}
+      {error && <div className="feedback-error" role="alert">{error} <button type="button" className="feedback-retry" onClick={() => setRetry((value) => value + 1)}>Try again</button></div>}
+      {loading && !result && <p className="feedback-muted" role="status">Loading feedback…</p>}
+      {!loading && !error && total === 0 && (
+        <div className="feedback-empty-box">
+          <p className="feedback-empty">
+            {appliedSearch || ratingFilter !== 'all'
+              ? 'No feedback entries matched your search query or star rating filter.'
+              : 'No feedback yet. Ratings and comments will appear here when reporters review completed repairs.'}
+          </p>
+          {(appliedSearch || ratingFilter !== 'all') && (
+            <button
+              type="button"
+              className="feedback-search-reset-btn"
+              style={{ marginTop: 10 }}
+              onClick={() => {
+                setRatingFilter('all');
+                handleClearSearch();
+              }}
+            >
+              Show All Reviews
+            </button>
+          )}
+        </div>
+      )}
+      {result && result.data && result.data.length > 0 && (
+        <ul className="feedback-list">
+          {result.data.map((item) => {
+            const isClickable = typeof onViewReport === 'function' && Boolean(item.report_id || item.ticket_number);
+            return (
+              <li
+                key={item.id}
+                className={isClickable ? 'feedback-list-item clickable' : 'feedback-list-item'}
+                onClick={() => {
+                  if (isClickable) onViewReport(item);
+                }}
+                role={isClickable ? 'button' : undefined}
+                tabIndex={isClickable ? 0 : undefined}
+                onKeyDown={(e) => {
+                  if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
+                    e.preventDefault();
+                    onViewReport(item);
+                  }
+                }}
+                title={isClickable ? `Click to view report ${item.ticket_number || ''}` : undefined}
+              >
+                <div className="feedback-item-header">
+                  <div>
+                    <span className="feedback-ticket">{item.ticket_number}</span>
+                    <h3>{item.report_title}</h3>
+                  </div>
+                  <FeedbackStars rating={item.rating} />
+                </div>
+                {item.comments ? <p className="feedback-comment">{item.comments}</p> : <p className="feedback-muted">No written feedback.</p>}
+                <div className="feedback-item-footer">
+                  <p className="feedback-muted" style={{ margin: 0 }}>{item.reporter_name} · {feedbackDate(item.created_at)}</p>
+                  {isClickable && (
+                    <span className="feedback-view-report-btn">
+                      <span>View Report</span>
+                      <ArrowRight size={14} />
+                    </span>
+                  )}
+                </div>
+              </li>
+            );
+          })}
+        </ul>
+      )}
+
+      {/* Bottom Pagination Toolbar */}
       <div className="feedback-pagination-toolbar" aria-label="Feedback pagination">
         <div className="feedback-pagination-left">
           <span className="feedback-pagination-count">
@@ -320,74 +388,6 @@ export default function FeedbackOverview({ scopeKey = 'admin', maintenance = fal
           </button>
         </div>
       </div>
-
-      {error && <div className="feedback-error" role="alert">{error} <button type="button" className="feedback-retry" onClick={() => setRetry((value) => value + 1)}>Try again</button></div>}
-      {loading && !result && <p className="feedback-muted" role="status">Loading feedback…</p>}
-      {!loading && !error && total === 0 && (
-        <div className="feedback-empty-box">
-          <p className="feedback-empty">
-            {appliedSearch || ratingFilter !== 'all'
-              ? 'No feedback entries matched your search query or star rating filter.'
-              : 'No feedback yet. Ratings and comments will appear here when reporters review completed repairs.'}
-          </p>
-          {(appliedSearch || ratingFilter !== 'all') && (
-            <button
-              type="button"
-              className="feedback-search-reset-btn"
-              style={{ marginTop: 10 }}
-              onClick={() => {
-                setRatingFilter('all');
-                handleClearSearch();
-              }}
-            >
-              Show All Reviews
-            </button>
-          )}
-        </div>
-      )}
-      {result && result.data && result.data.length > 0 && (
-        <ul className="feedback-list">
-          {result.data.map((item) => {
-            const isClickable = typeof onViewReport === 'function' && Boolean(item.report_id || item.ticket_number);
-            return (
-              <li
-                key={item.id}
-                className={isClickable ? 'feedback-list-item clickable' : 'feedback-list-item'}
-                onClick={() => {
-                  if (isClickable) onViewReport(item);
-                }}
-                role={isClickable ? 'button' : undefined}
-                tabIndex={isClickable ? 0 : undefined}
-                onKeyDown={(e) => {
-                  if (isClickable && (e.key === 'Enter' || e.key === ' ')) {
-                    e.preventDefault();
-                    onViewReport(item);
-                  }
-                }}
-                title={isClickable ? `Click to view report ${item.ticket_number || ''}` : undefined}
-              >
-                <div className="feedback-item-header">
-                  <div>
-                    <span className="feedback-ticket">{item.ticket_number}</span>
-                    <h3>{item.report_title}</h3>
-                  </div>
-                  <FeedbackStars rating={item.rating} />
-                </div>
-                {item.comments ? <p className="feedback-comment">{item.comments}</p> : <p className="feedback-muted">No written feedback.</p>}
-                <div className="feedback-item-footer">
-                  <p className="feedback-muted" style={{ margin: 0 }}>{item.reporter_name} · {feedbackDate(item.created_at)}</p>
-                  {isClickable && (
-                    <span className="feedback-view-report-btn">
-                      <span>View Report</span>
-                      <ArrowRight size={14} />
-                    </span>
-                  )}
-                </div>
-              </li>
-            );
-          })}
-        </ul>
-      )}
     </section>
   );
 }
