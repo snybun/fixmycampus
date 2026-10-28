@@ -391,7 +391,7 @@ export default function ReportIssueWizard({
       building_name: selectedBuilding,
       floor_name: floorValue,
       room_number: roomCoordinate.trim(),
-      priority: priorityLevel.toLowerCase(),
+      priority: 'medium',
       primary_photo: primaryPhoto,
       additional_photos: additionalPhotos,
     };
@@ -986,12 +986,12 @@ export default function ReportIssueWizard({
             <div className="rw-card-header">
               <h1 className="rw-card-title">Describe the defect</h1>
               <p className="rw-card-subtitle">
-                Provide a brief summary and choose the priority level of the issue.
+                Provide a brief summary and description of the defect.
               </p>
             </div>
 
             <div className="rw-grid-2col">
-              {/* Left Column: Title, Priority Level (4 buttons), Description Textarea */}
+              {/* Left Column: Title, Description Textarea */}
               <div>
                 <div className="rw-form-group">
                   <label className="rw-form-label">Issue Title</label>
@@ -1002,24 +1002,6 @@ export default function ReportIssueWizard({
                     onChange={(e) => setIssueTitle(e.target.value)}
                     id="rw-title-input"
                   />
-                </div>
-
-                <div className="rw-form-group">
-                  <label className="rw-form-label">Priority Level</label>
-                  <div className="rw-priority-row">
-                    {['Low', 'Medium', 'High', 'Urgent'].map((lvl) => (
-                      <button
-                        key={lvl}
-                        type="button"
-                        className={`rw-priority-btn ${lvl.toLowerCase()} ${
-                          priorityLevel === lvl ? 'active' : ''
-                        }`}
-                        onClick={() => setPriorityLevel(lvl)}
-                      >
-                        {lvl}
-                      </button>
-                    ))}
-                  </div>
                 </div>
 
                 <div className="rw-form-group">
@@ -1139,7 +1121,7 @@ export default function ReportIssueWizard({
                 )}
 
                 <div className="rw-review-meta-box">
-                  <div className="rw-meta-row border-bottom">
+                  <div className="rw-meta-row">
                     <span className="rw-meta-label">Category</span>
                     <div className="rw-meta-val-badge">
                       {selectedCategory && (
@@ -1149,13 +1131,6 @@ export default function ReportIssueWizard({
                         </>
                       )}
                     </div>
-                  </div>
-
-                  <div className="rw-meta-row">
-                    <span className="rw-meta-label">Priority Level</span>
-                    <span className={`rw-priority-pill ${priorityLevel.toLowerCase()}`}>
-                      {priorityLevel} Priority
-                    </span>
                   </div>
                 </div>
               </div>

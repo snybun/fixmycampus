@@ -552,15 +552,9 @@ export default function MyReportsView({
                       Archived
                     </span>
                   ) : (
-                    <>
-                      <span className={`myreports-priority-badge priority-${(report.priority || 'medium').toLowerCase()}`}>
-                        {report.priority}
-                      </span>
-
-                      <span className={`myreports-status-badge status-${(report.status || 'reported').toLowerCase()}`}>
-                        {report.statusLabel}
-                      </span>
-                    </>
+                    <span className={`myreports-status-badge status-${(report.status || 'reported').toLowerCase()}`}>
+                      {report.statusLabel}
+                    </span>
                   )}
 
                   {/* Archive button for finished reports */}

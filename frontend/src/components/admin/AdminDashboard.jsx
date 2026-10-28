@@ -75,6 +75,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
   const [quickUpdateModal, setQuickUpdateModal] = useState(null);
   const [selectedTechnicianId, setSelectedTechnicianId] = useState('');
   const [selectedNewStatus, setSelectedNewStatus] = useState('in_progress');
+  const [selectedNewPriority, setSelectedNewPriority] = useState('medium');
   const [reportToArchive, setReportToArchive] = useState(null);
   const [isArchiving, setIsArchiving] = useState(false);
   const [showLogoutModal, setShowLogoutModal] = useState(false);
@@ -220,7 +221,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
     }
   };
 
-  // Open Quick Update Status
+  // Open Quick Update Status & Priority
   const handleOpenUpdate = (report) => {
     if (!report) return;
     const rawStatus = (report.status || '').toLowerCase();
@@ -231,10 +232,11 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
     }
     setQuickUpdateModal(report);
     setSelectedNewStatus(report.status || 'in_progress');
+    setSelectedNewPriority(report.priority || 'medium');
   };
 
-  // Submit Status Update
-  const handleStatusSubmit = async ({ report_id, status, remarks }) => {
+  // Submit Status & Priority Update
+  const handleStatusSubmit = async ({ report_id, status, priority, remarks }) => {
     const targetReport = reports.find((r) => r.id === report_id) || quickUpdateModal || selectedReport;
     const rawStatus = (targetReport?.status || '').toLowerCase();
     if (rawStatus === 'resolved' || rawStatus === 'closed' || rawStatus === 'fixed') {
@@ -244,19 +246,24 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
     const res = await updateReportStatus({
       report_id,
       status,
+      priority,
       remarks,
       changed_by: currentUser?.id || 1,
     });
 
     if (res?.success) {
-      showToast(res.message || 'Report status updated successfully.');
+      showToast(res.message || 'Report updated successfully.');
       setQuickUpdateModal(null);
       await refreshData();
       if (selectedReport && selectedReport.id === report_id) {
-        setSelectedReport((prev) => ({ ...prev, status }));
+        setSelectedReport((prev) => ({
+          ...prev,
+          status,
+          ...(priority ? { priority } : {}),
+        }));
       }
     } else {
-      alert(res?.message || 'Failed to update report status.');
+      alert(res?.message || 'Failed to update report.');
     }
   };
 
@@ -837,7 +844,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
       })()}
 
       {/* --------------------------------------------------------------------
-          Quick Update Status Modal (Triggered from tables)
+          Quick Update Status & Priority Modal (Triggered from tables)
           -------------------------------------------------------------------- */}
       {quickUpdateModal && (
         <div
@@ -850,7 +857,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
           >
             <div className="admin-modal-header">
               <div>
-                <h3 className="admin-modal-title">Update Report Status</h3>
+                <h3 className="admin-modal-title">Update Status & Priority</h3>
                 <p style={{ fontSize: '0.82rem', color: '#64748b', marginTop: 4 }}>
                   Ticket: {quickUpdateModal.ticket_number || `FM-${quickUpdateModal.id}`} &bull; {quickUpdateModal.title}
                 </p>
@@ -870,15 +877,32 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
                 handleStatusSubmit({
                   report_id: quickUpdateModal.id,
                   status: selectedNewStatus,
+                  priority: selectedNewPriority,
                 });
               }}
             >
+              <div className="admin-form-group">
+                <label className="admin-form-label">Priority Level</label>
+                <select
+                  className="admin-select-input"
+                  value={selectedNewPriority}
+                  onChange={(e) => setSelectedNewPriority(e.target.value)}
+                  id="admin-modal-priority-select"
+                >
+                  <option value="low">Low Priority</option>
+                  <option value="medium">Medium Priority</option>
+                  <option value="high">High Priority</option>
+                  <option value="emergency">Urgent / Emergency</option>
+                </select>
+              </div>
+
               <div className="admin-form-group">
                 <label className="admin-form-label">Select New Status</label>
                 <select
                   className="admin-select-input"
                   value={selectedNewStatus}
                   onChange={(e) => setSelectedNewStatus(e.target.value)}
+                  id="admin-modal-status-select"
                 >
                   <option value="submitted">Submitted</option>
                   <option value="under_review">Under Review</option>
@@ -898,7 +922,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
                   Cancel
                 </button>
                 <button type="submit" className="admin-btn-black">
-                  Save Status
+                  Save Changes
                 </button>
               </div>
             </form>

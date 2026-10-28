@@ -461,13 +461,6 @@ export default function ReportDetailsView({
 
               <div className="rep-desc-footer">
                 <div className="rep-desc-badge-group">
-                  <span className="rep-desc-sublabel">PRIORITY</span>
-                  <span className={`rep-priority-badge ${priorityClass}`}>
-                    {detailedReport.priority || 'Medium'}
-                  </span>
-                </div>
-
-                <div className="rep-desc-badge-group right-align">
                   <span className="rep-desc-sublabel">REPORTED STATUS</span>
                   <span className={`rep-status-badge ${statusClass}`}>
                     {detailedReport.statusLabel || 'Worker Assigned'}
