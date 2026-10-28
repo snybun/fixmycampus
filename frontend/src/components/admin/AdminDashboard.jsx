@@ -4,7 +4,6 @@ import {
   FileText,
   Users,
   Building2,
-  BarChart2,
   UserCheck,
   Wrench,
   LogOut,
@@ -45,7 +44,6 @@ import ReportManagement from './ReportManagement';
 import ReportDetails from './ReportDetails';
 import MaintenanceStaff from './MaintenanceStaff';
 import BuildingsAndRooms from './BuildingsAndRooms';
-import AnalyticsView from './AnalyticsView';
 import UsersView from './UsersView';
 import AdminNotificationsView from './AdminNotificationsView';
 import HistoryLogView from './HistoryLogView';
@@ -55,7 +53,7 @@ import UserProfileDropdown from '../common/UserProfileDropdown';
 import './admin.css';
 
 export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUpdateUser }) {
-  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'reports' | 'report-details' | 'staff' | 'buildings' | 'analytics' | 'users' | 'settings'
+  const [activeTab, setActiveTab] = useState('dashboard'); // 'dashboard' | 'reports' | 'report-details' | 'staff' | 'buildings' | 'users' | 'settings'
   const [returnTab, setReturnTab] = useState('reports');
   const [selectedReport, setSelectedReport] = useState(null);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -535,15 +533,6 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
 
             <button
               type="button"
-              className={`admin-nav-item ${activeTab === 'analytics' ? 'active' : ''}`}
-              onClick={() => handleNavTabClick('analytics')}
-            >
-              <BarChart2 size={18} />
-              <span>Analytics</span>
-            </button>
-
-            <button
-              type="button"
               className={`admin-nav-item ${activeTab === 'feedback' ? 'active' : ''}`}
               onClick={() => handleNavTabClick('feedback')}
               id="admin-nav-feedback"
@@ -740,10 +729,6 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
           />
         )}
 
-        {/* View 6: Analytics */}
-        {activeTab === 'analytics' && (
-          <AnalyticsView stats={stats} reports={reports} />
-        )}
 
         {/* View 7: Users */}
         {activeTab === 'users' && <UsersView />}
