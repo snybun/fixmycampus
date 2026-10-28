@@ -37,7 +37,7 @@ export default function ReportManagement({
   const [categoryFilter, setCategoryFilter] = useState('all');
   const [dateFilter, setDateFilter] = useState('all');
   const [currentPage, setCurrentPage] = useState(1);
-  const [pageSize, setPageSize] = useState(8);
+  const [pageSize, setPageSize] = useState(10);
   const [selectMode, setSelectMode] = useState(false);
   const [selectedIds, setSelectedIds] = useState([]);
   const canArchive = (report) => ['resolved', 'closed'].includes(report.status);
@@ -194,10 +194,10 @@ export default function ReportManagement({
                 aria-label="Reports per page"
               >
                 <option value={5}>5</option>
-                <option value={8}>8</option>
                 <option value={10}>10</option>
                 <option value={20}>20</option>
                 <option value={50}>50</option>
+                <option value={100}>100</option>
               </select>
             </div>
 
