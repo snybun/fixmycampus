@@ -4,7 +4,7 @@ import { sendOtp, resetPassword } from '../../services/api';
 import './auth.css';
 
 export default function ForgotPasswordPage({ onNavigate }) {
-  const [email, setEmail] = useState('mafe.cerna.up@phinmaed.com');
+  const [email, setEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -18,23 +18,35 @@ export default function ForgotPasswordPage({ onNavigate }) {
   const [successMsg, setSuccessMsg] = useState('');
 
   const handleSendOtp = async () => {
-    if (!email) {
-      setError('Please enter your email address first.');
+    const trimmedEmail = email.trim();
+    if (!trimmedEmail) {
+      setError('Please enter your institutional email address first.');
+      setSuccessMsg('');
       return;
     }
     setError('');
+    setSuccessMsg('');
     setSendingOtp(true);
     try {
-      const res = await sendOtp(email);
-      setOtpSent(true);
-      if (res.code) {
-        setSuccessMsg(`OTP sent to ${email}. (Demo Code: ${res.code})`);
-        setOtp(res.code); // auto-fill in demo for convenience
+      const res = await sendOtp(trimmedEmail);
+      if (res && res.success) {
+        setOtpSent(true);
+        if (res.code) {
+          setSuccessMsg(res.message || `OTP sent to ${trimmedEmail}. (Demo Code: ${res.code})`);
+          setOtp(res.code);
+        } else {
+          setSuccessMsg(res.message || `OTP verification code has been dispatched to ${trimmedEmail}. Please check your inbox or spam folder.`);
+        }
       } else {
-        setSuccessMsg(`OTP has been sent to ${email}. Please check your inbox.`);
+        setOtpSent(false);
+        setError(
+          (res && res.message) ||
+          'No account found matching this email address. Please make sure your institutional account is registered first.'
+        );
       }
     } catch (err) {
-      setError('Failed to send OTP. Please try again.');
+      setOtpSent(false);
+      setError('Connection error while sending OTP. Please check your network and try again.');
     } finally {
       setSendingOtp(false);
     }
@@ -45,7 +57,10 @@ export default function ForgotPasswordPage({ onNavigate }) {
     setError('');
     setSuccessMsg('');
 
-    if (!email || !otp || !newPassword || !confirmPassword) {
+    const trimmedEmail = email.trim();
+    const trimmedOtp = otp.trim();
+
+    if (!trimmedEmail || !trimmedOtp || !newPassword || !confirmPassword) {
       setError('Please fill in all required fields.');
       return;
     }
@@ -62,14 +77,14 @@ export default function ForgotPasswordPage({ onNavigate }) {
 
     setLoading(true);
     try {
-      const res = await resetPassword({ email, otp, newPassword });
-      if (res.success) {
+      const res = await resetPassword({ email: trimmedEmail, otp: trimmedOtp, newPassword });
+      if (res && res.success) {
         setSuccessMsg('Password changed successfully! Redirecting to login...');
         setTimeout(() => {
           onNavigate('login');
         }, 1500);
       } else {
-        setError(res.message || 'Invalid OTP or failed to update password.');
+        setError((res && res.message) || 'Invalid OTP or failed to update password.');
       }
     } catch (err) {
       setError('Connection error. Please try again.');
@@ -81,7 +96,7 @@ export default function ForgotPasswordPage({ onNavigate }) {
   return (
     <div className="auth-page-wrapper">
       <div className="auth-centered-wrapper">
-        {/* Brand at top-left as in Screenshot 3 */}
+        {/* Brand at top-left */}
         <div className="auth-top-nav">
           <button
             type="button"
@@ -96,9 +111,29 @@ export default function ForgotPasswordPage({ onNavigate }) {
           </button>
         </div>
 
-        <div className="auth-centered-card" style={{ marginTop: '2rem' }}>
+        <div className="auth-centered-card">
           <div className="auth-header" style={{ marginTop: 0 }}>
+            <div
+              style={{
+                display: 'inline-flex',
+                alignItems: 'center',
+                gap: '0.35rem',
+                padding: '0.2rem 0.65rem',
+                borderRadius: '20px',
+                background: '#eff6ff',
+                border: '1px solid #bfdbfe',
+                color: '#1d4ed8',
+                fontSize: '0.72rem',
+                fontWeight: 600,
+                marginBottom: '0.45rem',
+              }}
+            >
+              <span>PHINMA University of Pangasinan</span>
+            </div>
             <h1 className="auth-title">Forgot Password</h1>
+            <p className="auth-subtitle">
+              Enter your registered institutional email to receive a password reset verification code.
+            </p>
           </div>
 
           {error && (
@@ -126,9 +161,13 @@ export default function ForgotPasswordPage({ onNavigate }) {
                   id="forgot-email"
                   type="email"
                   className="auth-input auth-input-with-action"
-                  placeholder="mafe.cerna.up@phinmaed.com"
+                  placeholder="yourname.up@phinmaed.com"
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => {
+                    setEmail(e.target.value);
+                    if (error) setError('');
+                  }}
+                  autoComplete="off"
                   required
                 />
                 <button
@@ -174,6 +213,7 @@ export default function ForgotPasswordPage({ onNavigate }) {
                   placeholder="Min. 8 characters"
                   value={newPassword}
                   onChange={(e) => setNewPassword(e.target.value)}
+                  autoComplete="new-password"
                   required
                 />
                 <button
@@ -200,6 +240,7 @@ export default function ForgotPasswordPage({ onNavigate }) {
                   placeholder="Repeat password"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
+                  autoComplete="new-password"
                   required
                 />
                 <button

@@ -1,0 +1,179 @@
+/* ==========================================================================
+   FixMyCampus - Apple Minimalist Access Denied View
+   Clean, typography-first, airy, authentic macOS / iOS aesthetic.
+   ========================================================================== */
+
+.apple-denied-wrapper {
+  min-height: 100vh;
+  width: 100%;
+  background-color: #fbfbfd;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  box-sizing: border-box;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.apple-denied-card {
+  max-width: 440px;
+  width: 100%;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 20px;
+  padding: 40px 32px 32px 32px;
+  text-align: center;
+  box-shadow: 0 4px 24px rgba(0, 0, 0, 0.04), 0 1px 2px rgba(0, 0, 0, 0.02);
+  animation: appleAppear 0.28s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes appleAppear {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Minimalist Apple Icon */
+.apple-denied-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #f5f5f7;
+  color: #1d1d1f;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 20px auto;
+}
+
+/* Typography */
+.apple-denied-title {
+  font-size: 1.35rem;
+  font-weight: 600;
+  color: #1d1d1f;
+  letter-spacing: -0.02em;
+  margin: 0 0 8px 0;
+  line-height: 1.3;
+}
+
+.apple-denied-subtitle {
+  font-size: 0.88rem;
+  color: #86868b;
+  line-height: 1.5;
+  margin: 0 0 24px 0;
+  font-weight: 400;
+}
+
+/* Minimalist Inset (Like macOS System Settings / iOS grouped table) */
+.apple-denied-info-inset {
+  background: #f5f5f7;
+  border-radius: 12px;
+  padding: 4px 16px;
+  margin-bottom: 18px;
+  text-align: left;
+}
+
+.apple-info-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 0;
+  font-size: 0.82rem;
+}
+
+.apple-info-label {
+  color: #86868b;
+  font-weight: 400;
+}
+
+.apple-info-value {
+  color: #1d1d1f;
+  font-weight: 500;
+  text-align: right;
+  max-width: 220px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.apple-info-mono {
+  font-size: 0.78rem;
+  color: #515154;
+}
+
+.apple-role-tag {
+  color: #d97706; /* Subtle warm amber for non-admin role indicator */
+  font-weight: 600;
+}
+
+.apple-info-divider {
+  height: 1px;
+  background-color: rgba(0, 0, 0, 0.06);
+}
+
+/* Footnote */
+.apple-denied-note {
+  font-size: 0.75rem;
+  color: #a1a1a6;
+  margin: 0 0 24px 0;
+  line-height: 1.4;
+}
+
+.apple-denied-note code {
+  font-family: SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  font-size: 0.72rem;
+  background: #f5f5f7;
+  padding: 2px 5px;
+  border-radius: 4px;
+  color: #1d1d1f;
+}
+
+/* Apple Pill Buttons */
+.apple-denied-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.apple-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 11px 20px;
+  border-radius: 980px;
+  font-size: 0.88rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+  border: 1px solid transparent;
+}
+
+.apple-btn-primary {
+  background: #059669;
+  color: #ffffff;
+}
+
+.apple-btn-primary:hover {
+  background: #047857;
+}
+
+.apple-btn-secondary {
+  background: transparent;
+  color: #1d1d1f;
+  border-color: #d2d2d7;
+}
+
+.apple-btn-secondary:hover {
+  background: #f5f5f7;
+  border-color: #c7c7cc;
+}

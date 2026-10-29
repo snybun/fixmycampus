@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Menu, X } from 'lucide-react';
 
-export default function Navbar({ onNavigate, onScrollTo }) {
+export default function Navbar({ onNavigate, onScrollTo, currentUser }) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleNavClick = (e, targetId) => {
@@ -27,7 +27,7 @@ export default function Navbar({ onNavigate, onScrollTo }) {
   const handleReportClick = () => {
     setMobileMenuOpen(false);
     if (onNavigate) {
-      onNavigate('login');
+      onNavigate(currentUser ? 'report-issue' : 'login');
     }
   };
 
@@ -61,14 +61,6 @@ export default function Navbar({ onNavigate, onScrollTo }) {
           <a href="#impact" className="landing-nav-link" onClick={(e) => handleNavClick(e, 'impact')}>
             Impact
           </a>
-          <button
-            type="button"
-            className="landing-nav-link"
-            onClick={() => onNavigate('admin')}
-            style={{ background: 'none', border: 'none', cursor: 'pointer', font: 'inherit' }}
-          >
-            Super Admin
-          </button>
         </nav>
 
         {/* Desktop Actions & Mobile Menu Toggle */}

@@ -1,0 +1,659 @@
+/* ==============================================================================
+   FixMyCampus - Student History & Archives Styling
+   ============================================================================== */
+
+.sh-page-wrapper {
+  background-color: #faf9f5;
+  min-height: calc(100vh - 66px);
+  padding: 32px 24px 80px 24px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  color: #111827;
+}
+
+.sh-container {
+  max-width: 960px;
+  margin: 0 auto;
+}
+
+/* Toast Container */
+.sh-toast-container {
+  position: fixed;
+  top: 80px;
+  right: 24px;
+  z-index: 9999;
+  animation: shFadeInDown 0.25s ease-out;
+}
+
+.sh-toast-box {
+  background-color: #ecfdf5;
+  border: 1px solid #a7f3d0;
+  color: #065f46;
+  padding: 10px 18px;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
+@keyframes shFadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* Back Button */
+.sh-back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: transparent;
+  border: none;
+  color: #4b5563;
+  font-size: 0.88rem;
+  font-weight: 550;
+  cursor: pointer;
+  padding: 6px 10px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  transition: all 0.15s ease;
+}
+
+.sh-back-btn:hover {
+  color: #059669;
+  background-color: #ecfdf5;
+}
+
+/* Header Row */
+.sh-header-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 18px;
+  margin-bottom: 28px;
+}
+
+.sh-title-group {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.sh-icon-circle {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  background-color: #ecfdf5;
+  color: #059669;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #d1fae5;
+  flex-shrink: 0;
+}
+
+.sh-title {
+  font-size: 1.85rem;
+  font-weight: 750;
+  color: #111827;
+  letter-spacing: -0.02em;
+  margin: 0;
+  line-height: 1.2;
+}
+
+.sh-subtitle {
+  font-size: 0.92rem;
+  color: #6b7280;
+  margin: 4px 0 0 0;
+  font-weight: 400;
+}
+
+/* Pill Tabs */
+.sh-pill-tabs {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f3f4f6;
+  padding: 4px;
+  border-radius: 10px;
+  border: 1px solid #e5e7eb;
+}
+
+.sh-tab-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border: none;
+  background: transparent;
+  color: #4b5563;
+  font-size: 0.85rem;
+  font-weight: 600;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.sh-tab-pill:hover:not(.active) {
+  color: #111827;
+  background-color: #e5e7eb;
+}
+
+.sh-tab-pill.active {
+  background-color: #ffffff;
+  color: #059669;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08);
+}
+
+.sh-pill-count {
+  font-size: 0.72rem;
+  font-weight: 700;
+  background-color: #ecfdf5;
+  color: #047857;
+  padding: 1px 6px;
+  border-radius: 10px;
+  border: 1px solid #a7f3d0;
+}
+
+/* Content Section */
+.sh-content-section {
+  background-color: #ffffff;
+  border-radius: 16px;
+  border: 1px solid #e5e7eb;
+  padding: 24px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.03);
+}
+
+/* Archived Notifications List */
+.sh-notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.sh-notif-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 16px 18px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  transition: all 0.15s ease;
+}
+
+.sh-notif-card:hover {
+  border-color: #d1d5db;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.04);
+}
+
+.sh-notif-left {
+  display: flex;
+  align-items: flex-start;
+  gap: 14px;
+  min-width: 0;
+  flex: 1;
+}
+
+.sh-notif-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+}
+
+.sh-notif-header-line {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.sh-notif-title {
+  font-size: 0.94rem;
+  font-weight: 650;
+  color: #1f2937;
+  margin: 0;
+}
+
+.sh-badge-archived {
+  font-size: 0.7rem;
+  font-weight: 600;
+  background-color: #f3f4f6;
+  color: #6b7280;
+  padding: 1px 7px;
+  border-radius: 4px;
+  border: 1px solid #e5e7eb;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.sh-notif-desc {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0;
+  line-height: 1.4;
+}
+
+.sh-notif-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-top: 4px;
+  font-size: 0.78rem;
+  color: #9ca3af;
+}
+
+.sh-notif-time {
+  font-weight: 500;
+}
+
+.sh-notif-location {
+  color: #6b7280;
+}
+
+.sh-ticket-chip {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+  font-size: 0.74rem;
+  font-family: monospace;
+  font-weight: 600;
+  padding: 1px 6px;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sh-ticket-chip:hover {
+  background-color: #047857;
+  color: #ffffff;
+}
+
+.sh-notif-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
+.sh-restore-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #f8fafc;
+  border: 1px solid #e2e8f0;
+  color: #059669;
+  font-size: 0.82rem;
+  font-weight: 600;
+  padding: 7px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.sh-restore-btn:hover:not(:disabled) {
+  background-color: #ecfdf5;
+  border-color: #a7f3d0;
+  color: #047857;
+}
+
+.sh-restore-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+/* Empty State */
+.sh-empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 56px 20px;
+}
+
+.sh-empty-icon-circle {
+  width: 64px;
+  height: 64px;
+  border-radius: 50%;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  color: #9ca3af;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 14px;
+}
+
+.sh-empty-state h3 {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #1f2937;
+  margin: 0 0 6px 0;
+}
+
+.sh-empty-state p {
+  font-size: 0.9rem;
+  color: #6b7280;
+  max-width: 420px;
+  margin: 0 0 20px 0;
+  line-height: 1.5;
+}
+
+.sh-empty-action-btn {
+  background-color: #059669;
+  color: #ffffff;
+  border: none;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 10px 18px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.sh-empty-action-btn:hover {
+  background-color: #047857;
+}
+
+/* Reports History Grid */
+.sh-reports-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: 16px;
+}
+
+.sh-report-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.sh-report-card:hover {
+  border-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 12px rgba(5, 150, 105, 0.08);
+}
+
+.sh-report-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.sh-report-ticket {
+  font-family: monospace;
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: #059669;
+  background-color: #ecfdf5;
+  padding: 2px 7px;
+  border-radius: 4px;
+  border: 1px solid #a7f3d0;
+}
+
+.sh-report-status-pill {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  text-transform: capitalize;
+}
+
+.sh-report-status-pill.fixed {
+  background-color: #ecfdf5;
+  color: #047857;
+  border: 1px solid #a7f3d0;
+}
+
+.sh-report-status-pill.in_progress {
+  background-color: #eff6ff;
+  color: #1d4ed8;
+  border: 1px solid #bfdbfe;
+}
+
+.sh-report-status-pill.submitted,
+.sh-report-status-pill.pending {
+  background-color: #fefce8;
+  color: #a16207;
+  border: 1px solid #fef08a;
+}
+
+.sh-report-title {
+  font-size: 0.95rem;
+  font-weight: 650;
+  color: #111827;
+  margin: 0;
+  line-height: 1.35;
+}
+
+.sh-report-meta-row {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+  padding-top: 8px;
+  border-top: 1px solid #f3f4f6;
+  font-size: 0.8rem;
+  color: #6b7280;
+}
+
+.sh-report-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+@media (max-width: 768px) {
+  .sh-header-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .sh-pill-tabs {
+    width: 100%;
+    justify-content: space-between;
+  }
+  .sh-tab-pill {
+    flex: 1;
+    justify-content: center;
+  }
+  .sh-notif-card {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  .sh-notif-right {
+    width: 100%;
+    justify-content: flex-end;
+  }
+}
+
+.sh-badge-archived {
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+  border-radius: 12px;
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  text-transform: capitalize;
+}
+
+.sh-report-card-actions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  padding-top: 10px;
+  border-top: 1px solid #f1f5f9;
+}
+
+.sh-archive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  font-family: inherit;
+}
+
+.sh-archive-btn:hover {
+  background-color: #fef3c7;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+/* --------------------------------------------------------------------------
+   Student History Pagination Controls (Card Style matching 2nd picture)
+   -------------------------------------------------------------------------- */
+.sh-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding: 16px 20px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  font-size: 0.86rem;
+  color: #64748b;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.sh-pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+.sh-pagination-limit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sh-pagination-limit span {
+  font-size: 0.82rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.sh-pagination-select {
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  background-color: #ffffff;
+  color: #0f172a;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.sh-pagination-select:focus {
+  border-color: #059669;
+}
+
+.sh-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.sh-page-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #d0d7de;
+  background: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.sh-page-btn:hover:not(:disabled):not(.active) {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.sh-page-btn.active {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border-color: #059669;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.28);
+  font-weight: 700;
+}
+
+.sh-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+.sh-page-btn.arrow-btn {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+}
+
+.sh-page-ellipsis {
+  padding: 6px 8px;
+  color: #94a3b8;
+  font-size: 0.86rem;
+  user-select: none;
+}
+
+@media (max-width: 640px) {
+  .sh-pagination {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+

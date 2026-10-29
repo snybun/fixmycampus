@@ -6,7 +6,10 @@ import {
   Trash2,
   CheckCircle2,
   LogOut,
-  AlertTriangle
+  AlertTriangle,
+  Wrench,
+  Archive,
+  MessageSquare,
 } from 'lucide-react';
 import './modals.css';
 
@@ -81,6 +84,76 @@ export const MODAL_PRESETS = {
     confirmText: 'Confirm',
     confirmClass: 'modal-btn-primary',
   },
+  delete_notifications: {
+    id: 'delete_notifications',
+    title: 'Delete All Notifications?',
+    message: 'Are you sure you want to delete all notifications? This action cannot be undone.',
+    icon: Trash2,
+    badgeClass: 'badge-red',
+    cancelText: 'Cancel',
+    confirmText: 'Delete All',
+    confirmClass: 'modal-btn-danger',
+  },
+  archive_notifications: {
+    id: 'archive_notifications',
+    title: 'Archive All Notifications?',
+    message: 'Are you sure you want to archive all notifications? Archived alerts can be viewed anytime in your History & Archives.',
+    icon: Archive,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Archive All',
+    confirmClass: 'modal-btn-primary',
+  },
+  archive_notification: {
+    id: 'archive_notification',
+    title: 'Archive Notification?',
+    message: 'Are you sure you want to archive this notification? It will be safely moved to your History & Archives.',
+    icon: Archive,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Archive',
+    confirmClass: 'modal-btn-primary',
+  },
+  start_repair: {
+    id: 'start_repair',
+    title: 'Start Repair?',
+    message: 'Are you sure you want to start this repair? Once started, this action cannot be undone.',
+    icon: Wrench,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Yes, Start Repair',
+    confirmClass: 'modal-btn-primary',
+  },
+  archive_report: {
+    id: 'archive_report',
+    title: 'Archive Report?',
+    message: 'Are you sure you want to archive this report? It will be safely moved from active reports to the History Logs.',
+    icon: Archive,
+    badgeClass: 'badge-amber',
+    cancelText: 'Cancel',
+    confirmText: 'Yes, Archive Report',
+    confirmClass: 'modal-btn-primary',
+  },
+  delete_log: {
+    id: 'delete_log',
+    title: 'Delete History Log?',
+    message: 'Are you sure you want to permanently delete this history log record? This action cannot be undone.',
+    icon: Trash2,
+    badgeClass: 'badge-red',
+    cancelText: 'Cancel',
+    confirmText: 'Yes, Delete Log',
+    confirmClass: 'modal-btn-danger',
+  },
+  submit_feedback: {
+    id: 'submit_feedback',
+    title: 'Send Feedback?',
+    message: 'Are you sure you want to send this feedback? Your review will be submitted to campus administration and maintenance staff.',
+    icon: MessageSquare,
+    badgeClass: 'badge-green',
+    cancelText: 'Cancel',
+    confirmText: 'Yes, Send Feedback',
+    confirmClass: 'modal-btn-primary',
+  },
 };
 
 /**
@@ -111,7 +184,7 @@ export function ModalCard({
   return (
     <div className="modal-dialog">
       <div className={`modal-icon-badge ${resolvedBadgeClass}`}>
-        <ResolvedIcon size={24} strokeWidth={2} />
+        <ResolvedIcon size={26} strokeWidth={2.2} />
       </div>
 
       <h3 className="modal-title">{resolvedTitle}</h3>
@@ -146,6 +219,7 @@ export function ModalCard({
 export default function ConfirmationModal({
   isOpen,
   onClose,
+  onCancel,
   onConfirm,
   presetId,
   title,
@@ -156,19 +230,23 @@ export default function ConfirmationModal({
   confirmText,
   confirmClass,
   loading = false,
+  isLoading = false,
 }) {
+  const handleClose = onClose || onCancel || (() => {});
+  const isBusy = loading || isLoading;
+
   useEffect(() => {
     if (!isOpen) return;
 
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
-        onClose();
+        handleClose();
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isOpen, onClose]);
+  }, [isOpen, handleClose]);
 
   if (!isOpen) return null;
 
@@ -177,7 +255,7 @@ export default function ConfirmationModal({
       className="modal-overlay"
       onClick={(e) => {
         if (e.target === e.currentTarget) {
-          onClose();
+          handleClose();
         }
       }}
       role="dialog"
@@ -192,9 +270,9 @@ export default function ConfirmationModal({
         cancelText={cancelText}
         confirmText={confirmText}
         confirmClass={confirmClass}
-        onCancel={onClose}
+        onCancel={handleClose}
         onConfirm={onConfirm}
-        loading={loading}
+        loading={isBusy}
       />
     </div>
   );

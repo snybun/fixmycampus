@@ -9,7 +9,7 @@ export default function TimelineFeature() {
       status: 'done',
     },
     {
-      title: 'Supervisor Reviewed & Assigned',
+      title: 'Maintenance Staff Reviewed & Assigned',
       sub: 'Assigned to Technician John Miller (HVAC)',
       status: 'done',
     },
@@ -29,7 +29,6 @@ export default function TimelineFeature() {
     <section className="landing-section-dark">
       <div className="section-container">
         <div className="split-layout">
-          {/* Dark Timeline Card on Left */}
           <div className="split-visual-col">
             <div className="dark-timeline-card reveal-on-scroll">
               <div className="dark-card-header">
@@ -83,7 +82,7 @@ export default function TimelineFeature() {
               Stay informed from first<br />report to final fix.
             </h2>
             <p className="section-p-dark">
-              Eliminate the black hole of maintenance requests. Automated notifications keep reporters, technicians, and physical plant supervisors informed at every milestone without manual follow-up emails.
+              Eliminate the black hole of maintenance requests. Automated notifications keep reporters, technicians, and maintenance staff informed at every milestone without manual follow-up emails.
             </p>
           </div>
         </div>

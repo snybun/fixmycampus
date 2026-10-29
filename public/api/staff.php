@@ -11,11 +11,13 @@ declare(strict_types=1);
 require_once dirname(__DIR__, 2) . '/src/config/app.php';
 require_once SRC_PATH . '/Core/Database.php';
 require_once SRC_PATH . '/Core/Response.php';
+require_once SRC_PATH . '/helpers/session.php';
+require_once SRC_PATH . '/helpers/auth.php';
 require_once SRC_PATH . '/helpers/db.php';
 
 header('Content-Type: application/json; charset=utf-8');
 header('Access-Control-Allow-Origin: *');
-header('Access-Control-Allow-Methods: GET, POST, OPTIONS');
+header('Access-Control-Allow-Methods: GET, POST, DELETE, OPTIONS');
 header('Access-Control-Allow-Headers: Content-Type, Authorization');
 
 if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
@@ -23,9 +25,202 @@ if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
     exit;
 }
 
+session_start_safe();
+require_once SRC_PATH . '/helpers/history_logs.php';
+require_once SRC_PATH . '/helpers/staff_seed.php';
+
 try {
+    $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+    $action = $_GET['action'] ?? ($input['action'] ?? 'list');
+
+    // --------------------------------------------------------------------------
+    // ACTION: RESTORE / UNARCHIVE MAINTENANCE STAFF MEMBER
+    // --------------------------------------------------------------------------
+    if ($action === 'restore' || $action === 'unarchive') {
+        $adminUser = auth_require_role('admin');
+        $staffId = (int)($input['staff_id'] ?? ($input['id'] ?? ($_GET['id'] ?? 0)));
+
+        if ($staffId <= 0) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Valid Staff ID is required.'
+            ], 400);
+        }
+
+        $staff = db_fetch_one("
+            SELECT u.id, u.full_name, u.email, u.user_identifier, u.department, u.role_id, u.status, r.name AS role_name
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE u.id = :id
+        ", [':id' => $staffId]);
+
+        if (!$staff) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Staff member not found.'
+            ], 404);
+        }
+
+        if (!in_array($staff['role_name'], ['technician', 'supervisor'], true)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Selected user is not a maintenance staff member.'
+            ], 400);
+        }
+
+        db_execute("UPDATE `users` SET `status` = 'active', `updated_at` = NOW() WHERE id = :id", [
+            ':id' => $staffId
+        ]);
+
+        // Remove archived worker entry from history_logs so they return cleanly to active roster
+        db_execute("
+            DELETE FROM `history_logs`
+            WHERE `log_type` = 'staff_removed'
+              AND CAST(JSON_UNQUOTE(JSON_EXTRACT(`metadata`, '$.staff_id')) AS UNSIGNED) = :sid
+        ", [':sid' => $staffId]);
+
+        \FixMyCampus\Core\Response::json([
+            'success'  => true,
+            'message'  => "Staff member {$staff['full_name']} restored to active maintenance staff successfully.",
+            'staff_id' => $staffId,
+        ]);
+        exit;
+    }
+
+    // --------------------------------------------------------------------------
+    // ACTION: ARCHIVE MAINTENANCE STAFF MEMBER
+    // --------------------------------------------------------------------------
+    if ($action === 'delete' || $action === 'remove' || $action === 'archive' || $_SERVER['REQUEST_METHOD'] === 'DELETE') {
+        $adminUser = auth_require_role('admin');
+        $staffId = (int)($input['staff_id'] ?? ($input['id'] ?? ($_GET['id'] ?? 0)));
+        $reason = trim($input['reason'] ?? 'Resignation');
+        $notes = trim($input['notes'] ?? '');
+
+        if ($staffId <= 0) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Valid Staff ID is required.'
+            ], 400);
+        }
+
+        if ($staffId === (int)$adminUser['id']) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'You cannot archive your own administrator account.'
+            ], 400);
+        }
+
+        $staff = db_fetch_one("
+            SELECT u.id, u.full_name, u.email, u.user_identifier, u.department, u.role_id, r.name AS role_name
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE u.id = :id
+        ", [':id' => $staffId]);
+
+        if (!$staff) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Staff member not found.'
+            ], 404);
+        }
+
+        if (!in_array($staff['role_name'], ['technician', 'supervisor'], true)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Selected user is not a maintenance staff member.'
+            ], 400);
+        }
+
+        $pdo = \FixMyCampus\Core\Database::getConnection();
+        $pdo->beginTransaction();
+
+        try {
+            // Find active/pending assignments for this technician
+            $activeAssignments = db_fetch_all("
+                SELECT ra.id, ra.report_id, ra.status AS assignment_status, r.ticket_number, r.status AS report_status
+                FROM `report_assignments` ra
+                JOIN `reports` r ON ra.report_id = r.id
+                WHERE ra.assigned_to = :staff_id
+                  AND ra.status IN ('pending', 'accepted', 'in_progress')
+            ", [':staff_id' => $staffId]);
+
+            // Unassign active work orders and return non-resolved reports to under_review
+            foreach ($activeAssignments as $assignment) {
+                db_execute("DELETE FROM `report_assignments` WHERE id = :ra_id", [':ra_id' => $assignment['id']]);
+
+                if (!in_array($assignment['report_status'], ['resolved', 'closed', 'archived'], true)) {
+                    db_execute("UPDATE `reports` SET `status` = 'under_review', `updated_at` = NOW() WHERE id = :rid", [
+                        ':rid' => $assignment['report_id']
+                    ]);
+
+                    db_execute("
+                        INSERT INTO `report_status_history` (`report_id`, `changed_by`, `previous_status`, `new_status`, `remarks`)
+                        VALUES (:rid, :changed_by, :prev, 'under_review', :remarks)
+                    ", [
+                        ':rid'        => $assignment['report_id'],
+                        ':changed_by' => $adminUser['id'],
+                        ':prev'       => $assignment['report_status'],
+                        ':remarks'    => "Unassigned: Personnel {$staff['full_name']} archived ({$reason}). Ticket returned for reassignment."
+                    ]);
+                }
+            }
+
+            // Always soft-archive user record so the worker can return seamlessly when restored
+            db_execute("UPDATE `users` SET `status` = 'inactive', `updated_at` = NOW() WHERE id = :id", [
+                ':id' => $staffId
+            ]);
+
+            // Clean any older archive entry for this worker so the latest archive log is clean
+            db_execute("
+                DELETE FROM `history_logs`
+                WHERE `log_type` = 'staff_removed'
+                  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(`metadata`, '$.staff_id')) AS UNSIGNED) = :sid
+            ", [':sid' => $staffId]);
+
+            $pdo->commit();
+
+            // Record history log
+            if (function_exists('record_history_log')) {
+                record_history_log(
+                    'staff_removed',
+                    "Maintenance Staff Archived: {$staff['full_name']}",
+                    "Staff personnel {$staff['full_name']} ({$staff['user_identifier']}, {$staff['department']}) was archived by Administrator. Circumstance: {$reason}" . (!empty($notes) ? " - Notes: {$notes}" : ""),
+                    (int)$adminUser['id'],
+                    null,
+                    $adminUser['full_name'] ?? 'Administrator',
+                    'admin',
+                    $staff['department'] ?? 'Physical Plant',
+                    [
+                        'staff_id'        => $staffId,
+                        'staff_name'      => $staff['full_name'],
+                        'email'           => $staff['email'],
+                        'user_identifier' => $staff['user_identifier'],
+                        'department'      => $staff['department'],
+                        'reason'          => $reason,
+                        'notes'           => $notes,
+                        'unassigned_jobs' => count($activeAssignments),
+                    ]
+                );
+            }
+
+            \FixMyCampus\Core\Response::json([
+                'success' => true,
+                'message' => "Staff member {$staff['full_name']} archived successfully.",
+                'unassigned_jobs_count' => count($activeAssignments)
+            ]);
+            exit;
+        } catch (\Throwable $e) {
+            $pdo->rollBack();
+            throw $e;
+        }
+    }
+
+    // --------------------------------------------------------------------------
+    // ACTION: REGISTER NEW MAINTENANCE STAFF MEMBER
+    // --------------------------------------------------------------------------
     if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-        $input = json_decode(file_get_contents('php://input'), true) ?? $_POST;
+        // Only Super Administrators can register new maintenance staff personnel
+        $adminUser = auth_require_role('admin');
         $name = trim($input['full_name'] ?? '');
         $email = trim($input['email'] ?? '');
         $department = trim($input['department'] ?? 'General Maintenance');
@@ -37,6 +232,64 @@ try {
                 'success' => false,
                 'message' => 'Full Name and Email are required.'
             ], 400);
+        }
+
+        // If an archived staff member with this email already exists, restore and update them seamlessly
+        $existingStaff = db_fetch_one("
+            SELECT id, user_identifier, full_name, email, status, role_id
+            FROM `users`
+            WHERE LOWER(email) = LOWER(:email)
+            LIMIT 1
+        ", [':email' => $email]);
+
+        if ($existingStaff) {
+            if (($existingStaff['status'] ?? '') === 'inactive') {
+                db_execute("
+                    UPDATE `users`
+                    SET `full_name` = :full_name,
+                        `department` = :department,
+                        `phone_number` = :phone,
+                        `role_id` = :role_id,
+                        `status` = 'active',
+                        `updated_at` = NOW()
+                    WHERE `id` = :id
+                ", [
+                    ':full_name'  => $name,
+                    ':department' => $department,
+                    ':phone'      => $phone,
+                    ':role_id'    => $roleId,
+                    ':id'         => (int)$existingStaff['id'],
+                ]);
+
+                db_execute("
+                    DELETE FROM `history_logs`
+                    WHERE `log_type` = 'staff_removed'
+                      AND CAST(JSON_UNQUOTE(JSON_EXTRACT(`metadata`, '$.staff_id')) AS UNSIGNED) = :sid
+                ", [':sid' => (int)$existingStaff['id']]);
+
+                \FixMyCampus\Core\Response::json([
+                    'success' => true,
+                    'message' => "Archived staff member {$name} has been restored to active duty.",
+                    'staff'   => [
+                        'id'              => (int)$existingStaff['id'],
+                        'user_identifier' => $existingStaff['user_identifier'],
+                        'full_name'       => $name,
+                        'email'           => $email,
+                        'department'      => $department,
+                        'phone_number'    => $phone,
+                        'status'          => 'active',
+                        'active_jobs'     => 0,
+                        'completed_jobs'  => 0,
+                    ]
+                ], 200);
+                exit;
+            } else {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'An active user with this email address already exists.'
+                ], 409);
+                exit;
+            }
         }
 
         // Generate unique identifier
@@ -61,6 +314,26 @@ try {
 
         $newId = db_last_insert_id();
 
+        // Record history log for new staff
+        if (function_exists('record_history_log')) {
+            record_history_log(
+                'user_registration',
+                "New Maintenance Personnel Added: {$name}",
+                "{$name} ({$identifier}) added to {$department} staff.",
+                (int)$adminUser['id'],
+                null,
+                $adminUser['full_name'] ?? 'Administrator',
+                'admin',
+                $department,
+                [
+                    'staff_id'        => $newId,
+                    'user_identifier' => $identifier,
+                    'email'           => $email,
+                    'role_id'         => $roleId,
+                ]
+            );
+        }
+
         \FixMyCampus\Core\Response::json([
             'success' => true,
             'message' => "Staff member {$name} added successfully.",
@@ -76,9 +349,165 @@ try {
                 'completed_jobs'  => 0
             ]
         ], 201);
+        exit;
     }
 
-    // GET Request: fetch maintenance personnel (technicians & supervisors)
+    // GET Request: list staff, stats, or worker suggestion based on specialization
+    ensure_specialized_staff_seeded();
+    $currentUser = auth_require();
+    $action = $_GET['action'] ?? 'list';
+
+    // --------------------------------------------------------------------------
+    // ACTION: SUGGESTED WORKER BASED ON CATEGORY SPECIALIZATION
+    // --------------------------------------------------------------------------
+    if ($action === 'suggested' || $action === 'suggested_worker') {
+        $categorySlug = strtolower(trim((string)($_GET['category'] ?? $_GET['category_slug'] ?? '')));
+        $categoryId = (int)($_GET['category_id'] ?? 0);
+        $param = !empty($categorySlug) ? $categorySlug : ($categoryId > 0 ? $categoryId : 'air-conditioning');
+
+        $matchedWorker = find_suggested_worker_for_category($param);
+
+        \FixMyCampus\Core\Response::json([
+            'success'          => true,
+            'category_slug'    => $matchedWorker['category_slug'] ?? $categorySlug,
+            'specialization'   => $matchedWorker['target_specialization'] ?? 'General Maintenance',
+            'suggested_worker' => $matchedWorker,
+        ]);
+        exit;
+    }
+
+    // --------------------------------------------------------------------------
+    // ACTION: STATS / DETAIL FOR A SPECIFIC STAFF MEMBER
+    // --------------------------------------------------------------------------
+    if ($action === 'stats' || $action === 'detail') {
+        $staffId = (int)($_GET['id'] ?? 0);
+        if ($staffId <= 0) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Valid Staff ID is required.'
+            ], 400);
+        }
+
+        $member = db_fetch_one("
+            SELECT 
+                u.id,
+                u.role_id,
+                u.user_identifier,
+                u.full_name,
+                u.email,
+                u.phone_number,
+                u.department,
+                u.status,
+                u.created_at,
+                r.name AS role_name,
+                r.display_name AS role_display,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    WHERE ra.assigned_to = u.id
+                ) AS total_jobs,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    JOIN `reports` rep ON ra.report_id = rep.id
+                    WHERE ra.assigned_to = u.id 
+                      AND ra.status IN ('pending', 'accepted', 'in_progress')
+                      AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected')
+                ) AS active_jobs,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    JOIN `reports` rep ON ra.report_id = rep.id
+                    WHERE ra.assigned_to = u.id 
+                      AND (ra.status = 'in_progress' OR rep.status = 'in_progress')
+                      AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected')
+                ) AS in_progress_jobs,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    JOIN `reports` rep ON ra.report_id = rep.id
+                    WHERE ra.assigned_to = u.id 
+                      AND ra.status = 'pending'
+                      AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected', 'in_progress')
+                ) AS pending_jobs,
+                (
+                    SELECT COUNT(*) 
+                    FROM `report_assignments` ra 
+                    JOIN `reports` rep ON ra.report_id = rep.id
+                    WHERE ra.assigned_to = u.id 
+                      AND (ra.status = 'completed' OR rep.status IN ('resolved', 'closed'))
+                ) AS completed_jobs
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE u.id = :id
+            LIMIT 1
+        ", [':id' => $staffId]);
+
+        if (!$member) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Staff member not found.'
+            ], 404);
+        }
+
+        $member['total_jobs']       = (int)$member['total_jobs'];
+        $member['active_jobs']      = (int)$member['active_jobs'];
+        $member['in_progress_jobs'] = (int)$member['in_progress_jobs'];
+        $member['pending_jobs']     = (int)$member['pending_jobs'];
+        $member['completed_jobs']   = (int)$member['completed_jobs'];
+        $member['completion_rate']  = $member['total_jobs'] > 0
+            ? (int)round(($member['completed_jobs'] / $member['total_jobs']) * 100)
+            : 0;
+
+        // Fetch assigned ticket job details
+        $jobs = db_fetch_all("
+            SELECT 
+                ra.id AS assignment_id,
+                CASE 
+                    WHEN r.status IN ('resolved', 'closed') THEN 'completed'
+                    WHEN r.status = 'in_progress' THEN 'in_progress'
+                    WHEN r.status = 'assigned' THEN 'accepted'
+                    ELSE ra.status 
+                END AS assignment_status,
+                ra.assigned_at,
+                ra.assignment_notes,
+                r.id AS report_id,
+                r.ticket_number,
+                r.title,
+                r.description,
+                r.priority,
+                r.status AS report_status,
+                r.reported_at AS report_created_at,
+                b.name AS building_name,
+                l.name AS location_name,
+                c.name AS category_name
+            FROM `report_assignments` ra
+            JOIN `reports` r ON ra.report_id = r.id
+            LEFT JOIN `locations` l ON r.location_id = l.id
+            LEFT JOIN `buildings` b ON l.building_id = b.id
+            LEFT JOIN `categories` c ON r.category_id = c.id
+            WHERE ra.assigned_to = :staff_id
+            ORDER BY ra.assigned_at DESC
+        ", [':staff_id' => $staffId]);
+
+        \FixMyCampus\Core\Response::json([
+            'success' => true,
+            'staff'   => $member,
+            'jobs'    => $jobs,
+            'metrics' => [
+                'total_jobs'       => $member['total_jobs'],
+                'active_jobs'      => $member['active_jobs'],
+                'in_progress_jobs' => $member['in_progress_jobs'],
+                'pending_jobs'     => $member['pending_jobs'],
+                'completed_jobs'   => $member['completed_jobs'],
+                'completion_rate'  => $member['completion_rate'],
+            ]
+        ]);
+    }
+
+    // --------------------------------------------------------------------------
+    // ACTION: LIST ALL MAINTENANCE STAFF
+    // --------------------------------------------------------------------------
     $sql = "
         SELECT 
             u.id,
@@ -94,35 +523,57 @@ try {
             (
                 SELECT COUNT(*) 
                 FROM `report_assignments` ra 
+                WHERE ra.assigned_to = u.id
+            ) AS total_jobs,
+            (
+                SELECT COUNT(*) 
+                FROM `report_assignments` ra 
+                JOIN `reports` rep ON ra.report_id = rep.id
                 WHERE ra.assigned_to = u.id 
                   AND ra.status IN ('pending', 'accepted', 'in_progress')
+                  AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected')
             ) AS active_jobs,
             (
                 SELECT COUNT(*) 
                 FROM `report_assignments` ra 
+                JOIN `reports` rep ON ra.report_id = rep.id
                 WHERE ra.assigned_to = u.id 
-                  AND ra.status = 'completed'
+                  AND (ra.status = 'in_progress' OR rep.status = 'in_progress')
+                  AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected')
+            ) AS in_progress_jobs,
+            (
+                SELECT COUNT(*) 
+                FROM `report_assignments` ra 
+                JOIN `reports` rep ON ra.report_id = rep.id
+                WHERE ra.assigned_to = u.id 
+                  AND ra.status = 'pending'
+                  AND rep.status NOT IN ('resolved', 'closed', 'archived', 'rejected', 'in_progress')
+            ) AS pending_jobs,
+            (
+                SELECT COUNT(*) 
+                FROM `report_assignments` ra 
+                JOIN `reports` rep ON ra.report_id = rep.id
+                WHERE ra.assigned_to = u.id 
+                  AND (ra.status = 'completed' OR rep.status IN ('resolved', 'closed'))
             ) AS completed_jobs
         FROM `users` u
         JOIN `roles` r ON u.role_id = r.id
         WHERE r.name IN ('technician', 'supervisor')
+          AND u.status = 'active'
         ORDER BY u.role_id ASC, u.full_name ASC
     ";
 
     $staff = db_fetch_all($sql);
 
-    // Compute availability status badge dynamically
     foreach ($staff as &$member) {
-        $member['active_jobs'] = (int)$member['active_jobs'];
-        $member['completed_jobs'] = (int)$member['completed_jobs'];
-        
-        if ($member['status'] !== 'active') {
-            $member['availability'] = 'Off Duty';
-        } elseif ($member['active_jobs'] >= 2) {
-            $member['availability'] = 'Busy';
-        } else {
-            $member['availability'] = 'Available';
-        }
+        $member['total_jobs']       = (int)$member['total_jobs'];
+        $member['active_jobs']      = (int)$member['active_jobs'];
+        $member['in_progress_jobs'] = (int)$member['in_progress_jobs'];
+        $member['pending_jobs']     = (int)$member['pending_jobs'];
+        $member['completed_jobs']   = (int)$member['completed_jobs'];
+        $member['completion_rate']  = $member['total_jobs'] > 0
+            ? (int)round(($member['completed_jobs'] / $member['total_jobs']) * 100)
+            : 0;
     }
     unset($member);
 

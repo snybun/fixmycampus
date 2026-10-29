@@ -1,0 +1,1008 @@
+/* ==========================================================================
+   FixMyCampus - My Reports Tab Styles
+   Pixel-perfect match to user's design mockup
+   ========================================================================== */
+
+.myreports-page-wrapper {
+  background-color: #faf9f5;
+  min-height: calc(100vh - 66px);
+  padding: 36px 32px 80px 32px;
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+}
+
+.myreports-container {
+  max-width: 1140px;
+  margin: 0 auto;
+}
+
+/* --------------------------------------------------------------------------
+   Header Row: Title & Search/Filter
+   -------------------------------------------------------------------------- */
+.myreports-header-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+.myreports-title {
+  font-size: 2.15rem;
+  font-weight: 750;
+  color: #111827;
+  letter-spacing: -0.025em;
+  margin: 0 0 6px 0;
+  line-height: 1.15;
+}
+
+.myreports-subtitle {
+  font-size: 0.94rem;
+  color: #6b7280;
+  margin: 0;
+  font-weight: 400;
+  line-height: 1.45;
+}
+
+.myreports-toolbar-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+  margin-bottom: 20px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.03);
+}
+
+.myreports-search-wrap {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  width: 100%;
+  margin: 0;
+}
+
+.myreports-search-box {
+  position: relative;
+  display: flex;
+  align-items: center;
+  flex: 1;
+  min-width: 200px;
+  width: 100%;
+}
+
+.myreports-search-icon {
+  position: absolute;
+  left: 12px;
+  color: #9ca3af;
+  pointer-events: none;
+}
+
+.myreports-search-input {
+  width: 100%;
+  height: 38px;
+  padding: 0 32px 0 36px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  color: #111827;
+  outline: none;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
+  box-sizing: border-box;
+}
+
+.myreports-search-input:focus {
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.15);
+}
+
+.myreports-search-input::placeholder {
+  color: #9ca3af;
+}
+
+.myreports-search-clear-icon {
+  position: absolute;
+  right: 10px;
+  background: none;
+  border: none;
+  color: #94a3b8;
+  font-size: 0.8rem;
+  cursor: pointer;
+  padding: 2px 6px;
+  border-radius: 4px;
+}
+
+.myreports-search-clear-icon:hover {
+  color: #0f172a;
+}
+
+.myreports-search-submit-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 18px;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border: none;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.22);
+  transition: all 0.15s ease;
+}
+
+.myreports-search-submit-btn:hover {
+  background: linear-gradient(135deg, #047857 0%, #065f46 100%);
+  box-shadow: 0 4px 10px rgba(5, 150, 105, 0.32);
+}
+
+.myreports-search-reset-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 38px;
+  padding: 0 14px;
+  background-color: #ffffff;
+  color: #334155;
+  border: 1px solid #cbd5e1;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.myreports-search-reset-btn:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+}
+
+.myreports-filter-dropdown-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+.myreports-filter-btn {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  height: 38px;
+  padding: 0 14px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  font-size: 0.84rem;
+  font-weight: 600;
+  color: #374151;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  white-space: nowrap;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.myreports-filter-btn:hover {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+}
+
+.myreports-filter-btn.open,
+.myreports-filter-btn.has-active {
+  background-color: #ecfdf5;
+  border-color: #10b981;
+  color: #059669;
+  box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.15);
+}
+
+.myreports-filter-badge {
+  font-size: 0.72rem;
+  font-weight: 700;
+  color: #065f46;
+  background: #d1fae5;
+  padding: 1px 7px;
+  border-radius: 9999px;
+}
+
+.myreports-filter-chevron {
+  color: #94a3b8;
+  transition: transform 0.2s ease;
+  margin-left: 2px;
+}
+
+.myreports-filter-chevron.rotate {
+  transform: rotate(180deg);
+}
+
+.myreports-filter-btn.open .myreports-filter-chevron,
+.myreports-filter-btn.has-active .myreports-filter-chevron {
+  color: #059669;
+}
+
+.myreports-export-excel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  height: 38px;
+  padding: 0 14px;
+  background-color: #ffffff;
+  color: #047857;
+  border: 1px solid #10b981;
+  border-radius: 8px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s cubic-bezier(0.16, 1, 0.3, 1);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
+}
+
+.myreports-export-excel-btn:hover {
+  background-color: #ecfdf5;
+  border-color: #059669;
+  color: #065f46;
+  box-shadow: 0 3px 10px rgba(16, 185, 129, 0.16);
+  transform: translateY(-1px);
+}
+
+.myreports-export-excel-btn:active {
+  transform: translateY(1px);
+}
+
+.myreports-export-excel-btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+  transform: none;
+  box-shadow: none;
+}
+
+.myreports-export-excel-btn svg {
+  color: #059669;
+}
+
+/* --------------------------------------------------------------------------
+   Filter Dropdown Menu (Glassmorphism & Apple-grade Popover)
+   -------------------------------------------------------------------------- */
+.myreports-filter-dropdown-menu {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 230px;
+  background: #ffffff;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  border-radius: 12px;
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.08);
+  padding: 6px;
+  z-index: 50;
+  animation: fmcDropdownFadeIn 0.18s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes fmcDropdownFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-6px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.myreports-filter-dropdown-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 10px 6px 10px;
+  border-bottom: 1px solid #f3f4f6;
+  margin-bottom: 4px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: #6b7280;
+}
+
+.myreports-filter-reset-link {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #059669;
+  cursor: pointer;
+  text-transform: none;
+  letter-spacing: normal;
+}
+
+.myreports-filter-reset-link:hover {
+  text-decoration: underline;
+  color: #047857;
+}
+
+.myreports-filter-dropdown-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.myreports-filter-dropdown-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 10px;
+  border: none;
+  background: transparent;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: #374151;
+  cursor: pointer;
+  text-align: left;
+  transition: all 0.12s ease;
+}
+
+.myreports-filter-dropdown-item:hover {
+  background-color: #f3f4f6;
+  color: #111827;
+}
+
+.myreports-filter-dropdown-item.active {
+  background-color: #ecfdf5;
+  color: #065f46;
+  font-weight: 600;
+}
+
+.myreports-filter-item-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+
+.myreports-filter-item-label {
+  flex: 1;
+  white-space: nowrap;
+}
+
+.myreports-filter-item-count {
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #6b7280;
+  background: #f3f4f6;
+  padding: 1px 6px;
+  border-radius: 9999px;
+}
+
+.myreports-filter-dropdown-item.active .myreports-filter-item-count {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.myreports-filter-item-check {
+  color: #059669;
+  flex-shrink: 0;
+}
+
+/* --------------------------------------------------------------------------
+   Active Filter Chip Pill
+   -------------------------------------------------------------------------- */
+.myreports-active-filter-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 20px;
+  padding: 6px 12px;
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  width: fit-content;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.myreports-active-filter-label {
+  font-size: 0.8rem;
+  color: #6b7280;
+  font-weight: 500;
+}
+
+.myreports-active-filter-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: #111827;
+}
+
+.myreports-active-filter-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+}
+
+.myreports-active-filter-clear-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  padding: 0;
+  background: #f3f4f6;
+  border: none;
+  border-radius: 50%;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.12s ease;
+  margin-left: 4px;
+}
+
+.myreports-active-filter-clear-btn:hover {
+  background: #fee2e2;
+  color: #ef4444;
+}
+
+.myreports-tab.active {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.25);
+  border: none;
+  padding: 8px 16px;
+  border-radius: 8px;
+  cursor: pointer;
+}
+
+/* --------------------------------------------------------------------------
+   Reports List & Cards
+   -------------------------------------------------------------------------- */
+.myreports-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.myreports-card {
+  background-color: #ffffff;
+  border: 1px solid #e5e7eb;
+  border-radius: 12px;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+}
+
+.myreports-card:hover {
+  border-color: #a7f3d0;
+  box-shadow: 0 4px 14px rgba(5, 150, 105, 0.08);
+  transform: translateY(-1px);
+}
+
+.myreports-card-left {
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  flex: 1;
+  min-width: 0;
+}
+
+.myreports-card-thumb {
+  width: 76px;
+  height: 76px;
+  border-radius: 8px;
+  overflow: hidden;
+  flex-shrink: 0;
+  background-color: #f3f4f6;
+  border: 1px solid #edf0f3;
+}
+
+.myreports-card-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.myreports-card-content {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+}
+
+.myreports-card-meta {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 0.8rem;
+  line-height: 1;
+}
+
+.myreports-card-ticket {
+  color: #059669;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.myreports-card-dot {
+  color: #9ca3af;
+  font-size: 0.75rem;
+}
+
+.myreports-card-date {
+  color: #9ca3af;
+  font-weight: 500;
+}
+
+.myreports-card-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  color: #111827;
+  letter-spacing: -0.015em;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.myreports-card-location {
+  font-size: 0.85rem;
+  color: #6b7280;
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* --------------------------------------------------------------------------
+   Right Side Badges & Arrow
+   -------------------------------------------------------------------------- */
+.myreports-card-right {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+/* Priority Badges */
+.myreports-priority-badge {
+  font-size: 0.74rem;
+  font-weight: 600;
+  padding: 3px 10px;
+  border-radius: 6px;
+  line-height: 1.35;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.myreports-priority-badge.priority-high {
+  background-color: #fff1f2;
+  border: 1px solid #fecdd3;
+  color: #dc2626;
+}
+
+.myreports-priority-badge.priority-urgent,
+.myreports-priority-badge.priority-emergency {
+  background-color: #111827;
+  border: 1px solid #111827;
+  color: #ffffff;
+}
+
+.myreports-priority-badge.priority-medium {
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
+  color: #d97706;
+}
+
+.myreports-priority-badge.priority-low {
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #16a34a;
+}
+
+/* Status Badges */
+.myreports-status-badge {
+  font-size: 0.76rem;
+  font-weight: 600;
+  padding: 3px 12px;
+  border-radius: 6px;
+  line-height: 1.35;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.myreports-status-badge.status-worker_assigned,
+.myreports-status-badge.status-assigned {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.myreports-status-badge.status-in_progress,
+.myreports-status-badge.status-repair_ongoing {
+  background-color: #fffbeb;
+  color: #b45309;
+  border: 1px solid #fde68a;
+}
+
+.myreports-status-badge.status-verified,
+.myreports-status-badge.status-under_review {
+  background-color: #eff6ff;
+  color: #2563eb;
+  border: 1px solid #bfdbfe;
+}
+
+.myreports-status-badge.status-resolved,
+.myreports-status-badge.status-fixed,
+.myreports-status-badge.status-closed {
+  background-color: #ecfdf5;
+  color: #059669;
+  border: 1px solid #a7f3d0;
+}
+
+.myreports-status-badge.status-submitted,
+.myreports-status-badge.status-reported,
+.myreports-status-badge.status-pending {
+  background-color: #f3f4f6;
+  color: #4b5563;
+  border: 1px solid #e5e7eb;
+}
+
+/* Chevron Arrow Button */
+.myreports-card-arrow-btn {
+  width: 28px;
+  height: 28px;
+  background-color: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #6b7280;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.myreports-card:hover .myreports-card-arrow-btn {
+  background-color: #059669;
+  border-color: #059669;
+  color: #ffffff;
+}
+
+/* Delete Button */
+.myreports-delete-btn {
+  width: 28px;
+  height: 28px;
+  background-color: #fef2f2;
+  border: 1px solid #fee2e2;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #ef4444;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+}
+
+.myreports-delete-btn:hover {
+  background-color: #ef4444;
+  border-color: #ef4444;
+  color: #ffffff;
+}
+
+/* --------------------------------------------------------------------------
+   Empty States
+   -------------------------------------------------------------------------- */
+.myreports-empty-state {
+  background-color: #ffffff;
+  border: 1.5px dashed #e5e7eb;
+  border-radius: 14px;
+  padding: 48px 24px;
+  text-align: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.myreports-empty-icon {
+  width: 52px;
+  height: 52px;
+  border-radius: 50%;
+  background-color: #ecfdf5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #059669;
+  margin-bottom: 4px;
+}
+
+.myreports-empty-title {
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: #111827;
+  margin: 0;
+}
+
+.myreports-empty-desc {
+  font-size: 0.88rem;
+  color: #6b7280;
+  margin: 0;
+  max-width: 440px;
+  line-height: 1.5;
+}
+
+.myreports-report-btn-empty {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  background-color: #059669;
+  color: #ffffff;
+  font-size: 0.88rem;
+  font-weight: 600;
+  padding: 9px 18px;
+  border-radius: 8px;
+  border: none;
+  cursor: pointer;
+  margin-top: 6px;
+  transition: background-color 0.15s ease;
+}
+
+.myreports-report-btn-empty:hover {
+  background-color: #047857;
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .myreports-page-wrapper {
+    padding: 24px 16px 60px 16px;
+  }
+
+  .myreports-header-row {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 16px;
+  }
+
+  .myreports-search-box {
+    width: 100%;
+  }
+
+  .myreports-card {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 14px;
+  }
+
+  .myreports-card-right {
+    width: 100%;
+    justify-content: space-between;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Student Confirmation & Impact Badges
+   -------------------------------------------------------------------------- */
+.myreports-confirmed-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #065f46;
+  background-color: #d1fae5;
+  border: 1px solid #a7f3d0;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+.myreports-impact-tag {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: #1e40af;
+  background-color: #dbeafe;
+  border: 1px solid #bfdbfe;
+  padding: 1px 8px;
+  border-radius: 9999px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+}
+
+/* --------------------------------------------------------------------------
+   Pagination Controls (Card Style matching Admin & Maintenance)
+   -------------------------------------------------------------------------- */
+.myreports-pagination {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 20px;
+  padding: 16px 20px;
+  background-color: #ffffff;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.03);
+  font-size: 0.86rem;
+  color: #64748b;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.myreports-pagination-info {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  font-size: 0.86rem;
+  color: #64748b;
+}
+
+.myreports-pagination-limit {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.myreports-pagination-limit span {
+  font-size: 0.82rem;
+  color: #64748b;
+  white-space: nowrap;
+}
+
+.myreports-pagination-select {
+  padding: 4px 8px;
+  font-size: 0.82rem;
+  border-radius: 6px;
+  border: 1px solid #d0d7de;
+  background-color: #ffffff;
+  color: #0f172a;
+  outline: none;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.myreports-pagination-select:focus {
+  border-color: #059669;
+}
+
+.myreports-pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.myreports-page-btn {
+  min-width: 34px;
+  height: 34px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid #d0d7de;
+  background: #ffffff;
+  font-size: 0.86rem;
+  font-weight: 600;
+  color: #334155;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: all 0.15s ease;
+  user-select: none;
+  box-sizing: border-box;
+}
+
+.myreports-page-btn:hover:not(:disabled):not(.active) {
+  background-color: #f8fafc;
+  border-color: #cbd5e1;
+  color: #0f172a;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.06);
+}
+
+.myreports-page-btn.active {
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
+  color: #ffffff;
+  border-color: #059669;
+  box-shadow: 0 2px 6px rgba(5, 150, 105, 0.28);
+  font-weight: 700;
+}
+
+.myreports-page-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background-color: #ffffff;
+  border-color: #e2e8f0;
+  color: #94a3b8;
+  box-shadow: none;
+}
+
+.myreports-page-btn.arrow-btn {
+  width: 34px;
+  min-width: 34px;
+  padding: 0;
+}
+
+.myreports-page-ellipsis {
+  padding: 6px 8px;
+  color: #94a3b8;
+  font-size: 0.86rem;
+  user-select: none;
+}
+
+@media (max-width: 640px) {
+  .myreports-pagination {
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+  }
+}
+
+/* Archive and Restore Buttons & Status in MyReports */
+.myreports-status-badge.status-archived {
+  background-color: #fef3c7;
+  color: #b45309;
+  border: 1px solid #fde68a;
+  display: inline-flex;
+  align-items: center;
+}
+
+.myreports-archive-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #f8fafc;
+  border: 1px solid #cbd5e1;
+  color: #475569;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.myreports-archive-btn:hover {
+  background-color: #fef3c7;
+  border-color: #fde68a;
+  color: #b45309;
+}
+
+.myreports-restore-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  background-color: #f0fdf4;
+  border: 1px solid #bbf7d0;
+  color: #15803d;
+  font-size: 0.78rem;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.myreports-restore-btn:hover {
+  background-color: #15803d;
+  border-color: #15803d;
+  color: #ffffff;
+}
+
+

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Navbar from './components/landing/Navbar';
 import Hero from './components/landing/Hero';
 import StatsStrip from './components/landing/StatsStrip';
@@ -17,13 +17,30 @@ import RegisterPage from './components/auth/RegisterPage';
 import ForgotPasswordPage from './components/auth/ForgotPasswordPage';
 import DashboardPage from './components/dashboard/DashboardPage';
 import AdminDashboard from './components/admin/AdminDashboard';
+import ReportIssueWizard from './components/reports/ReportIssueWizard';
+import SettingsPage from './components/dashboard/SettingsPage';
+import AccessDeniedView from './components/common/AccessDeniedView';
+import MaintenanceStaffDashboard from './components/maintenance/MaintenanceStaffDashboard';
 import { fetchAuthMe, logoutUser } from './services/api';
 
+// Role validation helper: Only user records with role_name 'admin' or role_id 1 are administrators
+const isUserAdmin = (user) => Boolean(user && (user.role_name === 'admin' || user.role_id === 1));
+
+const isMaintenanceStaffUser = (u) => {
+  if (!u) return false;
+  return (
+    u.role_name === 'supervisor' ||
+    u.role_name === 'technician' ||
+    u.role_id === 2 ||
+    u.role_id === 3
+  );
+};
+
 export default function App() {
-  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #admin)
+  // Sync view from URL hash if present (#login, #register, #forgot-password, #dashboard, #my-reports, #admin, #report-issue, #settings, #access-denied, #maintenance)
   const getInitialView = () => {
     const hash = window.location.hash.replace('#', '');
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(hash)) {
+    if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'notifications', 'history', 'admin', 'report-issue', 'settings', 'access-denied', 'maintenance'].includes(hash)) {
       return hash;
     }
     return 'landing';
@@ -31,30 +48,85 @@ export default function App() {
 
   const [currentView, setCurrentView] = useState(getInitialView);
   const [currentUser, setCurrentUser] = useState(null);
+  const currentUserRef = useRef(null);
   const [isLoading, setIsLoading] = useState(false);
   const [loadingMessage, setLoadingMessage] = useState('Accessing FixMyCampus Portal...');
 
-  // Check existing session on mount
   useEffect(() => {
-    fetchAuthMe().then((res) => {
+    currentUserRef.current = currentUser;
+  }, [currentUser]);
+
+  // Login cookies are shared across tabs; refresh when returning to this tab.
+  useEffect(() => {
+    let disposed = false;
+    const refreshSession = () => fetchAuthMe().then((res) => {
+      if (disposed) return;
       if (res && res.authenticated && res.user) {
+        currentUserRef.current = res.user;
         setCurrentUser(res.user);
         const hash = window.location.hash.replace('#', '');
-        if (hash === 'dashboard' || hash === 'admin') {
-          if (res.user.role_name === 'admin' || res.user.role_id === 1 || hash === 'admin') {
+        if (hash === 'admin') {
+          if (isUserAdmin(res.user)) {
             setCurrentView('admin');
           } else {
-            setCurrentView('dashboard');
+            // Server-side RBAC guard: student or maintenance role cannot access #admin
+            setCurrentView('access-denied');
+            window.location.hash = 'access-denied';
           }
+        } else if (hash === 'dashboard' || hash === 'my-reports' || hash === 'notifications' || hash === 'history' || hash === 'report-issue' || hash === 'settings' || hash === 'maintenance') {
+          if (isUserAdmin(res.user) && (hash === 'dashboard' || hash === 'my-reports')) {
+            setCurrentView('admin');
+            window.location.hash = 'admin';
+          } else if (isMaintenanceStaffUser(res.user) && (hash === 'dashboard' || hash === 'my-reports' || hash === 'maintenance')) {
+            setCurrentView('maintenance');
+            window.location.hash = 'maintenance';
+          } else {
+            setCurrentView(hash);
+          }
+        }
+      } else {
+        setCurrentUser(null);
+        currentUserRef.current = null;
+        const hash = window.location.hash.replace('#', '');
+        if (['dashboard', 'my-reports', 'notifications', 'history', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
+          setCurrentView('login');
+          window.location.hash = 'login';
         }
       }
     });
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') refreshSession();
+    };
+    refreshSession();
+    window.addEventListener('focus', refreshSession);
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      disposed = true;
+      window.removeEventListener('focus', refreshSession);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
   }, []);
 
   useEffect(() => {
     const handleHashChange = () => {
       const hash = window.location.hash.replace('#', '');
-      if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(hash)) {
+      const activeUser = currentUserRef.current || currentUser;
+
+      if (['dashboard', 'my-reports', 'notifications', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(hash) && !activeUser) {
+        handleNavigate('login');
+        return;
+      }
+
+      if (hash === 'admin') {
+        if (!isUserAdmin(activeUser)) {
+          // Block unauthorized role from #admin URL bypass
+          setCurrentView('access-denied');
+          window.location.hash = 'access-denied';
+          return;
+        }
+      }
+
+      if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'notifications', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(hash)) {
         setCurrentView(hash);
       } else if (!hash || hash === 'landing') {
         setCurrentView('landing');
@@ -63,7 +135,7 @@ export default function App() {
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
-  }, []);
+  }, [currentUser]);
 
   // IntersectionObserver for scroll-driven section and card reveals
   useEffect(() => {
@@ -90,34 +162,66 @@ export default function App() {
     return () => observer.disconnect();
   }, [currentView]);
 
-  const handleNavigate = (view) => {
-    if (view === currentView) return;
+  const handleNavigate = (view, userOverride = null, customLoadingMessage = null) => {
+    const activeUser = userOverride || currentUserRef.current || currentUser;
 
-    // Show loading screen when navigating to auth views, dashboard, admin or returning home
-    if (['login', 'register', 'forgot-password', 'dashboard', 'admin'].includes(view)) {
+    // Route guard: if trying to access protected views while logged out, redirect to login
+    let targetView = view;
+    if (['dashboard', 'my-reports', 'notifications', 'history', 'report-issue', 'admin', 'settings', 'maintenance', 'access-denied'].includes(view) && !activeUser) {
+      targetView = 'login';
+    } else if (view === 'admin' && !isUserAdmin(activeUser)) {
+      // Non-admin attempting to access #admin is blocked by RBAC
+      targetView = 'access-denied';
+    } else if (view === 'dashboard' && isMaintenanceStaffUser(activeUser)) {
+      targetView = 'maintenance';
+    } else if (view === 'dashboard' && isUserAdmin(activeUser)) {
+      targetView = 'admin';
+    }
+
+    if (targetView === currentView && !userOverride) return;
+
+    // Show loading screen when navigating to auth views, dashboard, my-reports, notifications, history, admin, report-issue, settings, maintenance, or returning home
+    if (['login', 'register', 'forgot-password', 'dashboard', 'my-reports', 'notifications', 'history', 'admin', 'report-issue', 'settings', 'maintenance', 'access-denied'].includes(targetView)) {
       setLoadingMessage(
-        view === 'admin'
-          ? 'Accessing Super Administrator Portal...'
-          : view === 'register'
+        customLoadingMessage ||
+        (targetView === 'admin'
+          ? 'Verifying Administrator Authorization...'
+          : targetView === 'access-denied'
+          ? 'Enforcing Role-Based Access Control...'
+          : targetView === 'maintenance'
+          ? 'Opening Maintenance Staff Dashboard...'
+          : targetView === 'register'
           ? 'Opening Student Registration...'
-          : view === 'dashboard'
+          : targetView === 'dashboard'
           ? 'Opening FixMyCampus Dashboard...'
-          : 'Accessing FixMyCampus Portal...'
+          : targetView === 'my-reports'
+          ? 'Opening My Reports...'
+          : targetView === 'notifications'
+          ? 'Opening Notifications...'
+          : targetView === 'history'
+          ? 'Opening Activity & Notification History...'
+          : targetView === 'report-issue'
+          ? 'Opening Report Issue Wizard...'
+          : targetView === 'settings'
+          ? 'Opening Profile & Account Settings...'
+          : targetView === 'login' && !activeUser && ['dashboard', 'my-reports', 'notifications', 'history', 'report-issue', 'admin', 'settings', 'maintenance'].includes(view)
+          ? 'Please log in to FixMyCampus to continue...'
+          : 'Accessing FixMyCampus Portal...')
       );
       setIsLoading(true);
 
       setTimeout(() => {
-        setCurrentView(view);
-        window.location.hash = view;
+        setCurrentView(targetView);
+        window.location.hash = targetView;
         window.scrollTo({ top: 0 });
 
         setTimeout(() => {
           setIsLoading(false);
-        }, 300);
-      }, 550);
+        }, 200);
+      }, 350);
     } else {
       setIsLoading(true);
-      setLoadingMessage('Returning to Home...');
+      setLoadingMessage(customLoadingMessage || 'Returning to Home...');
 
       setTimeout(() => {
         setCurrentView('landing');
@@ -126,17 +230,20 @@ export default function App() {
 
         setTimeout(() => {
           setIsLoading(false);
-        }, 250);
-      }, 400);
+        }, 200);
+      }, 350);
     }
   };
 
   const handleLoginSuccess = (user) => {
+    currentUserRef.current = user;
     setCurrentUser(user);
-    if (user?.role_name === 'admin' || user?.role_id === 1) {
-      handleNavigate('admin');
+    if (isUserAdmin(user)) {
+      handleNavigate('admin', user);
+    } else if (isMaintenanceStaffUser(user)) {
+      handleNavigate('maintenance', user);
     } else {
-      handleNavigate('dashboard');
+      handleNavigate('dashboard', user);
     }
   };
 
@@ -146,8 +253,9 @@ export default function App() {
     } catch (e) {
       console.warn('Logout request completed with warning:', e);
     }
+    currentUserRef.current = null;
     setCurrentUser(null);
-    handleNavigate('landing');
+    handleNavigate('login', null, 'Signing out of FixMyCampus...');
   };
 
   const handleScrollTo = (sectionId) => {
@@ -164,33 +272,75 @@ export default function App() {
     }
   };
 
-  const isAdminView =
-    currentView === 'admin' ||
-    (currentView === 'dashboard' && (currentUser?.role_name === 'admin' || currentUser?.role_id === 1));
+  const isAdmin = isUserAdmin(currentUser);
+  const isAdminView = currentView === 'admin' && isAdmin;
+
+  const isMaintenanceView =
+    currentView === 'maintenance' ||
+    (currentView === 'dashboard' && isMaintenanceStaffUser(currentUser));
 
   return (
     <>
       <LoadingScreen isVisible={isLoading} message={loadingMessage} />
 
-      {/* Super Administrator Facilities Dashboard */}
+      {/* Super Administrator Facilities Dashboard - Strictly Protected by RBAC */}
       {isAdminView && (
         <AdminDashboard
-          currentUser={
-            currentUser || {
-              full_name: 'Admin User',
-              role_display: 'Super Administrator',
-              role_name: 'admin',
-              id: 1,
-            }
-          }
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+          onUpdateUser={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            currentUserRef.current = updatedUser;
+          }}
+        />
+      )}
+
+      {/* 403 Forbidden Access Denied View for Unauthorized #admin Access Attempts */}
+      {(currentView === 'access-denied' || (currentView === 'admin' && !isAdmin)) && (
+        <AccessDeniedView
+          currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
         />
       )}
 
-      {/* Student / Faculty / Reporter Dashboard */}
-      {currentView === 'dashboard' && !isAdminView && (
+      {/* Maintenance Staff Dashboard & Job Details */}
+      {isMaintenanceView && !isAdminView && (
+        <MaintenanceStaffDashboard
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Student / Faculty / Reporter Dashboard, My Reports, Notifications & History */}
+      {(currentView === 'dashboard' || currentView === 'my-reports' || currentView === 'notifications' || currentView === 'history') && !isAdminView && !isMaintenanceView && (
         <DashboardPage
+          currentUser={currentUser}
+          initialTab={currentView === 'my-reports' ? 'my-reports' : currentView === 'notifications' ? 'notifications' : currentView === 'history' ? 'history' : 'home'}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+        />
+      )}
+
+      {/* Account Profile & Settings */}
+      {currentView === 'settings' && (
+        <SettingsPage
+          currentUser={currentUser}
+          onNavigate={handleNavigate}
+          onLogout={handleLogout}
+          showBackButton={true}
+          onUpdateUser={(updatedUser) => {
+            setCurrentUser(updatedUser);
+            currentUserRef.current = updatedUser;
+          }}
+        />
+      )}
+
+      {/* Report Issue Wizard */}
+      {currentView === 'report-issue' && (
+        <ReportIssueWizard
           currentUser={currentUser}
           onNavigate={handleNavigate}
           onLogout={handleLogout}
@@ -217,9 +367,9 @@ export default function App() {
 
       {currentView === 'landing' && (
         <div className="landing-app">
-          <Navbar onNavigate={handleNavigate} onScrollTo={handleScrollTo} />
+          <Navbar onNavigate={handleNavigate} onScrollTo={handleScrollTo} currentUser={currentUser} />
           <main>
-            <Hero onNavigate={handleNavigate} onScrollTo={handleScrollTo} />
+            <Hero onNavigate={handleNavigate} onScrollTo={handleScrollTo} currentUser={currentUser} />
             <StatsStrip />
             <ProcessSteps />
             <RolesSection />
@@ -227,7 +377,7 @@ export default function App() {
             <TimelineFeature />
             <AnalyticsFeature />
             <Testimonial />
-            <CtaBanner onNavigate={handleNavigate} />
+            <CtaBanner onNavigate={handleNavigate} currentUser={currentUser} />
           </main>
           <Footer onScrollTo={handleScrollTo} />
         </div>

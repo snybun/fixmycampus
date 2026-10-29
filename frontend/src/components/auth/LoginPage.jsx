@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound, ShieldAlert, Clock } from 'lucide-react';
 import { loginUser, loginWithGoogle, fetchGoogleConfig } from '../../services/api';
 import './auth.css';
 
@@ -15,12 +15,36 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [clientId, setClientId] = useState('');
   const [allowedDomain, setAllowedDomain] = useState('phinmaed.com');
   const [tempClientId, setTempClientId] = useState('');
-  const [gisLoaded, setGisLoaded] = useState(false);
+  const [googleIframeRendered, setGoogleIframeRendered] = useState(false);
+
+  // Rate Limiting Security State
+  const [retryAfter, setRetryAfter] = useState(0);
+  const [attemptsLeft, setAttemptsLeft] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
 
   const googleBtnRef = useRef(null);
 
+  // Countdown timer for rate limiting lockout
   useEffect(() => {
-    // 1. Fetch configured Client ID from backend or localStorage
+    if (!isLocked) return;
+
+    const timer = setInterval(() => {
+      setRetryAfter((prev) => {
+        if (prev <= 1) {
+          setIsLocked(false);
+          setError('');
+          setAttemptsLeft(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isLocked]);
+
+  // 1. Fetch configured Client ID from backend or localStorage on mount
+  useEffect(() => {
     const savedLocalId = localStorage.getItem('fmc_google_client_id') || '';
 
     fetchGoogleConfig().then((cfg) => {
@@ -35,64 +59,55 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
     });
   }, []);
 
-  // Initialize and render Google Identity Services once clientId and DOM ref are ready
+  // 2. Initialize and render Google Identity Services whenever clientId or allowedDomain changes
   useEffect(() => {
     if (!clientId) return;
 
-    let cancelled = false;
     let timer = null;
+    let attempts = 0;
 
-    const renderGis = (attempts = 0) => {
-      if (cancelled) return;
+    const renderGoogleGsi = () => {
+      attempts++;
+      if (window.google?.accounts?.id && googleBtnRef.current) {
+        try {
+          window.google.accounts.id.initialize({
+            client_id: clientId,
+            callback: handleGoogleCredentialResponse,
+            hosted_domain: allowedDomain,
+            auto_select: false,
+            cancel_on_tap_outside: true,
+          });
 
-      if (!window.google?.accounts?.id) {
-        if (attempts < 25) {
-          timer = setTimeout(() => renderGis(attempts + 1), 200);
+          googleBtnRef.current.innerHTML = '';
+          window.google.accounts.id.renderButton(googleBtnRef.current, {
+            theme: 'outline',
+            size: 'large',
+            shape: 'rectangular',
+            text: 'signin_with',
+            logo_alignment: 'left',
+            width: 380,
+          });
+
+          // Check if Google successfully injected an iframe / content
+          setTimeout(() => {
+            if (googleBtnRef.current && googleBtnRef.current.children.length > 0) {
+              setGoogleIframeRendered(true);
+            }
+          }, 350);
+          return;
+        } catch (err) {
+          console.warn('GIS render error:', err);
         }
-        return;
       }
 
-      if (!googleBtnRef.current) {
-        if (attempts < 25) {
-          timer = setTimeout(() => renderGis(attempts + 1), 100);
-        }
-        return;
-      }
-
-      try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleGoogleCredentialResponse,
-          hosted_domain: allowedDomain,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-
-        googleBtnRef.current.innerHTML = '';
-        window.google.accounts.id.renderButton(googleBtnRef.current, {
-          theme: 'outline',
-          size: 'large',
-          shape: 'rectangular',
-          text: 'signin_with',
-          logo_alignment: 'left',
-          width: 380,
-        });
-
-        // Check if button iframe was successfully rendered into container
-        setTimeout(() => {
-          if (!cancelled && googleBtnRef.current && googleBtnRef.current.children.length > 0) {
-            setGisLoaded(true);
-          }
-        }, 150);
-      } catch (err) {
-        console.warn('Google Identity Services initialization failed:', err);
+      if (attempts < 25) {
+        timer = setTimeout(renderGoogleGsi, 200);
       }
     };
 
-    renderGis();
+    renderGoogleGsi();
 
     return () => {
-      cancelled = true;
       if (timer) clearTimeout(timer);
     };
   }, [clientId, allowedDomain]);
@@ -121,12 +136,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
         setSuccessMsg(`Welcome, ${res.user?.full_name}! Verified institutional account (@${allowedDomain}).`);
         if (onLoginSuccess) {
           onLoginSuccess(res.user);
-        }
-        setTimeout(() => {
+        } else {
           onNavigate('dashboard');
-        }, 800);
+        }
       } else {
-        setError(res.message || 'Google authentication failed.');
+        setError(res.message || res.error || 'Google authentication failed.');
       }
     } catch (err) {
       setError('Unable to verify Google login token with server.');
@@ -144,31 +158,45 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       return;
     }
 
-    if (clientId) {
-      try {
-        window.google.accounts.id.initialize({
-          client_id: clientId,
-          callback: handleGoogleCredentialResponse,
-          hosted_domain: allowedDomain,
-          auto_select: false,
-          cancel_on_tap_outside: true,
-        });
-        window.google.accounts.id.prompt((notification) => {
-          if (notification.isNotDisplayed()) {
-            const reason = notification.getNotDisplayedReason();
-            setError(`Google prompt not displayed (${reason || 'restricted by browser'}). Please check third-party cookies or browser popup permissions.`);
-          }
-        });
-      } catch (err) {
-        setError('Error initiating Google Sign-In.');
-      }
-    } else {
+    if (!clientId) {
       setError('Google Client ID is not configured. Please enter your OAuth Client ID below.');
+      return;
+    }
+
+    try {
+      window.google.accounts.id.initialize({
+        client_id: clientId,
+        callback: handleGoogleCredentialResponse,
+        hosted_domain: allowedDomain,
+        auto_select: false,
+        cancel_on_tap_outside: true,
+      });
+      window.google.accounts.id.prompt((notification) => {
+        if (notification.isNotDisplayed()) {
+          const reason = notification.getNotDisplayedReason() || 'not_displayed';
+          console.warn('Google One Tap not displayed:', reason);
+          if (reason === 'opt_out_or_no_session') {
+            setError(`Please ensure you are signed into your @${allowedDomain} account in this browser, or click below.`);
+          } else if (reason === 'suppressed_by_user') {
+            setError('Google prompt was dismissed recently. Please wait a moment or clear site data.');
+          } else {
+            setError(`Google Sign-In prompt status: ${reason}. Ensure http://localhost:8080 is added to Authorized JavaScript Origins in Google Cloud Console.`);
+          }
+        }
+      });
+    } catch (e) {
+      console.error('Google prompt trigger error:', e);
+      setError('Error initiating Google sign-in.');
     }
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLocked) {
+      setError(`Login is temporarily locked. Please wait ${retryAfter} seconds before trying again.`);
+      return;
+    }
+
     setError('');
     setSuccessMsg('');
 
@@ -182,14 +210,29 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       const res = await loginUser({ email: loginInput, password, remember: rememberMe });
       if (res.success) {
         setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Authentication successful.`);
+        setRetryAfter(0);
+        setIsLocked(false);
+        setAttemptsLeft(null);
         if (onLoginSuccess) {
           onLoginSuccess(res.user);
-        }
-        setTimeout(() => {
+        } else {
           onNavigate('dashboard');
-        }, 800);
+        }
       } else {
-        setError(res.message || 'Invalid email or password.');
+        if (res.error_code === 'RATE_LIMITED' || (res.retry_after && res.retry_after > 0)) {
+          const waitTime = res.retry_after || 60;
+          setRetryAfter(waitTime);
+          setIsLocked(true);
+          setAttemptsLeft(0);
+          setError(res.message || `Too many failed login attempts. Please wait ${waitTime}s before trying again.`);
+        } else {
+          if (typeof res.attempts_left === 'number') {
+            setAttemptsLeft(res.attempts_left);
+          }
+          let cleanMsg = res.message || 'Invalid email or password.';
+          cleanMsg = cleanMsg.replace(/\s*\(Warning:.*?\)/i, '').trim();
+          setError(cleanMsg);
+        }
       }
     } catch (err) {
       setError('Connection error. Please ensure Docker backend is running.');
@@ -197,6 +240,14 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       setLoading(false);
     }
   };
+
+  const isEmailError = Boolean(
+    error && (
+      error.toLowerCase().includes('email address') ||
+      error.toLowerCase().includes('student') ||
+      error.toLowerCase().includes('no account found')
+    )
+  );
 
   return (
     <div className="auth-page-wrapper">
@@ -217,67 +268,57 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
             </button>
 
             <div className="auth-header">
+              <div
+                style={{
+                  display: 'inline-flex',
+                  alignItems: 'center',
+                  gap: '0.35rem',
+                  padding: '0.2rem 0.65rem',
+                  borderRadius: '20px',
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
+                  color: '#065f46',
+                  fontSize: '0.72rem',
+                  fontWeight: 600,
+                  marginBottom: '0.4rem',
+                }}
+              >
+                <span>PHINMA University of Pangasinan</span>
+              </div>
               <h1 className="auth-title">Welcome Back</h1>
               <p className="auth-subtitle">
-                Access your campus maintenance portal or submit facility tickets
+                Facility Defect &amp; Maintenance Reporting System &bull; Official @{allowedDomain} Accounts
               </p>
             </div>
 
-            {error && (
-              <div className="auth-alert auth-alert-error" role="alert">
-                <AlertCircle size={18} className="auth-alert-icon" />
-                <span>{error}</span>
-              </div>
-            )}
-
             {successMsg && (
-              <div className="auth-alert auth-alert-success" role="status">
-                <CheckCircle2 size={18} className="auth-alert-icon" />
+              <div className="auth-alert auth-alert-success" role="status" style={{ marginBottom: '0.75rem' }}>
+                <CheckCircle2 size={16} className="auth-alert-icon" />
                 <span>{successMsg}</span>
               </div>
             )}
 
-            {/* Institutional Domain Banner */}
-            <div
-              style={{
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.65rem',
-                padding: '0.65rem 0.85rem',
-                background: 'rgba(59, 130, 246, 0.06)',
-                border: '1px solid rgba(59, 130, 246, 0.2)',
-                borderRadius: '8px',
-                marginBottom: '1.25rem',
-                fontSize: '0.8125rem',
-                color: '#1e40af',
-              }}
-            >
-              <ShieldCheck size={18} style={{ color: '#2563eb', flexShrink: 0 }} />
-              <span>
-                FixMyCampus strictly accepts <strong>@{allowedDomain}</strong> accounts for Google Sign-In.
-              </span>
-            </div>
-
-            {/* Google Authentication Section */}
-            <div style={{ marginBottom: '1.25rem', width: '100%' }}>
-              {/* Official Google GIS Button Container */}
+            {/* Official Google GIS Button Container */}
+            <div style={{ marginBottom: '0.75rem', width: '100%' }}>
+              {/* Google's official rendered button iframe container */}
               <div
                 ref={googleBtnRef}
                 style={{
-                  display: gisLoaded ? 'flex' : 'none',
+                  display: googleIframeRendered ? 'flex' : 'none',
                   justifyContent: 'center',
-                  minHeight: '44px',
+                  minHeight: '40px',
                   width: '100%',
                 }}
               />
 
-              {/* Styled Fallback Google Button (Visible if GIS is loading, not yet rendered, or blocked) */}
-              {!gisLoaded && (
+              {/* Styled Fallback Button: ALWAYS visible if Google iframe isn't injected yet */}
+              {!googleIframeRendered && (
                 <button
                   type="button"
                   className="auth-google-btn"
                   onClick={handleTriggerGooglePrompt}
                   disabled={googleLoading}
+                  style={{ width: '100%' }}
                 >
                   <svg className="google-icon-svg" viewBox="0 0 24 24">
                     <path
@@ -363,67 +404,12 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               <span>or sign in with password</span>
             </div>
 
-            {/* Quick Demo Credentials */}
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '14px', flexWrap: 'wrap' }}>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginInput('admin@fixmycampus.edu');
-                  setPassword('Admin@1234');
-                }}
-                style={{
-                  background: '#0f172a',
-                  color: '#ffffff',
-                  border: 'none',
-                  borderRadius: '6px',
-                  padding: '6px 12px',
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                  fontWeight: 600,
-                }}
-              >
-                ⚡ Auto-fill Super Admin
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginInput('supervisor@fixmycampus.edu');
-                  setPassword('Supervisor@1234');
-                }}
-                style={{
-                  background: '#f1f5f9',
-                  color: '#334155',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  padding: '6px 10px',
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                }}
-              >
-                Supervisor
-              </button>
-              <button
-                type="button"
-                onClick={() => {
-                  setLoginInput('student.alex@fixmycampus.edu');
-                  setPassword('Student@1234');
-                }}
-                style={{
-                  background: '#f1f5f9',
-                  color: '#334155',
-                  border: '1px solid #cbd5e1',
-                  borderRadius: '6px',
-                  padding: '6px 10px',
-                  fontSize: '0.78rem',
-                  cursor: 'pointer',
-                }}
-              >
-                Student
-              </button>
-            </div>
-
             {/* Password Login Form */}
-            <form className="auth-form" onSubmit={handleSubmit}>
+            <form className="auth-form" onSubmit={handleSubmit} autoComplete="off">
+              {/* Hidden absorbers to prevent browser from auto-filling saved admin credentials */}
+              <input type="text" name="chrome_autofill_prevent_user" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
+              <input type="password" name="chrome_autofill_prevent_pass" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="new-password" />
+
               {/* Email Address or Identifier */}
               <div className="auth-field">
                 <label className="auth-label" htmlFor="login-email">
@@ -432,14 +418,39 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="login-email"
+                    name="login_identifier_field"
                     type="text"
-                    className="auth-input"
-                    placeholder="e.g. name@phinmaed.com or STU-202401"
+                    className={`auth-input ${isEmailError ? 'auth-input-error' : ''}`}
+                    placeholder="yourname.up@phinmaed.com"
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-form-type="other"
                     value={loginInput}
-                    onChange={(e) => setLoginInput(e.target.value)}
+                    onChange={(e) => {
+                      setLoginInput(e.target.value);
+                      if (error) setError('');
+                    }}
+                    disabled={isLocked || loading}
                     required
                   />
                 </div>
+                {isEmailError && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.35,
+                    }}
+                    role="alert"
+                  >
+                    <AlertCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                    <span>{error}</span>
+                  </div>
+                )}
               </div>
 
               <div className="auth-field">
@@ -449,11 +460,18 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                 <div className="auth-input-wrapper">
                   <input
                     id="login-password"
+                    name="login_secret_field"
                     type={showPassword ? 'text' : 'password'}
-                    className="auth-input auth-input-has-toggle"
+                    className={`auth-input auth-input-has-toggle ${(error && !isEmailError) || isLocked ? 'auth-input-error' : ''}`}
                     placeholder="Enter your password"
+                    autoComplete="new-password"
+                    data-lpignore="true"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (error) setError('');
+                    }}
+                    disabled={isLocked || loading}
                     required
                   />
                   <button
@@ -465,6 +483,63 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+
+                {/* Text-only error right under password input like in 2nd pic */}
+                {isLocked ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.35,
+                    }}
+                    role="alert"
+                  >
+                    <ShieldAlert size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                      <span style={{ fontWeight: 600 }}>Temporary Security Lockout</span>
+                      <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>
+                        Too many failed login attempts. Unlocks in <strong>{retryAfter}s</strong>.
+                      </span>
+                    </div>
+                  </div>
+                ) : (!isEmailError && error) ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.35,
+                    }}
+                    role="alert"
+                  >
+                    <AlertCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <span>{error}</span>
+                      {!isLocked && attemptsLeft !== null && attemptsLeft <= 2 && attemptsLeft > 0 && (
+                        <span
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            color: '#b91c1c',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                          }}
+                        >
+                          <ShieldAlert size={12} style={{ color: '#dc2626', flexShrink: 0 }} />
+                          Security Notice: {attemptsLeft} attempt{attemptsLeft === 1 ? '' : 's'} remaining before a 60-second lockout.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="auth-options-row">
@@ -489,9 +564,19 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               <button
                 type="submit"
                 className="auth-submit-btn"
-                disabled={loading}
+                disabled={loading || isLocked}
+                style={isLocked ? { background: '#94a3b8', cursor: 'not-allowed', boxShadow: 'none' } : {}}
               >
-                {loading ? 'Logging in...' : 'Login'}
+                {isLocked ? (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Clock size={16} />
+                    <span>Locked ({retryAfter}s)</span>
+                  </div>
+                ) : loading ? (
+                  'Logging in...'
+                ) : (
+                  'Login'
+                )}
               </button>
             </form>
 
