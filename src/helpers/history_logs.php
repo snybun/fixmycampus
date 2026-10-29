@@ -87,6 +87,53 @@ if (!function_exists('ensure_history_logs_synced')) {
             // Clean up any unarchived report records that might have stale report_archived logs
             db_execute("DELETE hl FROM `history_logs` hl INNER JOIN `reports` r ON hl.report_id = r.id WHERE hl.log_type = 'report_archived' AND (r.is_archived = 0 OR r.is_archived IS NULL)");
 
+            // Clean up any active staff records that might have stale staff_removed logs
+            try {
+                db_execute("
+                    DELETE hl FROM `history_logs` hl
+                    INNER JOIN `users` u ON u.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(hl.metadata, '$.staff_id')) AS UNSIGNED)
+                    WHERE hl.log_type = 'staff_removed' AND u.status = 'active'
+                ");
+            } catch (\Throwable $t) {}
+
+            // Backfill staff_removed logs for any currently inactive maintenance workers missing an archive log
+            try {
+                $inactiveWorkers = db_fetch_all("
+                    SELECT u.id, u.user_identifier, u.full_name, u.email, u.department, u.updated_at, u.created_at
+                    FROM `users` u
+                    WHERE u.role_id IN (2, 3) AND u.status = 'inactive'
+                ");
+                foreach ($inactiveWorkers as $iw) {
+                    $existingLog = db_fetch_one("
+                        SELECT id FROM `history_logs`
+                        WHERE log_type = 'staff_removed'
+                          AND CAST(JSON_UNQUOTE(JSON_EXTRACT(metadata, '$.staff_id')) AS UNSIGNED) = :sid
+                        LIMIT 1
+                    ", [':sid' => (int)$iw['id']]);
+                    if (!$existingLog) {
+                        record_history_log(
+                            'staff_removed',
+                            "Maintenance Staff Archived: {$iw['full_name']}",
+                            "Staff personnel {$iw['full_name']} ({$iw['user_identifier']}, {$iw['department']}) was archived by Administrator.",
+                            1,
+                            null,
+                            'Campus Administrator',
+                            'Administrator',
+                            $iw['department'] ?: 'Physical Plant',
+                            [
+                                'staff_id'        => (int)$iw['id'],
+                                'staff_name'      => $iw['full_name'],
+                                'email'           => $iw['email'],
+                                'user_identifier' => $iw['user_identifier'],
+                                'department'      => $iw['department'],
+                                'reason'          => 'Archived',
+                            ],
+                            $iw['updated_at'] ?: $iw['created_at']
+                        );
+                    }
+                }
+            } catch (\Throwable $t) {}
+
             // If there are existing logs, check if we need to backfill initial user_login entries
             if ($count > 0) {
                 $loginCount = (int)db_fetch_column("SELECT COUNT(*) FROM `history_logs` WHERE log_type = 'user_login'");

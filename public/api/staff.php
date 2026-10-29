@@ -34,9 +34,63 @@ try {
     $action = $_GET['action'] ?? ($input['action'] ?? 'list');
 
     // --------------------------------------------------------------------------
-    // ACTION: REMOVE / DELETE MAINTENANCE STAFF MEMBER
+    // ACTION: RESTORE / UNARCHIVE MAINTENANCE STAFF MEMBER
     // --------------------------------------------------------------------------
-    if ($action === 'delete' || $action === 'remove' || $_SERVER['REQUEST_METHOD'] === 'DELETE') {
+    if ($action === 'restore' || $action === 'unarchive') {
+        $adminUser = auth_require_role('admin');
+        $staffId = (int)($input['staff_id'] ?? ($input['id'] ?? ($_GET['id'] ?? 0)));
+
+        if ($staffId <= 0) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Valid Staff ID is required.'
+            ], 400);
+        }
+
+        $staff = db_fetch_one("
+            SELECT u.id, u.full_name, u.email, u.user_identifier, u.department, u.role_id, u.status, r.name AS role_name
+            FROM `users` u
+            JOIN `roles` r ON u.role_id = r.id
+            WHERE u.id = :id
+        ", [':id' => $staffId]);
+
+        if (!$staff) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Staff member not found.'
+            ], 404);
+        }
+
+        if (!in_array($staff['role_name'], ['technician', 'supervisor'], true)) {
+            \FixMyCampus\Core\Response::json([
+                'success' => false,
+                'message' => 'Selected user is not a maintenance staff member.'
+            ], 400);
+        }
+
+        db_execute("UPDATE `users` SET `status` = 'active', `updated_at` = NOW() WHERE id = :id", [
+            ':id' => $staffId
+        ]);
+
+        // Remove archived worker entry from history_logs so they return cleanly to active roster
+        db_execute("
+            DELETE FROM `history_logs`
+            WHERE `log_type` = 'staff_removed'
+              AND CAST(JSON_UNQUOTE(JSON_EXTRACT(`metadata`, '$.staff_id')) AS UNSIGNED) = :sid
+        ", [':sid' => $staffId]);
+
+        \FixMyCampus\Core\Response::json([
+            'success'  => true,
+            'message'  => "Staff member {$staff['full_name']} restored to active maintenance staff successfully.",
+            'staff_id' => $staffId,
+        ]);
+        exit;
+    }
+
+    // --------------------------------------------------------------------------
+    // ACTION: ARCHIVE MAINTENANCE STAFF MEMBER
+    // --------------------------------------------------------------------------
+    if ($action === 'delete' || $action === 'remove' || $action === 'archive' || $_SERVER['REQUEST_METHOD'] === 'DELETE') {
         $adminUser = auth_require_role('admin');
         $staffId = (int)($input['staff_id'] ?? ($input['id'] ?? ($_GET['id'] ?? 0)));
         $reason = trim($input['reason'] ?? 'Resignation');
@@ -52,7 +106,7 @@ try {
         if ($staffId === (int)$adminUser['id']) {
             \FixMyCampus\Core\Response::json([
                 'success' => false,
-                'message' => 'You cannot remove your own administrator account.'
+                'message' => 'You cannot archive your own administrator account.'
             ], 400);
         }
 
@@ -106,37 +160,22 @@ try {
                         ':rid'        => $assignment['report_id'],
                         ':changed_by' => $adminUser['id'],
                         ':prev'       => $assignment['report_status'],
-                        ':remarks'    => "Unassigned: Personnel {$staff['full_name']} removed ({$reason}). Ticket returned for reassignment."
+                        ':remarks'    => "Unassigned: Personnel {$staff['full_name']} archived ({$reason}). Ticket returned for reassignment."
                     ]);
                 }
             }
 
-            // Clean up notifications for this staff member
-            db_execute("DELETE FROM `notifications` WHERE user_id = :uid", [':uid' => $staffId]);
+            // Always soft-archive user record so the worker can return seamlessly when restored
+            db_execute("UPDATE `users` SET `status` = 'inactive', `updated_at` = NOW() WHERE id = :id", [
+                ':id' => $staffId
+            ]);
 
-            // Check if user has historical records that must be preserved
-            $hasCompletions = (int)db_fetch_column(
-                "SELECT COUNT(*) FROM `repair_completions` WHERE completed_by = :uid",
-                [':uid' => $staffId]
-            );
-            $hasStatusHistory = (int)db_fetch_column(
-                "SELECT COUNT(*) FROM `report_status_history` WHERE changed_by = :uid",
-                [':uid' => $staffId]
-            );
-            $hasRemainingAssignments = (int)db_fetch_column(
-                "SELECT COUNT(*) FROM `report_assignments` WHERE assigned_to = :uid",
-                [':uid' => $staffId]
-            );
-
-            if ($hasCompletions > 0 || $hasStatusHistory > 0 || $hasRemainingAssignments > 0) {
-                // Soft delete: mark inactive to maintain historical relational integrity
-                db_execute("UPDATE `users` SET `status` = 'inactive', `updated_at` = NOW() WHERE id = :id", [
-                    ':id' => $staffId
-                ]);
-            } else {
-                // Hard delete: clean up safely
-                db_execute("DELETE FROM `users` WHERE id = :id", [':id' => $staffId]);
-            }
+            // Clean any older archive entry for this worker so the latest archive log is clean
+            db_execute("
+                DELETE FROM `history_logs`
+                WHERE `log_type` = 'staff_removed'
+                  AND CAST(JSON_UNQUOTE(JSON_EXTRACT(`metadata`, '$.staff_id')) AS UNSIGNED) = :sid
+            ", [':sid' => $staffId]);
 
             $pdo->commit();
 
@@ -144,8 +183,8 @@ try {
             if (function_exists('record_history_log')) {
                 record_history_log(
                     'staff_removed',
-                    "Maintenance Staff Removed: {$staff['full_name']}",
-                    "Staff personnel {$staff['full_name']} ({$staff['user_identifier']}, {$staff['department']}) was removed by Administrator. Circumstance: {$reason}" . (!empty($notes) ? " - Notes: {$notes}" : ""),
+                    "Maintenance Staff Archived: {$staff['full_name']}",
+                    "Staff personnel {$staff['full_name']} ({$staff['user_identifier']}, {$staff['department']}) was archived by Administrator. Circumstance: {$reason}" . (!empty($notes) ? " - Notes: {$notes}" : ""),
                     (int)$adminUser['id'],
                     null,
                     $adminUser['full_name'] ?? 'Administrator',
@@ -154,7 +193,9 @@ try {
                     [
                         'staff_id'        => $staffId,
                         'staff_name'      => $staff['full_name'],
+                        'email'           => $staff['email'],
                         'user_identifier' => $staff['user_identifier'],
+                        'department'      => $staff['department'],
                         'reason'          => $reason,
                         'notes'           => $notes,
                         'unassigned_jobs' => count($activeAssignments),
@@ -164,7 +205,7 @@ try {
 
             \FixMyCampus\Core\Response::json([
                 'success' => true,
-                'message' => "Staff member {$staff['full_name']} removed successfully.",
+                'message' => "Staff member {$staff['full_name']} archived successfully.",
                 'unassigned_jobs_count' => count($activeAssignments)
             ]);
             exit;
@@ -191,6 +232,64 @@ try {
                 'success' => false,
                 'message' => 'Full Name and Email are required.'
             ], 400);
+        }
+
+        // If an archived staff member with this email already exists, restore and update them seamlessly
+        $existingStaff = db_fetch_one("
+            SELECT id, user_identifier, full_name, email, status, role_id
+            FROM `users`
+            WHERE LOWER(email) = LOWER(:email)
+            LIMIT 1
+        ", [':email' => $email]);
+
+        if ($existingStaff) {
+            if (($existingStaff['status'] ?? '') === 'inactive') {
+                db_execute("
+                    UPDATE `users`
+                    SET `full_name` = :full_name,
+                        `department` = :department,
+                        `phone_number` = :phone,
+                        `role_id` = :role_id,
+                        `status` = 'active',
+                        `updated_at` = NOW()
+                    WHERE `id` = :id
+                ", [
+                    ':full_name'  => $name,
+                    ':department' => $department,
+                    ':phone'      => $phone,
+                    ':role_id'    => $roleId,
+                    ':id'         => (int)$existingStaff['id'],
+                ]);
+
+                db_execute("
+                    DELETE FROM `history_logs`
+                    WHERE `log_type` = 'staff_removed'
+                      AND CAST(JSON_UNQUOTE(JSON_EXTRACT(`metadata`, '$.staff_id')) AS UNSIGNED) = :sid
+                ", [':sid' => (int)$existingStaff['id']]);
+
+                \FixMyCampus\Core\Response::json([
+                    'success' => true,
+                    'message' => "Archived staff member {$name} has been restored to active duty.",
+                    'staff'   => [
+                        'id'              => (int)$existingStaff['id'],
+                        'user_identifier' => $existingStaff['user_identifier'],
+                        'full_name'       => $name,
+                        'email'           => $email,
+                        'department'      => $department,
+                        'phone_number'    => $phone,
+                        'status'          => 'active',
+                        'active_jobs'     => 0,
+                        'completed_jobs'  => 0,
+                    ]
+                ], 200);
+                exit;
+            } else {
+                \FixMyCampus\Core\Response::json([
+                    'success' => false,
+                    'message' => 'An active user with this email address already exists.'
+                ], 409);
+                exit;
+            }
         }
 
         // Generate unique identifier

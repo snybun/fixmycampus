@@ -15,6 +15,7 @@ import {
   ChevronRight,
   TrendingUp,
   Trash2,
+  Archive,
   UserX,
   AlertTriangle,
 } from 'lucide-react';
@@ -230,7 +231,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                       <span>View Stats</span>
                     </button>
 
-                    {/* Remove Staff Button */}
+                    {/* Archive Staff Button */}
                     {onRemoveStaff && (
                       <button
                         type="button"
@@ -239,10 +240,10 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                           e.stopPropagation();
                           handleOpenDeleteModal(member);
                         }}
-                        title={`Remove ${member.full_name} (Resignation / Departure)`}
-                        aria-label={`Remove ${member.full_name}`}
+                        title={`Archive ${member.full_name}`}
+                        aria-label={`Archive ${member.full_name}`}
                       >
-                        <Trash2 size={13} />
+                        <Archive size={14} />
                       </button>
                     )}
                   </div>
@@ -643,10 +644,10 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                     setSelectedStaffForStats(null);
                     handleOpenDeleteModal(target);
                   }}
-                  title="Remove this staff member from active roster"
+                  title="Archive this staff member to History Logs"
                 >
-                  <Trash2 size={14} />
-                  <span>Remove Staff Member</span>
+                  <Archive size={14} />
+                  <span>Archive Staff Member</span>
                 </button>
               )}
 
@@ -782,7 +783,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
       )}
 
       {/* --------------------------------------------------------------------
-          REMOVE MAINTENANCE STAFF MODAL (Resignation & Circumstances)
+          ARCHIVE MAINTENANCE STAFF MODAL
           -------------------------------------------------------------------- */}
       {staffToDelete && (
         <div
@@ -805,23 +806,23 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                     width: '38px',
                     height: '38px',
                     borderRadius: '10px',
-                    backgroundColor: '#fee2e2',
-                    border: '1px solid #fecaca',
+                    backgroundColor: '#fffbeb',
+                    border: '1px solid #fde68a',
                     display: 'flex',
                     alignItems: 'center',
                     justifyContent: 'center',
-                    color: '#dc2626',
+                    color: '#d97706',
                     flexShrink: 0,
                   }}
                 >
-                  <UserX size={20} strokeWidth={2.2} />
+                  <Archive size={20} strokeWidth={2.2} />
                 </div>
                 <div>
                   <h3 className="admin-modal-title" style={{ fontSize: '1.1rem', margin: 0 }}>
-                    Remove Maintenance Staff
+                    Archive Maintenance Staff
                   </h3>
                   <p style={{ margin: 0, fontSize: '0.8rem', color: 'var(--admin-text-muted)' }}>
-                    Record resignation or personnel departure
+                    Archive worker to History Logs (can be restored when they return)
                   </p>
                 </div>
               </div>
@@ -913,7 +914,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                     <div>
                       <strong>{staffToDelete.active_jobs} Active Work Order(s) Assigned:</strong>
                       <p style={{ margin: '4px 0 0 0' }}>
-                        Removing this personnel will automatically unassign their active repair tickets and return them to
+                        Archiving this personnel will automatically unassign their active repair tickets and return them to
                         {' '}<em>Under Review</em> so they can be reassigned to other workers.
                       </p>
                     </div>
@@ -923,7 +924,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                 {/* Reason Selection */}
                 <div className="admin-form-group">
                   <label className="admin-form-label" style={{ fontWeight: 600 }}>
-                    Circumstance / Reason for Removal *
+                    Circumstance / Reason for Archiving *
                   </label>
                   <select
                     className="admin-select-input"
@@ -932,6 +933,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                     required
                   >
                     <option value="Resignation">Staff Resignation (Notice Tendered)</option>
+                    <option value="On Leave / Temporary Absence">On Leave / Temporary Absence</option>
                     <option value="End of Contract">Contract Concluded / End of Term</option>
                     <option value="Transferred">Transferred to Another Department / Branch</option>
                     <option value="Disciplinary Action">Administrative / Disciplinary Circumstances</option>
@@ -947,7 +949,7 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                   <textarea
                     className="admin-select-input"
                     rows={3}
-                    placeholder="e.g. Effective immediately; physical access keys surrendered to facilities office."
+                    placeholder="e.g. Effective immediately; can be restored from History Logs upon return."
                     value={deleteNotes}
                     onChange={(e) => setDeleteNotes(e.target.value)}
                     style={{ resize: 'vertical' }}
@@ -981,10 +983,13 @@ export default function MaintenanceStaff({ staff = [], onAddStaff, onRemoveStaff
                     display: 'inline-flex',
                     alignItems: 'center',
                     gap: '6px',
+                    backgroundColor: '#d97706',
+                    borderColor: '#d97706',
+                    color: '#ffffff',
                   }}
                 >
-                  <Trash2 size={15} />
-                  <span>{isDeleting ? 'Removing Staff...' : 'Confirm & Remove Staff'}</span>
+                  <Archive size={15} />
+                  <span>{isDeleting ? 'Archiving Staff...' : 'Confirm & Archive Staff'}</span>
                 </button>
               </div>
             </form>

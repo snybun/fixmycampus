@@ -1909,18 +1909,18 @@
   width: 30px;
   height: 30px;
   border-radius: 7px;
-  color: #ef4444;
-  background-color: #fef2f2;
-  border: 1px solid #fee2e2;
+  color: #d97706;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
   cursor: pointer;
   transition: all 0.15s ease;
   flex-shrink: 0;
 }
 
 .admin-staff-remove-btn:hover {
-  background-color: #fee2e2;
-  color: #b91c1c;
-  border-color: #fca5a5;
+  background-color: #fef3c7;
+  color: #b45309;
+  border-color: #f59e0b;
   transform: translateY(-1px);
 }
 
@@ -2073,17 +2073,17 @@
   border-radius: 8px;
   font-size: 0.82rem;
   font-weight: 600;
-  color: #dc2626;
-  background-color: #fef2f2;
-  border: 1px solid #fecaca;
+  color: #b45309;
+  background-color: #fffbeb;
+  border: 1px solid #fde68a;
   cursor: pointer;
   transition: all 0.15s ease;
 }
 
 .admin-staff-modal-remove-btn:hover {
-  background-color: #fee2e2;
-  color: #991b1b;
-  border-color: #f87171;
+  background-color: #fef3c7;
+  color: #92400e;
+  border-color: #f59e0b;
   transform: translateY(-1px);
 }
 
@@ -3196,7 +3196,8 @@
   border: 1px solid #a7f3d0;
 }
 
-.history-type-chip.report_archived {
+.history-type-chip.report_archived,
+.history-type-chip.staff_removed {
   background: #fffbeb;
   color: #b45309;
   border: 1px solid #fde68a;

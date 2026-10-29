@@ -126,6 +126,9 @@ try {
         if ($type === 'report_archived') {
             $where[] = "(r.is_archived = 1 OR r.id IS NULL)";
         }
+        if ($type === 'staff_removed') {
+            $where[] = "(u_staff.status = 'inactive' OR u_staff.id IS NULL)";
+        }
     }
 
     if (!empty($search)) {
@@ -140,6 +143,7 @@ try {
         SELECT COUNT(*)
         FROM `history_logs` hl
         LEFT JOIN `reports` r ON hl.report_id = r.id
+        LEFT JOIN `users` u_staff ON hl.log_type = 'staff_removed' AND u_staff.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(hl.metadata, '$.staff_id')) AS UNSIGNED)
         WHERE {$whereSql}
     ";
     $total = (int)db_fetch_column($countSql, $params);
@@ -165,10 +169,14 @@ try {
             r.priority AS report_priority,
             r.is_archived,
             u.avatar_url AS actor_avatar,
+            u_staff.id AS staff_user_id,
+            u_staff.full_name AS staff_user_name,
+            u_staff.status AS staff_user_status,
             (SELECT file_path FROM `report_attachments` WHERE report_id = hl.report_id ORDER BY id ASC LIMIT 1) AS report_photo
         FROM `history_logs` hl
         LEFT JOIN `reports` r ON hl.report_id = r.id
         LEFT JOIN `users` u ON hl.user_id = u.id
+        LEFT JOIN `users` u_staff ON hl.log_type = 'staff_removed' AND u_staff.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(hl.metadata, '$.staff_id')) AS UNSIGNED)
         WHERE {$whereSql}
         ORDER BY hl.created_at DESC, hl.id DESC
         LIMIT {$limit} OFFSET {$offset}
@@ -179,16 +187,28 @@ try {
     $formatted = [];
     foreach ($rows as $r) {
         $meta = !empty($r['metadata']) ? json_decode($r['metadata'], true) : null;
+        $staffId = !empty($r['staff_user_id'])
+            ? (int)$r['staff_user_id']
+            : (isset($meta['staff_id']) ? (int)$meta['staff_id'] : null);
+        $staffName = $r['staff_user_name'] ?? ($meta['staff_name'] ?? null);
+        $titleText = $r['title'];
+        if ($r['log_type'] === 'staff_removed') {
+            $titleText = str_replace('Maintenance Staff Removed:', 'Maintenance Staff Archived:', $titleText);
+        }
+
         $formatted[] = [
             'id'            => (int)$r['id'],
             'log_type'      => $r['log_type'],
             'user_id'       => $r['user_id'] ? (int)$r['user_id'] : null,
             'report_id'     => $r['report_id'] ? (int)$r['report_id'] : null,
+            'staff_id'      => $staffId,
+            'staff_name'    => $staffName,
+            'staff_status'  => $r['staff_user_status'] ?? 'inactive',
             'actor_name'    => $r['actor_name'] ?: 'System',
             'actor_role'    => $r['actor_role'] ?: 'System',
             'actor_avatar'  => $r['actor_avatar'] ?: null,
             'report_photo'  => $r['report_photo'] ?: null,
-            'title'         => $r['title'],
+            'title'         => $titleText,
             'description'   => $r['description'],
             'location_info' => $r['location_info'] ?: 'Campus',
             'ticket_number' => $r['ticket_number'] ?: ($meta['ticket_number'] ?? null),
@@ -218,6 +238,12 @@ try {
             FROM `history_logs` hl 
             LEFT JOIN `reports` r ON hl.report_id = r.id 
             WHERE hl.log_type = 'report_archived' AND (r.is_archived = 1 OR r.id IS NULL)
+        "),
+        'staff_removed'     => (int)db_fetch_column("
+            SELECT COUNT(*) 
+            FROM `history_logs` hl 
+            LEFT JOIN `users` u_staff ON u_staff.id = CAST(JSON_UNQUOTE(JSON_EXTRACT(hl.metadata, '$.staff_id')) AS UNSIGNED)
+            WHERE hl.log_type = 'staff_removed' AND (u_staff.status = 'inactive' OR u_staff.id IS NULL)
         "),
     ];
 

@@ -204,7 +204,7 @@ export async function fetchHistoryLogs({ page = 1, limit = 10, type = 'all', sea
     return {
       success: false,
       data: [],
-      summary: { all: 0, user_login: 0, user_registration: 0, report_submitted: 0, status_change: 0, report_archived: 0 },
+      summary: { all: 0, user_login: 0, user_registration: 0, report_submitted: 0, status_change: 0, report_archived: 0, staff_removed: 0 },
       pagination: { total: 0, page: 1, limit: 10, total_pages: 1 },
     };
   }
@@ -490,7 +490,7 @@ export async function addStaffMember(data) {
 
 export async function removeStaffMember(staffId, details = {}) {
   try {
-    const res = await fetch(`${API_BASE}/staff.php?action=delete`, {
+    const res = await fetch(`${API_BASE}/staff.php?action=archive`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
@@ -502,7 +502,24 @@ export async function removeStaffMember(staffId, details = {}) {
     });
     return await res.json();
   } catch (err) {
-    console.error('Error removing staff member:', err);
+    console.error('Error archiving staff member:', err);
+    return { success: false, message: err.message };
+  }
+}
+
+export async function restoreStaffMember(staffId) {
+  try {
+    const res = await fetch(`${API_BASE}/staff.php?action=restore`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      credentials: 'include',
+      body: JSON.stringify({
+        staff_id: staffId,
+      }),
+    });
+    return await res.json();
+  } catch (err) {
+    console.error('Error restoring staff member:', err);
     return { success: false, message: err.message };
   }
 }

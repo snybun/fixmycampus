@@ -24,7 +24,7 @@ import {
   ChevronDown,
   Check,
 } from 'lucide-react';
-import { fetchHistoryLogs, deleteHistoryLog, updateReportPhoto } from '../../services/api';
+import { fetchHistoryLogs, deleteHistoryLog, updateReportPhoto, restoreStaffMember } from '../../services/api';
 import ConfirmationModal from '../common/ConfirmationModal';
 
 const HISTORY_FILTER_OPTIONS = [
@@ -34,9 +34,10 @@ const HISTORY_FILTER_OPTIONS = [
   { key: 'report_submitted', label: 'Reports Logged', color: '#f59e0b' },
   { key: 'status_change', label: 'Status Updates', color: '#8b5cf6' },
   { key: 'report_archived', label: 'Archived Reports', color: '#c2410c' },
+  { key: 'staff_removed', label: 'Archived Workers', color: '#d97706' },
 ];
 
-export default function HistoryLogView({ onViewReport, onRestoreReport }) {
+export default function HistoryLogView({ onViewReport, onRestoreReport, onRestoreStaff }) {
   const [logs, setLogs] = useState([]);
   const [loading, setLoading] = useState(true);
   const [activeType, setActiveType] = useState('all');
@@ -63,6 +64,7 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
     report_submitted: 0,
     status_change: 0,
     report_archived: 0,
+    staff_removed: 0,
   });
   const [pagination, setPagination] = useState({
     total: 0,
@@ -239,6 +241,26 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
     await loadLogs();
   };
 
+  const handleRestoreWorkerDirect = async (log) => {
+    const staffId = log.staff_id || log.metadata?.staff_id;
+    if (!staffId) return;
+    const staffName = log.staff_name || log.metadata?.staff_name || 'Staff member';
+    if (onRestoreStaff) {
+      const ok = await onRestoreStaff(staffId, staffName);
+      if (ok) {
+        await loadLogs();
+      }
+      return;
+    }
+    const res = await restoreStaffMember(staffId);
+    if (res?.success) {
+      showToast(res.message || `${staffName} restored to active maintenance staff.`);
+      await loadLogs();
+    } else {
+      alert(res?.message || 'Failed to restore maintenance worker.');
+    }
+  };
+
   const formatLogDate = (dateStr) => {
     if (!dateStr) return { formatted: 'Unknown', time: '' };
     try {
@@ -294,6 +316,13 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
           <span className="history-type-chip report_archived">
             <Archive size={13} />
             <span>Archived Report</span>
+          </span>
+        );
+      case 'staff_removed':
+        return (
+          <span className="history-type-chip staff_removed">
+            <Archive size={13} />
+            <span>Archived Worker</span>
           </span>
         );
       default:
@@ -473,6 +502,23 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
           <div>
             <div className="history-summary-val">{summary.report_archived}</div>
             <div className="history-summary-lbl">Archived Reports</div>
+          </div>
+        </div>
+
+        <div
+          className={`history-summary-card ${activeType === 'staff_removed' ? 'active' : ''}`}
+          onClick={() => handleTypeChange('staff_removed')}
+          style={{ cursor: 'pointer' }}
+          role="button"
+          tabIndex={0}
+          title="View archived maintenance workers"
+        >
+          <div className="history-summary-icon archive">
+            <User size={20} />
+          </div>
+          <div>
+            <div className="history-summary-val">{summary.staff_removed || 0}</div>
+            <div className="history-summary-lbl">Archived Workers</div>
           </div>
         </div>
       </div>
@@ -783,6 +829,19 @@ export default function HistoryLogView({ onViewReport, onRestoreReport }) {
                               id={`history-restore-${log.id}`}
                             >
                               <RotateCcw size={14} />
+                            </button>
+                          )}
+                          {log.log_type === 'staff_removed' && (log.staff_id || log.metadata?.staff_id) && (
+                            <button
+                              type="button"
+                              className="history-restore-row-btn"
+                              onClick={() => handleRestoreWorkerDirect(log)}
+                              title="Restore this archived worker back to active Maintenance Staff"
+                              id={`history-restore-worker-${log.id}`}
+                              style={{ gap: 5, padding: '5px 10px' }}
+                            >
+                              <RotateCcw size={14} />
+                              <span>Restore</span>
                             </button>
                           )}
                           <button
