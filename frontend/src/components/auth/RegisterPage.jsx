@@ -1,12 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, KeyRound } from 'lucide-react';
 import { registerUser, loginWithGoogle, fetchGoogleConfig } from '../../services/api';
 import './auth.css';
 
 export default function RegisterPage({ onNavigate }) {
   const [formData, setFormData] = useState({
     identifier: '',
-    fullName: '',
+    lastName: '',
+    firstName: '',
+    middleName: '',
     email: '',
     department: '',
     password: '',
@@ -119,7 +121,7 @@ export default function RegisterPage({ onNavigate }) {
           onNavigate('landing');
         }, 1000);
       } else {
-        setError(res.message || 'Google registration failed.');
+        setError(res.message || res.error || 'Google registration failed.');
       }
     } catch (err) {
       setError('Unable to verify Google credential token with server.');
@@ -181,9 +183,10 @@ export default function RegisterPage({ onNavigate }) {
     setSuccessMsg('');
 
     if (
-      !formData.identifier ||
-      !formData.fullName ||
-      !formData.email ||
+      !formData.identifier.trim() ||
+      !formData.lastName.trim() ||
+      !formData.firstName.trim() ||
+      !formData.email.trim() ||
       !formData.department ||
       !formData.password ||
       !formData.confirmPassword
@@ -208,9 +211,20 @@ export default function RegisterPage({ onNavigate }) {
       return;
     }
 
+    const computedFullName = [formData.firstName.trim(), formData.middleName.trim(), formData.lastName.trim()].filter(Boolean).join(' ');
+
     setLoading(true);
     try {
-      const res = await registerUser(formData);
+      const res = await registerUser({
+        identifier: formData.identifier.trim(),
+        lastName: formData.lastName.trim(),
+        firstName: formData.firstName.trim(),
+        middleName: formData.middleName.trim(),
+        fullName: computedFullName,
+        email: formData.email.trim(),
+        department: formData.department,
+        password: formData.password,
+      });
       if (res.success) {
         setSuccessMsg('Account created successfully! Redirecting to login...');
         setTimeout(() => {
@@ -250,15 +264,11 @@ export default function RegisterPage({ onNavigate }) {
             <p className="auth-subtitle">
               Join our community effort to maintain a safe, clean campus.
             </p>
-          </div>
-
-          {/* Institutional Notice */}
-          <div className="auth-domain-banner">
-            <ShieldCheck size={18} style={{ color: '#16a34a', flexShrink: 0 }} />
-            <div>
-              <strong>Exclusively for PHINMA University of Pangasinan:</strong> Registration is open only to verified{' '}
-              <span className="auth-domain-tag">@{allowedDomain}</span> accounts.
-            </div>
+            <p className="auth-registration-notice">
+              <strong>
+                Exclusively for PHINMA University of Pangasinan: Registration is open only to verified @{allowedDomain} accounts.
+              </strong>
+            </p>
           </div>
 
           {error && (
@@ -385,44 +395,83 @@ export default function RegisterPage({ onNavigate }) {
             <input type="text" name="chrome_autofill_prevent_user" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="off" />
             <input type="password" name="chrome_autofill_prevent_pass" style={{ display: 'none' }} tabIndex={-1} aria-hidden="true" autoComplete="new-password" />
 
-            <div className="auth-form-row">
+            <div className="auth-field">
+              <label className="auth-label" htmlFor="reg-identifier">
+                Student / Employee ID <span className="auth-required">*</span>
+              </label>
+              <div className="auth-input-wrapper">
+                <input
+                  id="reg-identifier"
+                  name="student_employee_identifier"
+                  type="text"
+                  className="auth-input"
+                  placeholder="e.g. 02-2324-00123"
+                  value={formData.identifier}
+                  onChange={(e) => handleChange('identifier', e.target.value)}
+                  autoComplete="off"
+                  data-lpignore="true"
+                  data-form-type="other"
+                  required
+                />
+              </div>
+            </div>
+
+            <div className="auth-name-grid">
               <div className="auth-field">
-                <label className="auth-label" htmlFor="reg-identifier">
-                  Student / Employee ID <span className="auth-required">*</span>
+                <label className="auth-label" htmlFor="reg-last-name">
+                  Last Name <span className="auth-required">*</span>
                 </label>
                 <div className="auth-input-wrapper">
                   <input
-                    id="reg-identifier"
-                    name="student_employee_identifier"
+                    id="reg-last-name"
+                    name="registrant_last_name"
                     type="text"
                     className="auth-input"
-                    placeholder="e.g. 02-2324-00123"
-                    value={formData.identifier}
-                    onChange={(e) => handleChange('identifier', e.target.value)}
+                    placeholder="e.g. Dela Cruz"
+                    value={formData.lastName}
+                    onChange={(e) => handleChange('lastName', e.target.value)}
                     autoComplete="off"
                     data-lpignore="true"
-                    data-form-type="other"
                     required
                   />
                 </div>
               </div>
 
               <div className="auth-field">
-                <label className="auth-label" htmlFor="reg-name">
-                  Full Name <span className="auth-required">*</span>
+                <label className="auth-label" htmlFor="reg-first-name">
+                  First Name <span className="auth-required">*</span>
                 </label>
                 <div className="auth-input-wrapper">
                   <input
-                    id="reg-name"
-                    name="registrant_full_name"
+                    id="reg-first-name"
+                    name="registrant_first_name"
                     type="text"
                     className="auth-input"
-                    placeholder="e.g. Juan Dela Cruz"
-                    value={formData.fullName}
-                    onChange={(e) => handleChange('fullName', e.target.value)}
+                    placeholder="e.g. Juan"
+                    value={formData.firstName}
+                    onChange={(e) => handleChange('firstName', e.target.value)}
                     autoComplete="off"
                     data-lpignore="true"
                     required
+                  />
+                </div>
+              </div>
+
+              <div className="auth-field">
+                <label className="auth-label" htmlFor="reg-middle-name">
+                  Middle Name <span className="auth-optional-tag">(Optional)</span>
+                </label>
+                <div className="auth-input-wrapper">
+                  <input
+                    id="reg-middle-name"
+                    name="registrant_middle_name"
+                    type="text"
+                    className="auth-input"
+                    placeholder="e.g. Santos"
+                    value={formData.middleName}
+                    onChange={(e) => handleChange('middleName', e.target.value)}
+                    autoComplete="off"
+                    data-lpignore="true"
                   />
                 </div>
               </div>

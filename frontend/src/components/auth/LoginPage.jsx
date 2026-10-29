@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound } from 'lucide-react';
+import { Eye, EyeOff, Wrench, AlertCircle, CheckCircle2, ShieldCheck, KeyRound, ShieldAlert, Clock } from 'lucide-react';
 import { loginUser, loginWithGoogle, fetchGoogleConfig } from '../../services/api';
 import './auth.css';
 
@@ -17,7 +17,31 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
   const [tempClientId, setTempClientId] = useState('');
   const [googleIframeRendered, setGoogleIframeRendered] = useState(false);
 
+  // Rate Limiting Security State
+  const [retryAfter, setRetryAfter] = useState(0);
+  const [attemptsLeft, setAttemptsLeft] = useState(null);
+  const [isLocked, setIsLocked] = useState(false);
+
   const googleBtnRef = useRef(null);
+
+  // Countdown timer for rate limiting lockout
+  useEffect(() => {
+    if (!isLocked) return;
+
+    const timer = setInterval(() => {
+      setRetryAfter((prev) => {
+        if (prev <= 1) {
+          setIsLocked(false);
+          setError('');
+          setAttemptsLeft(null);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isLocked]);
 
   // 1. Fetch configured Client ID from backend or localStorage on mount
   useEffect(() => {
@@ -116,7 +140,7 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
           onNavigate('dashboard');
         }
       } else {
-        setError(res.message || 'Google authentication failed.');
+        setError(res.message || res.error || 'Google authentication failed.');
       }
     } catch (err) {
       setError('Unable to verify Google login token with server.');
@@ -168,6 +192,11 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    if (isLocked) {
+      setError(`Login is temporarily locked. Please wait ${retryAfter} seconds before trying again.`);
+      return;
+    }
+
     setError('');
     setSuccessMsg('');
 
@@ -181,13 +210,29 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       const res = await loginUser({ email: loginInput, password, remember: rememberMe });
       if (res.success) {
         setSuccessMsg(`Welcome back, ${res.user?.full_name || 'User'}! Authentication successful.`);
+        setRetryAfter(0);
+        setIsLocked(false);
+        setAttemptsLeft(null);
         if (onLoginSuccess) {
           onLoginSuccess(res.user);
         } else {
           onNavigate('dashboard');
         }
       } else {
-        setError(res.message || 'Invalid email or password.');
+        if (res.error_code === 'RATE_LIMITED' || (res.retry_after && res.retry_after > 0)) {
+          const waitTime = res.retry_after || 60;
+          setRetryAfter(waitTime);
+          setIsLocked(true);
+          setAttemptsLeft(0);
+          setError(res.message || `Too many failed login attempts. Please wait ${waitTime}s before trying again.`);
+        } else {
+          if (typeof res.attempts_left === 'number') {
+            setAttemptsLeft(res.attempts_left);
+          }
+          let cleanMsg = res.message || 'Invalid email or password.';
+          cleanMsg = cleanMsg.replace(/\s*\(Warning:.*?\)/i, '').trim();
+          setError(cleanMsg);
+        }
       }
     } catch (err) {
       setError('Connection error. Please ensure Docker backend is running.');
@@ -195,6 +240,14 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
       setLoading(false);
     }
   };
+
+  const isEmailError = Boolean(
+    error && (
+      error.toLowerCase().includes('email address') ||
+      error.toLowerCase().includes('student') ||
+      error.toLowerCase().includes('no account found')
+    )
+  );
 
   return (
     <div className="auth-page-wrapper">
@@ -222,43 +275,28 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                   gap: '0.35rem',
                   padding: '0.2rem 0.65rem',
                   borderRadius: '20px',
-                  background: '#eff6ff',
-                  border: '1px solid #bfdbfe',
-                  color: '#1d4ed8',
+                  background: '#ecfdf5',
+                  border: '1px solid #a7f3d0',
+                  color: '#065f46',
                   fontSize: '0.72rem',
                   fontWeight: 600,
                   marginBottom: '0.4rem',
                 }}
               >
-                <span>PHINMA University of Pangasinan Only</span>
+                <span>PHINMA University of Pangasinan</span>
               </div>
               <h1 className="auth-title">Welcome Back</h1>
               <p className="auth-subtitle">
-                Facility Defect and Maintenance Reporting System
+                Facility Defect &amp; Maintenance Reporting System &bull; Official @{allowedDomain} Accounts
               </p>
             </div>
 
-            {error && (
-              <div className="auth-alert auth-alert-error" role="alert">
-                <AlertCircle size={16} className="auth-alert-icon" />
-                <span>{error}</span>
-              </div>
-            )}
-
             {successMsg && (
-              <div className="auth-alert auth-alert-success" role="status">
+              <div className="auth-alert auth-alert-success" role="status" style={{ marginBottom: '0.75rem' }}>
                 <CheckCircle2 size={16} className="auth-alert-icon" />
                 <span>{successMsg}</span>
               </div>
             )}
-
-            {/* Institutional Domain Banner */}
-            <div className="auth-domain-banner">
-              <ShieldCheck size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
-              <span>
-                Exclusively for <strong>PHINMA University of Pangasinan</strong>. Please sign in with your official <strong>@{allowedDomain}</strong> account.
-              </span>
-            </div>
 
             {/* Official Google GIS Button Container */}
             <div style={{ marginBottom: '0.75rem', width: '100%' }}>
@@ -382,16 +420,37 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     id="login-email"
                     name="login_identifier_field"
                     type="text"
-                    className="auth-input"
+                    className={`auth-input ${isEmailError ? 'auth-input-error' : ''}`}
                     placeholder="yourname.up@phinmaed.com"
                     autoComplete="off"
                     data-lpignore="true"
                     data-form-type="other"
                     value={loginInput}
-                    onChange={(e) => setLoginInput(e.target.value)}
+                    onChange={(e) => {
+                      setLoginInput(e.target.value);
+                      if (error) setError('');
+                    }}
+                    disabled={isLocked || loading}
                     required
                   />
                 </div>
+                {isEmailError && (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.35,
+                    }}
+                    role="alert"
+                  >
+                    <AlertCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                    <span>{error}</span>
+                  </div>
+                )}
               </div>
 
               <div className="auth-field">
@@ -403,12 +462,16 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     id="login-password"
                     name="login_secret_field"
                     type={showPassword ? 'text' : 'password'}
-                    className="auth-input auth-input-has-toggle"
+                    className={`auth-input auth-input-has-toggle ${(error && !isEmailError) || isLocked ? 'auth-input-error' : ''}`}
                     placeholder="Enter your password"
                     autoComplete="new-password"
                     data-lpignore="true"
                     value={password}
-                    onChange={(e) => setPassword(e.target.value)}
+                    onChange={(e) => {
+                      setPassword(e.target.value);
+                      if (error) setError('');
+                    }}
+                    disabled={isLocked || loading}
                     required
                   />
                   <button
@@ -420,6 +483,63 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
                     {showPassword ? <EyeOff size={18} /> : <Eye size={18} />}
                   </button>
                 </div>
+
+                {/* Text-only error right under password input like in 2nd pic */}
+                {isLocked ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.35,
+                    }}
+                    role="alert"
+                  >
+                    <ShieldAlert size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.15rem' }}>
+                      <span style={{ fontWeight: 600 }}>Temporary Security Lockout</span>
+                      <span style={{ fontSize: '0.75rem', color: '#b91c1c' }}>
+                        Too many failed login attempts. Unlocks in <strong>{retryAfter}s</strong>.
+                      </span>
+                    </div>
+                  </div>
+                ) : (!isEmailError && error) ? (
+                  <div
+                    style={{
+                      display: 'flex',
+                      alignItems: 'flex-start',
+                      gap: '0.4rem',
+                      color: '#dc2626',
+                      fontSize: '0.8rem',
+                      marginTop: '0.4rem',
+                      lineHeight: 1.35,
+                    }}
+                    role="alert"
+                  >
+                    <AlertCircle size={14} style={{ color: '#dc2626', flexShrink: 0, marginTop: '2px' }} />
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem' }}>
+                      <span>{error}</span>
+                      {!isLocked && attemptsLeft !== null && attemptsLeft <= 2 && attemptsLeft > 0 && (
+                        <span
+                          style={{
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.3rem',
+                            color: '#b91c1c',
+                            fontSize: '0.75rem',
+                            fontWeight: 500,
+                          }}
+                        >
+                          <ShieldAlert size={12} style={{ color: '#dc2626', flexShrink: 0 }} />
+                          Security Notice: {attemptsLeft} attempt{attemptsLeft === 1 ? '' : 's'} remaining before a 60-second lockout.
+                        </span>
+                      )}
+                    </div>
+                  </div>
+                ) : null}
               </div>
 
               <div className="auth-options-row">
@@ -444,9 +564,19 @@ export default function LoginPage({ onNavigate, onLoginSuccess }) {
               <button
                 type="submit"
                 className="auth-submit-btn"
-                disabled={loading}
+                disabled={loading || isLocked}
+                style={isLocked ? { background: '#94a3b8', cursor: 'not-allowed', boxShadow: 'none' } : {}}
               >
-                {loading ? 'Logging in...' : 'Login'}
+                {isLocked ? (
+                  <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px' }}>
+                    <Clock size={16} />
+                    <span>Locked ({retryAfter}s)</span>
+                  </div>
+                ) : loading ? (
+                  'Logging in...'
+                ) : (
+                  'Login'
+                )}
               </button>
             </form>
 

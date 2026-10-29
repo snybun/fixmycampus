@@ -182,7 +182,7 @@ export default function ReportsTable({ reports = [], loading = false }) {
                   </td>
                   <td>
                     <span className={`badge ${getPriorityBadgeClass(report.priority)}`}>
-                      {report.priority ? report.priority.toUpperCase() : 'MEDIUM'}
+                      {String(report.priority || '').toLowerCase() === 'emergency' ? 'URGENT' : (report.priority ? report.priority.toUpperCase() : 'MEDIUM')}
                     </span>
                   </td>
                   <td>

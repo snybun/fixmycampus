@@ -44,20 +44,20 @@
 .auth-brand-icon {
   width: 32px;
   height: 32px;
-  background-color: #000000;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   border-radius: 8px;
   display: flex;
   align-items: center;
   justify-content: center;
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.12);
+  box-shadow: 0 2px 8px rgba(5, 150, 105, 0.28);
 }
 
 .auth-brand-name {
   font-size: 1.05rem;
   font-weight: 700;
   letter-spacing: -0.02em;
-  color: #000000;
+  color: #064e3b;
 }
 
 /* --------------------------------------------------------------------------
@@ -196,16 +196,49 @@
 /* --------------------------------------------------------------------------
    FORM FIELDS & INPUTS
    -------------------------------------------------------------------------- */
+.auth-registration-notice {
+  margin: 0.65rem 0 0;
+  font-size: 0.84rem;
+  line-height: 1.5;
+  color: #0f172a;
+}
+
 .auth-form {
   display: flex;
   flex-direction: column;
   gap: 0.75rem;
 }
 
+.auth-form-row {
+  display: flex;
+  flex-direction: column;
+  gap: inherit;
+}
+
 .auth-field {
   display: flex;
   flex-direction: column;
   gap: 0.35rem;
+}
+
+.auth-name-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 0.65rem;
+}
+
+@media (max-width: 540px) {
+  .auth-name-grid {
+    grid-template-columns: 1fr;
+    gap: 0.75rem;
+  }
+}
+
+.auth-optional-tag {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: #64748b;
+  margin-left: 0.25rem;
 }
 
 .auth-label {
@@ -261,8 +294,19 @@
 .auth-input:focus,
 .auth-select:focus {
   outline: none;
-  border-color: #000000;
-  box-shadow: 0 0 0 3px rgba(0, 0, 0, 0.06);
+  border-color: #059669;
+  box-shadow: 0 0 0 3px rgba(5, 150, 105, 0.14);
+}
+
+.auth-input.auth-input-error,
+.auth-input-wrapper.auth-input-error .auth-input {
+  border-color: #ef4444 !important;
+}
+
+.auth-input.auth-input-error:focus,
+.auth-input-wrapper.auth-input-error .auth-input:focus {
+  border-color: #ef4444 !important;
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.15) !important;
 }
 
 .auth-input-has-toggle {
@@ -358,15 +402,15 @@
   width: 16px;
   height: 16px;
   border-radius: 4px;
-  border: 1.5px solid #000000;
-  accent-color: #000000;
+  border: 1.5px solid #059669;
+  accent-color: #059669;
   cursor: pointer;
 }
 
 .auth-forgot-link {
   font-size: 0.8125rem;
   font-weight: 600;
-  color: #0f172a;
+  color: #047857;
   background: transparent;
   border: none;
   padding: 0;
@@ -376,6 +420,7 @@
 
 .auth-forgot-link:hover {
   text-decoration: underline;
+  color: #065f46;
 }
 
 /* --------------------------------------------------------------------------
@@ -384,7 +429,7 @@
 .auth-submit-btn {
   width: 100%;
   height: 42px;
-  background-color: #000000;
+  background: linear-gradient(135deg, #059669 0%, #047857 100%);
   color: #ffffff;
   border: none;
   border-radius: 8px;
@@ -395,14 +440,15 @@
   align-items: center;
   justify-content: center;
   gap: 0.5rem;
-  transition: background-color 0.15s ease, transform 0.1s ease, box-shadow 0.15s ease;
-  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+  transition: all 0.18s ease;
+  box-shadow: 0 3px 12px rgba(5, 150, 105, 0.28);
   margin-top: 0.15rem;
 }
 
 .auth-submit-btn:hover {
-  background-color: #1e1e24;
-  box-shadow: 0 5px 14px rgba(0, 0, 0, 0.18);
+  background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+  box-shadow: 0 5px 18px rgba(5, 150, 105, 0.4);
+  transform: translateY(-1px);
 }
 
 .auth-submit-btn:active {
@@ -413,6 +459,7 @@
   opacity: 0.65;
   cursor: not-allowed;
   transform: none;
+  box-shadow: none;
 }
 
 /* --------------------------------------------------------------------------
@@ -432,13 +479,14 @@
   margin-left: 0.35rem;
   font-size: 0.875rem;
   font-weight: 600;
-  color: #2563eb;
+  color: #059669;
   cursor: pointer;
   text-decoration: none;
 }
 
 .auth-switch-link:hover {
   text-decoration: underline;
+  color: #047857;
 }
 
 /* --------------------------------------------------------------------------
@@ -591,17 +639,17 @@
   align-items: center;
   gap: 0.55rem;
   padding: 0.55rem 0.8rem;
-  background-color: rgba(59, 130, 246, 0.05);
-  border: 1px solid rgba(59, 130, 246, 0.18);
+  background-color: rgba(5, 150, 105, 0.08);
+  border: 1px solid rgba(5, 150, 105, 0.24);
   border-radius: 8px;
   margin-bottom: 0.75rem;
   font-size: 0.78rem;
-  color: #1e40af;
+  color: #065f46;
   line-height: 1.35;
 }
 
 .auth-domain-banner strong {
-  color: #1e3a8a;
+  color: #047857;
 }
 
 .auth-domain-tag {

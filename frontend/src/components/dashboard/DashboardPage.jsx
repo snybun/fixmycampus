@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import {
   Wrench,
   Bell,
@@ -12,15 +12,27 @@ import {
   Trash2,
   SlidersHorizontal,
   ChevronRight,
+  ChevronLeft,
+  ChevronDown,
   User,
+  Menu,
+  X,
+  Home,
+  PlusCircle,
+  History,
 } from 'lucide-react';
-import { fetchStats, fetchReports, deleteReport } from '../../services/api';
+import { fetchStats, fetchReports, deleteReport, fetchNotifications, archiveReport, restoreReport } from '../../services/api';
 import ConfirmationModal, { MODAL_PRESETS } from '../common/ConfirmationModal';
 import ModalsGalleryView from '../common/ModalsGalleryView';
+import UserProfileDropdown from '../common/UserProfileDropdown';
+import MyReportsView from './MyReportsView';
+import NotificationsView from '../notifications/NotificationsView';
+import StudentHistoryView from './StudentHistoryView';
 import './dashboard.css';
 
 export default function DashboardPage({
   currentUser,
+  initialTab = 'home',
   onNavigate,
   onLogout,
 }) {
@@ -34,68 +46,191 @@ export default function DashboardPage({
   const [activeModalPreset, setActiveModalPreset] = useState(null);
   const [reportToDelete, setReportToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [reportToArchive, setReportToArchive] = useState(null);
+  const [isArchiving, setIsArchiving] = useState(false);
   const [activeView, setActiveView] = useState('dashboard'); // 'dashboard' | 'modals-gallery'
-  const [unreadCount, setUnreadCount] = useState(3);
+  const [activeTab, setActiveTab] = useState(() => {
+    const hash = window.location.hash.replace('#', '');
+    if (hash === 'my-reports') return 'my-reports';
+    if (hash === 'notifications') return 'notifications';
+    if (hash === 'history') return 'history';
+    return initialTab || 'home';
+  });
+  const [selectedReportForDetails, setSelectedReportForDetails] = useState(null);
+  const [unreadCount, setUnreadCount] = useState(0);
   const [toastMessage, setToastMessage] = useState('');
-
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   // Initial reports - start empty until reported as requested
   const [reports, setReports] = useState([]);
+  const [recentPage, setRecentPage] = useState(1);
+  const RECENT_ITEMS_PER_PAGE = 3;
+  const activeReportsForRecent = useMemo(() => {
+    return reports.filter((r) => !r.is_archived);
+  }, [reports]);
+  const totalRecentPages = Math.max(1, Math.ceil(activeReportsForRecent.length / RECENT_ITEMS_PER_PAGE));
 
-  // Load stats and real reports from backend
+  // Ensure recentPage stays within valid bounds
+  useEffect(() => {
+    if (recentPage > totalRecentPages) {
+      setRecentPage(totalRecentPages);
+    }
+  }, [recentPage, totalRecentPages]);
+
+  const paginatedRecentReports = useMemo(() => {
+    const startIdx = (recentPage - 1) * RECENT_ITEMS_PER_PAGE;
+    return activeReportsForRecent.slice(startIdx, startIdx + RECENT_ITEMS_PER_PAGE);
+  }, [activeReportsForRecent, recentPage]);
+
+  useEffect(() => {
+    if (initialTab) {
+      setActiveTab(initialTab);
+    }
+  }, [initialTab]);
+
+  useEffect(() => {
+    const handleHash = () => {
+      const hash = window.location.hash.replace('#', '');
+      if (hash === 'my-reports') {
+        setActiveTab('my-reports');
+      } else if (hash === 'notifications') {
+        setActiveTab('notifications');
+      } else if (hash === 'history') {
+        setActiveTab('history');
+      } else if (hash === 'dashboard') {
+        setActiveTab('home');
+      }
+    };
+    window.addEventListener('hashchange', handleHash);
+    return () => window.removeEventListener('hashchange', handleHash);
+  }, []);
+
+  // Load stats, real reports, and notifications from backend
   useEffect(() => {
     let isMounted = true;
-    fetchStats().then((res) => {
-      if (isMounted && res && res.success) {
-        const statsData = res.data || res;
-        setStats({
-          total: statsData.total_reports ?? 0,
-          pending: statsData.pending_review ?? 0,
-          in_progress: statsData.in_progress ?? 0,
-          resolved: statsData.resolved ?? 0,
-        });
-      }
-    });
 
-    fetchReports().then((res) => {
-      if (isMounted && res.success && Array.isArray(res.data)) {
-        setReports(
-          res.data.map((r) => ({
-            id: r.id,
-            title: r.title,
-            location: `${r.building_name || 'Campus'} • ${r.specific_area || r.location_name || 'Facility Area'}`,
-            date: r.reported_at
-              ? new Date(r.reported_at).toLocaleDateString('en-US', {
-                  month: 'short',
-                  day: 'numeric',
-                  year: 'numeric',
-                })
-              : 'Recently',
-            image: r.primary_photo || '/images/hero_ac_defect.jpg',
-            status: r.status,
-            statusLabel:
-              r.status === 'resolved'
-                ? 'Fixed'
-                : r.status === 'assigned'
-                ? 'Worker Assigned'
-                : r.status === 'in_progress'
-                ? 'Repair Ongoing'
-                : 'Pending',
-            badgeClass:
-              r.status === 'resolved'
-                ? 'badge-fixed'
-                : r.status === 'assigned'
-                ? 'badge-worker'
-                : 'badge-pending',
-            modalTrigger: 'update_status',
-          }))
-        );
+    const mapReport = (r) => {
+      const rawStatus = (r.status || 'submitted').toLowerCase();
+      let statusLabel = 'Reported';
+      let stepIdx = 0;
+      if (rawStatus === 'resolved' || rawStatus === 'closed') {
+        statusLabel = 'Fixed';
+        stepIdx = 4;
+      } else if (rawStatus === 'in_progress') {
+        statusLabel = 'Repair Ongoing';
+        stepIdx = 3;
+      } else if (rawStatus === 'assigned') {
+        statusLabel = 'Worker Assigned';
+        stepIdx = 2;
+      } else if (rawStatus === 'under_review') {
+        statusLabel = 'Verified';
+        stepIdx = 1;
       }
-    });
+
+      const rawPriority = (r.priority || 'medium').toLowerCase();
+      let priorityLabel = 'Medium';
+      if (rawPriority === 'emergency') priorityLabel = 'Urgent';
+      else if (rawPriority === 'high') priorityLabel = 'High';
+      else if (rawPriority === 'low') priorityLabel = 'Low';
+
+      const repDate = r.reported_at
+        ? new Date(r.reported_at).toLocaleDateString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+          })
+        : 'Recently';
+
+      const building = r.building_name || 'Campus';
+      const room = r.room_number || r.specific_area || r.location_name || 'Facility Area';
+      const location = `${building} • ${room}`;
+
+      return {
+        ...r,
+        id: r.id,
+        ticket_number: r.ticket_number || `FMC-${r.id}`,
+        title: r.title,
+        description: r.description || '',
+        location,
+        building,
+        room,
+        date: repDate,
+        reportedDate: repDate,
+        formattedDateReported: r.reported_at
+          ? new Date(r.reported_at).toLocaleString('en-US', {
+              month: 'long',
+              day: 'numeric',
+              year: 'numeric',
+              hour: 'numeric',
+              minute: '2-digit',
+            })
+          : `${repDate} at 2:14 PM`,
+        image: r.primary_photo || r.image_url || '/images/hero_ac_defect.jpg',
+        priority: priorityLabel,
+        status: rawStatus,
+        statusLabel,
+        category: r.category_name || 'General Facility Defect',
+        stepIndex: stepIdx,
+        assignedWorker: r.worker_name
+          ? {
+              name: r.worker_name,
+              role: r.worker_department ? `${r.worker_department} Staff` : 'Assigned Technician',
+            }
+          : null,
+        badgeClass:
+          rawStatus === 'resolved' || rawStatus === 'closed'
+            ? 'badge-fixed'
+            : rawStatus === 'assigned'
+            ? 'badge-worker'
+            : 'badge-pending',
+        modalTrigger: 'update_status',
+        is_archived: Boolean(r.is_archived && r.is_archived !== '0' && r.is_archived !== 0),
+        archived_at: r.archived_at || null,
+      };
+    };
+
+    const loadData = () => {
+      const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+      fetchStats(statsParams).then((res) => {
+        if (isMounted && res && res.success) {
+          const statsData = res.data || res;
+          setStats({
+            total: statsData.total_reports ?? 0,
+            pending: statsData.pending_review ?? 0,
+            in_progress: statsData.in_progress ?? 0,
+            resolved: statsData.resolved ?? 0,
+          });
+        }
+      }).catch(() => {});
+
+      fetchNotifications(currentUser?.id, 'student').then((res) => {
+        if (isMounted && res && res.success && typeof res.unread_count === 'number') {
+          setUnreadCount(res.unread_count);
+        }
+      }).catch(() => {});
+
+      const reportsParams = currentUser?.id 
+        ? { limit: 100, my_reports: 1, user_id: currentUser.id, include_archived: 1 } 
+        : { limit: 100, my_reports: 1, include_archived: 1 };
+
+      fetchReports(reportsParams).then((res) => {
+        if (isMounted && res && res.success && Array.isArray(res.data)) {
+          setReports(res.data.map(mapReport));
+        } else if (isMounted) {
+          setReports([]);
+        }
+      }).catch(() => {
+        if (isMounted) setReports([]);
+      });
+    };
+
+    loadData();
+    const interval = setInterval(loadData, 15000);
 
     return () => {
       isMounted = false;
+      clearInterval(interval);
     };
-  }, []);
+  }, [currentUser?.id]);
 
   // Compute Greeting
   const getGreeting = () => {
@@ -107,6 +242,28 @@ export default function DashboardPage({
 
   const displayName = currentUser?.full_name || 'Mark Cerna';
   const firstName = displayName.split(' ')[0] || 'Mark';
+  const isAdmin = Boolean(currentUser && (currentUser.role_name === 'admin' || currentUser.role_id === 1));
+
+  // Determine if a report is eligible for deletion
+  // Admins can delete any report; students can delete only if a worker has NOT been assigned yet
+  const isReportDeletable = (report) => {
+    if (!report) return false;
+    if (isAdmin) return true;
+    const rawStatus = (report.status || '').toLowerCase();
+    const hasWorker = Boolean(
+      report.worker_name ||
+      report.worker_id ||
+      report.assignedWorker ||
+      rawStatus === 'assigned' ||
+      rawStatus === 'in_progress' ||
+      rawStatus === 'resolved' ||
+      rawStatus === 'closed' ||
+      report.statusLabel === 'Worker Assigned' ||
+      report.statusLabel === 'Repair Ongoing' ||
+      report.statusLabel === 'Fixed'
+    );
+    return !hasWorker;
+  };
 
   // Handle modal confirmation
   const handleModalConfirm = async () => {
@@ -125,6 +282,14 @@ export default function DashboardPage({
         return;
       }
 
+      if (!isReportDeletable(reportToDelete)) {
+        setActiveModalPreset(null);
+        setReportToDelete(null);
+        setToastMessage('This report cannot be deleted because a maintenance worker has already been assigned.');
+        setTimeout(() => setToastMessage(''), 4000);
+        return;
+      }
+
       const targetId = reportToDelete.id;
       const targetTitle = reportToDelete.title;
       setIsDeleting(true);
@@ -140,7 +305,8 @@ export default function DashboardPage({
           setTimeout(() => setToastMessage(''), 3500);
 
           // Refresh live stats counters
-          fetchStats().then((sRes) => {
+          const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+          fetchStats(statsParams).then((sRes) => {
             if (sRes && sRes.success) {
               const statsData = sRes.data || sRes;
               setStats({
@@ -162,6 +328,53 @@ export default function DashboardPage({
         setTimeout(() => setToastMessage(''), 4000);
       } finally {
         setIsDeleting(false);
+      }
+    } else if (currentPreset === 'archive_report') {
+      if (!reportToArchive) {
+        setActiveModalPreset(null);
+        return;
+      }
+
+      const targetId = reportToArchive.id;
+      const targetTitle = reportToArchive.title || reportToArchive.ticket_number;
+      setIsArchiving(true);
+
+      try {
+        const res = await archiveReport(targetId);
+        setActiveModalPreset(null);
+        setReportToArchive(null);
+
+        if (res && res.success) {
+          setReports((prev) =>
+            prev.map((r) => (r.id === targetId ? { ...r, is_archived: true } : r))
+          );
+          setToastMessage(`Report "${targetTitle}" was archived successfully.`);
+          setTimeout(() => setToastMessage(''), 3500);
+
+          // Refresh live stats counters
+          const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+          fetchStats(statsParams).then((sRes) => {
+            if (sRes && sRes.success) {
+              const statsData = sRes.data || sRes;
+              setStats({
+                total: statsData.total_reports ?? 0,
+                pending: statsData.pending_review ?? 0,
+                in_progress: statsData.in_progress ?? 0,
+                resolved: statsData.resolved ?? 0,
+              });
+            }
+          });
+        } else {
+          setToastMessage(res?.message || 'Failed to archive report.');
+          setTimeout(() => setToastMessage(''), 4000);
+        }
+      } catch (err) {
+        setActiveModalPreset(null);
+        setReportToArchive(null);
+        setToastMessage('Error connecting to server while archiving report.');
+        setTimeout(() => setToastMessage(''), 4000);
+      } finally {
+        setIsArchiving(false);
       }
     } else if (currentPreset === 'submit_report') {
       setActiveModalPreset(null);
@@ -203,8 +416,13 @@ export default function DashboardPage({
             <button
               type="button"
               className="dash-logo-btn"
-              onClick={() => onNavigate('landing')}
+              onClick={() => {
+                setActiveTab('home');
+                setSelectedReportForDetails(null);
+                window.location.hash = 'dashboard';
+              }}
               title="FixMyCampus Home"
+              id="dash-logo-btn"
             >
               <div className="dash-logo-icon">
                 <Wrench size={18} strokeWidth={2.2} />
@@ -215,17 +433,22 @@ export default function DashboardPage({
             <nav className="dash-nav-links" aria-label="Main Navigation">
               <button
                 type="button"
-                className="dash-nav-link active"
-                onClick={() => onNavigate('dashboard')}
+                className={`dash-nav-link ${activeTab === 'home' ? 'active' : ''}`}
+                onClick={() => {
+                  setActiveTab('home');
+                  setSelectedReportForDetails(null);
+                  window.location.hash = 'dashboard';
+                }}
               >
                 Home
               </button>
               <button
                 type="button"
-                className="dash-nav-link"
+                className={`dash-nav-link ${activeTab === 'my-reports' ? 'active' : ''}`}
                 onClick={() => {
-                  setToastMessage('Navigating to My Reports...');
-                  setTimeout(() => setToastMessage(''), 2000);
+                  setActiveTab('my-reports');
+                  setSelectedReportForDetails(null);
+                  window.location.hash = 'my-reports';
                 }}
               >
                 My Reports
@@ -243,26 +466,29 @@ export default function DashboardPage({
 
           {/* Right Controls */}
           <div className="dash-nav-right">
-            {/* Quick Preview Toggle for Modals Collection & Empty States */}
-            <button
-              type="button"
-              className="dash-states-pill"
-              onClick={() => setActiveView('modals-gallery')}
-              title="View the Confirmation Modals Collection & Empty States Registry mockups"
-            >
-              System Modals & States (7)
-            </button>
+            {/* Quick Preview Toggle for Modals Collection & Empty States (Admin Only) */}
+            {isAdmin && (
+              <button
+                type="button"
+                className="dash-states-pill"
+                onClick={() => setActiveView('modals-gallery')}
+                title="View the Confirmation Modals Collection & Empty States Registry mockups"
+              >
+                System Modals & States (7)
+              </button>
+            )}
 
             {/* Notification Bell with Badge */}
             <button
               type="button"
-              className="dash-notif-btn"
+              className={`dash-notif-btn ${activeTab === 'notifications' ? 'active' : ''}`}
               onClick={() => {
-                setUnreadCount(0);
-                setToastMessage('All notifications marked as read.');
-                setTimeout(() => setToastMessage(''), 2500);
+                setActiveTab('notifications');
+                setSelectedReportForDetails(null);
+                window.location.hash = 'notifications';
               }}
               title="Notifications"
+              id="dash-navbar-notif-btn"
             >
               <Bell size={18} />
               {unreadCount > 0 && (
@@ -270,34 +496,178 @@ export default function DashboardPage({
               )}
             </button>
 
-            {/* User Profile Info */}
-            <div
-              className="dash-user-profile"
-              onClick={() => setActiveModalPreset('start_over')}
-              title="User Profile"
-            >
-              <div className="dash-user-avatar">
-                {currentUser?.avatar_url ? (
-                  <img src={currentUser.avatar_url} alt={displayName} />
-                ) : (
-                  <User size={18} strokeWidth={2.2} />
-                )}
-              </div>
-              <span className="dash-user-name">{displayName}</span>
-            </div>
+            {/* User Profile Menu with Settings & Logout Dropdown */}
+            <UserProfileDropdown
+              currentUser={currentUser}
+              onNavigate={(v) => {
+                if (v === 'history') {
+                  setActiveTab('history');
+                  window.location.hash = 'history';
+                } else {
+                  onNavigate(v);
+                }
+              }}
+              onHistoryClick={() => {
+                setActiveTab('history');
+                window.location.hash = 'history';
+              }}
+              onLogout={() => setActiveModalPreset('logout')}
+              idPrefix="dash-user-profile"
+            />
 
-            {/* Logout Trigger -> opens Logout? Confirmation Modal */}
+            {/* Mobile Hamburger Menu Toggle Button */}
             <button
               type="button"
-              className="dash-logout-btn"
-              onClick={() => setActiveModalPreset('logout')}
-              title="Log out of FixMyCampus"
-              id="dash-logout-button"
+              className="dash-mobile-toggle"
+              onClick={() => setMobileMenuOpen((prev) => !prev)}
+              aria-label={mobileMenuOpen ? 'Close navigation menu' : 'Open navigation menu'}
+              aria-expanded={mobileMenuOpen}
+              id="dash-mobile-menu-toggle"
             >
-              <LogOut size={18} strokeWidth={2} />
+              {mobileMenuOpen ? <X size={20} /> : <Menu size={20} />}
             </button>
           </div>
         </div>
+
+        {/* Mobile Slide-down Navigation Drawer & Backdrop */}
+        {mobileMenuOpen && (
+          <div className="dash-mobile-menu-container">
+            <div
+              className="dash-mobile-backdrop"
+              onClick={() => setMobileMenuOpen(false)}
+            />
+            <div className="dash-mobile-drawer">
+              <nav className="dash-mobile-nav-list" aria-label="Mobile Navigation">
+                <button
+                  type="button"
+                  className={`dash-mobile-nav-item ${activeTab === 'home' ? 'active' : ''}`}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setActiveTab('home');
+                    window.location.hash = 'dashboard';
+                  }}
+                >
+                  <Home size={18} className="dash-mobile-nav-icon" />
+                  <span>Home</span>
+                  {activeTab === 'home' && <span className="dash-mobile-active-tag">Active</span>}
+                </button>
+
+                <button
+                  type="button"
+                  className={`dash-mobile-nav-item ${activeTab === 'my-reports' ? 'active' : ''}`}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setActiveTab('my-reports');
+                    window.location.hash = 'my-reports';
+                  }}
+                >
+                  <FileText size={18} className="dash-mobile-nav-icon" />
+                  <span>My Reports</span>
+                  {activeTab === 'my-reports' && <span className="dash-mobile-active-tag">Active</span>}
+                </button>
+
+                <button
+                  type="button"
+                  className={`dash-mobile-nav-item ${activeTab === 'notifications' ? 'active' : ''}`}
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setActiveTab('notifications');
+                    window.location.hash = 'notifications';
+                  }}
+                >
+                  <Bell size={18} className="dash-mobile-nav-icon" />
+                  <span>Notifications</span>
+                  {unreadCount > 0 && <span className="dash-mobile-active-tag">{unreadCount}</span>}
+                </button>
+
+                <button
+                  type="button"
+                  className="dash-mobile-nav-item"
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    onNavigate('report-issue');
+                  }}
+                >
+                  <PlusCircle size={18} className="dash-mobile-nav-icon" />
+                  <span>Report Issue</span>
+                </button>
+
+                {isAdmin && (
+                  <button
+                    type="button"
+                    className="dash-mobile-nav-item"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setActiveView('modals-gallery');
+                    }}
+                  >
+                    <SlidersHorizontal size={18} className="dash-mobile-nav-icon" />
+                    <span>System Modals & States (7)</span>
+                  </button>
+                )}
+              </nav>
+
+              <div className="dash-mobile-divider" />
+
+              {/* Mobile User Profile Summary & Quick Actions */}
+              <div className="dash-mobile-user-section">
+                <div className="dash-mobile-user-row">
+                  <div className="dash-mobile-avatar">
+                    {currentUser?.avatar_url ? (
+                      <img src={currentUser.avatar_url} alt={currentUser?.full_name || 'User'} />
+                    ) : (
+                      <User size={18} />
+                    )}
+                  </div>
+                  <div className="dash-mobile-user-meta">
+                    <span className="dash-mobile-user-name">
+                      {currentUser?.full_name || 'Mark Dyvie Cerna'}
+                    </span>
+                    <span className="dash-mobile-user-role">
+                      {currentUser?.role_display || 'Student Account'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="dash-mobile-user-actions">
+                  <button
+                    type="button"
+                    className="dash-mobile-action-btn"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setActiveTab('history');
+                      window.location.hash = 'history';
+                    }}
+                  >
+                    <History size={15} />
+                    <span>History & Archives</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="dash-mobile-action-btn"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      onNavigate('settings');
+                    }}
+                  >
+                    <span>Account Settings</span>
+                  </button>
+                  <button
+                    type="button"
+                    className="dash-mobile-action-btn dash-mobile-logout"
+                    onClick={() => {
+                      setMobileMenuOpen(false);
+                      setActiveModalPreset('logout');
+                    }}
+                  >
+                    <LogOut size={15} />
+                    <span>Log Out</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
       </header>
 
       {/* Toast alert banner if action triggered */}
@@ -330,9 +700,100 @@ export default function DashboardPage({
       )}
 
       {/* --------------------------------------------------------------------
-          Main Dashboard Content
+          Main Dashboard Content, Notifications View OR My Reports Tab
           -------------------------------------------------------------------- */}
-      <main className="dash-content">
+      {activeTab === 'notifications' ? (
+        <NotificationsView
+          onNavigate={onNavigate}
+          onSelectReport={(ticketNumber) => {
+            const found = reports.find(
+              (r) =>
+                r.ticket_number === ticketNumber ||
+                r.ticket_id === ticketNumber ||
+                String(r.id) === String(ticketNumber)
+            );
+            if (found) {
+              setSelectedReportForDetails(found);
+            }
+            setActiveTab('my-reports');
+            window.location.hash = 'my-reports';
+          }}
+          unreadCount={unreadCount}
+          setUnreadCount={setUnreadCount}
+          currentUser={currentUser}
+        />
+      ) : activeTab === 'my-reports' ? (
+        <MyReportsView
+          liveReports={reports}
+          onNavigate={onNavigate}
+          initialSelectedReport={selectedReportForDetails}
+          onDeleteReport={(r) => {
+            setReportToDelete(r);
+            setActiveModalPreset('delete_report');
+          }}
+          onArchiveReport={(r) => {
+            setReportToArchive(r);
+            setActiveModalPreset('archive_report');
+          }}
+          onRestoreReport={async (report) => {
+            if (!report) return;
+            try {
+              const res = await restoreReport(report.id);
+              if (res && res.success) {
+                setReports((prev) =>
+                  prev.map((r) => (r.id === report.id ? { ...r, is_archived: false } : r))
+                );
+                setToastMessage(`Report "${report.title || report.ticket_number}" restored to active reports.`);
+                setTimeout(() => setToastMessage(''), 3500);
+
+                const statsParams = currentUser?.id ? { my_reports: 1, user_id: currentUser.id } : { my_reports: 1 };
+                fetchStats(statsParams).then((sRes) => {
+                  if (sRes && sRes.success) {
+                    const statsData = sRes.data || sRes;
+                    setStats({
+                      total: statsData.total_reports ?? 0,
+                      pending: statsData.pending_review ?? 0,
+                      in_progress: statsData.in_progress ?? 0,
+                      resolved: statsData.resolved ?? 0,
+                    });
+                  }
+                });
+              } else {
+                setToastMessage(res?.message || 'Failed to restore report.');
+                setTimeout(() => setToastMessage(''), 4000);
+              }
+            } catch (err) {
+              setToastMessage('Error connecting to server while restoring report.');
+              setTimeout(() => setToastMessage(''), 4000);
+            }
+          }}
+          isAdmin={isAdmin}
+          currentUser={currentUser}
+        />
+      ) : activeTab === 'history' ? (
+        <StudentHistoryView
+          currentUser={currentUser}
+          onNavigate={onNavigate}
+          onSelectReport={(ticketNumber) => {
+            const found = reports.find(
+              (r) =>
+                r.ticket_number === ticketNumber ||
+                r.ticket_id === ticketNumber ||
+                String(r.id) === String(ticketNumber)
+            );
+            if (found) {
+              setSelectedReportForDetails(found);
+            }
+            setActiveTab('my-reports');
+            window.location.hash = 'my-reports';
+          }}
+          onBack={() => {
+            setActiveTab('home');
+            window.location.hash = 'dashboard';
+          }}
+        />
+      ) : (
+        <main className="dash-content">
         {/* Welcome Section */}
         <section className="dash-welcome">
           <div className="dash-welcome-text">
@@ -360,7 +821,7 @@ export default function DashboardPage({
             <span className="dash-stat-label">TOTAL REPORTS</span>
             <div className="dash-stat-body">
               <span className="dash-stat-number">{stats.total}</span>
-              <div className="dash-stat-icon-box" title="Statistics">
+              <div className="dash-stat-icon-box indigo" title="Statistics">
                 <BarChart2 size={18} strokeWidth={2} />
               </div>
             </div>
@@ -370,8 +831,8 @@ export default function DashboardPage({
           <div className="dash-stat-card">
             <span className="dash-stat-label">PENDING REVIEW</span>
             <div className="dash-stat-body">
-              <span className="dash-stat-number">{stats.pending}</span>
-              <div className="dash-stat-icon-box" title="Pending Reviews">
+              <span className="dash-stat-number amber">{stats.pending}</span>
+              <div className="dash-stat-icon-box amber" title="Pending Reviews">
                 <BarChart2 size={18} strokeWidth={2} />
               </div>
             </div>
@@ -381,8 +842,8 @@ export default function DashboardPage({
           <div className="dash-stat-card">
             <span className="dash-stat-label">IN PROGRESS</span>
             <div className="dash-stat-body">
-              <span className="dash-stat-number">{stats.in_progress}</span>
-              <div className="dash-stat-icon-box" title="Active Repairs">
+              <span className="dash-stat-number blue">{stats.in_progress}</span>
+              <div className="dash-stat-icon-box blue" title="Active Repairs">
                 <BarChart2 size={18} strokeWidth={2} />
               </div>
             </div>
@@ -398,104 +859,6 @@ export default function DashboardPage({
               </div>
             </div>
           </div>
-        </section>
-
-        {/* ------------------------------------------------------------------
-            Recent Reports Section (3-card grid)
-            ------------------------------------------------------------------ */}
-        <section className="dash-section" aria-labelledby="recent-reports-heading">
-          <div className="dash-section-header">
-            <h2 id="recent-reports-heading">Recent Reports</h2>
-          </div>
-
-          {reports.length === 0 ? (
-            <div
-              style={{
-                backgroundColor: '#ffffff',
-                border: '1.5px dashed #e2e8f0',
-                borderRadius: 16,
-                padding: '3.5rem 1.5rem',
-                textAlign: 'center',
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: 'center',
-                gap: '0.75rem',
-              }}
-            >
-              <div
-                style={{
-                  width: 52,
-                  height: 52,
-                  borderRadius: '50%',
-                  backgroundColor: '#f1f5f9',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#64748b',
-                }}
-              >
-                <Camera size={24} />
-              </div>
-              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
-                No Defect Reports Submitted Yet
-              </h3>
-              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0, maxWidth: 460 }}>
-                All campus statistics start at zero until an issue is filed. Help keep the campus safe, clean, and functional by reporting your first defect!
-              </p>
-              <button
-                type="button"
-                className="dash-btn-primary"
-                onClick={() => onNavigate('report-issue')}
-                style={{ marginTop: '0.5rem' }}
-              >
-                <Plus size={16} strokeWidth={2.6} />
-                <span>Report a Facility Issue</span>
-              </button>
-            </div>
-          ) : (
-            <div className="dash-reports-grid">
-              {reports.map((report) => (
-                <article key={report.id} className="dash-report-card">
-                  <div className="dash-report-image">
-                    <img src={report.image} alt={report.title} loading="lazy" />
-                  </div>
-
-                  <div className="dash-report-info">
-                    <h3 className="dash-report-title">{report.title}</h3>
-                    <p className="dash-report-location">{report.location}</p>
-                    <p className="dash-report-date">{report.date}</p>
-
-                    <div className="dash-report-badge-container">
-                      <button
-                        type="button"
-                        className={`dash-badge ${report.badgeClass}`}
-                        onClick={() => setActiveModalPreset(report.modalTrigger)}
-                        title={`Click to test "${MODAL_PRESETS[report.modalTrigger]?.title}" dialog`}
-                      >
-                        {report.statusLabel}
-                      </button>
-
-                      <div className="dash-card-actions">
-                        <button
-                          type="button"
-                          className="dash-card-action-btn"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setReportToDelete(report);
-                            setActiveModalPreset('delete_report');
-                          }}
-                          title={`Delete report: ${report.title}`}
-                          aria-label={`Delete report: ${report.title}`}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </div>
-                  </div>
-                </article>
-              ))}
-            </div>
-          )}
         </section>
 
         {/* ------------------------------------------------------------------
@@ -554,7 +917,157 @@ export default function DashboardPage({
             </div>
           </div>
         </section>
+
+        {/* ------------------------------------------------------------------
+            Recent Reports Section (Paginated: 3 cards per page)
+            ------------------------------------------------------------------ */}
+        <section className="dash-section" aria-labelledby="recent-reports-heading">
+          <div className="dash-section-header">
+            <div className="dash-section-title-wrap">
+              <h2 id="recent-reports-heading">Recent Reports</h2>
+            </div>
+
+            {totalRecentPages > 1 && (
+              <div className="dash-pagination-controls" aria-label="Recent reports pagination">
+                <button
+                  type="button"
+                  className="dash-scroll-btn"
+                  onClick={() => setRecentPage((p) => Math.max(1, p - 1))}
+                  disabled={recentPage === 1}
+                  title="Previous Page"
+                  aria-label="Previous reports page"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <div className="dash-page-numbers">
+                  {Array.from({ length: totalRecentPages }, (_, i) => i + 1).map((pg) => (
+                    <button
+                      key={pg}
+                      type="button"
+                      className={`dash-page-num-btn ${pg === recentPage ? 'active' : ''}`}
+                      onClick={() => setRecentPage(pg)}
+                      aria-label={`Go to page ${pg}`}
+                    >
+                      {pg}
+                    </button>
+                  ))}
+                </div>
+                <button
+                  type="button"
+                  className="dash-scroll-btn"
+                  onClick={() => setRecentPage((p) => Math.min(totalRecentPages, p + 1))}
+                  disabled={recentPage === totalRecentPages}
+                  title="Next Page"
+                  aria-label="Next reports page"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
+            )}
+          </div>
+
+          {activeReportsForRecent.length === 0 ? (
+            <div
+              style={{
+                backgroundColor: '#ffffff',
+                border: '1.5px dashed #e2e8f0',
+                borderRadius: 16,
+                padding: '3.5rem 1.5rem',
+                textAlign: 'center',
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: 'center',
+                gap: '0.75rem',
+              }}
+            >
+              <div
+                style={{
+                  width: 52,
+                  height: 52,
+                  borderRadius: '50%',
+                  backgroundColor: '#f1f5f9',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#64748b',
+                }}
+              >
+                <Camera size={24} />
+              </div>
+              <h3 style={{ fontSize: '1.1rem', fontWeight: 700, color: '#1e293b', margin: 0 }}>
+                No Defect Reports Submitted Yet
+              </h3>
+              <p style={{ fontSize: '0.875rem', color: '#64748b', margin: 0, maxWidth: 460 }}>
+                All campus statistics start at zero until an issue is filed. Help keep the campus safe, clean, and functional by reporting your first defect!
+              </p>
+              <button
+                type="button"
+                className="dash-btn-primary"
+                onClick={() => onNavigate('report-issue')}
+                style={{ marginTop: '0.5rem' }}
+              >
+                <Plus size={16} strokeWidth={2.6} />
+                <span>Report a Facility Issue</span>
+              </button>
+            </div>
+          ) : (
+            <div className="dash-reports-grid">
+              {paginatedRecentReports.map((report) => (
+                <article
+                  key={report.id}
+                  className="dash-report-card"
+                  onClick={() => {
+                    setSelectedReportForDetails(report);
+                    setActiveTab('my-reports');
+                    window.location.hash = 'my-reports';
+                  }}
+                  style={{ cursor: 'pointer' }}
+                >
+                  <div className="dash-report-image">
+                    <img src={report.image} alt={report.title} loading="lazy" />
+                  </div>
+
+                  <div className="dash-report-info">
+                    <h3 className="dash-report-title">{report.title}</h3>
+                    <p className="dash-report-location">{report.location}</p>
+                    <p className="dash-report-date">{report.date}</p>
+
+                    <div className="dash-report-badge-container">
+                      <button
+                        type="button"
+                        className={`dash-badge ${report.badgeClass}`}
+                        onClick={() => setActiveModalPreset(report.modalTrigger)}
+                        title={`Click to test "${MODAL_PRESETS[report.modalTrigger]?.title}" dialog`}
+                      >
+                        {report.statusLabel}
+                      </button>
+
+                      {isReportDeletable(report) && (
+                        <div className="dash-card-actions">
+                          <button
+                            type="button"
+                            className="dash-card-action-btn"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setReportToDelete(report);
+                              setActiveModalPreset('delete_report');
+                            }}
+                            title={`Delete report: ${report.title}`}
+                            aria-label={`Delete report: ${report.title}`}
+                          >
+                            <Trash2 size={14} />
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </article>
+              ))}
+            </div>
+          )}
+        </section>
       </main>
+      )}
 
       {/* --------------------------------------------------------------------
           Reusable Interactive Confirmation Modal
@@ -567,13 +1080,16 @@ export default function DashboardPage({
           message={
             activeModalPreset === 'delete_report' && reportToDelete
               ? `Are you sure you want to delete report "${reportToDelete.title}"? This action cannot be undone.`
+              : activeModalPreset === 'archive_report' && reportToArchive
+              ? `Are you sure you want to archive report "${reportToArchive.title || reportToArchive.ticket_number}"? It will be safely moved from active reports to your archives.`
               : undefined
           }
-          loading={isDeleting}
+          loading={isDeleting || isArchiving}
           onClose={() => {
-            if (!isDeleting) {
+            if (!isDeleting && !isArchiving) {
               setActiveModalPreset(null);
               setReportToDelete(null);
+              setReportToArchive(null);
             }
           }}
           onConfirm={handleModalConfirm}

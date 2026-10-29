@@ -100,7 +100,7 @@ try {
         $params = [];
 
         if (!empty($search)) {
-            $sql .= " AND (u.full_name LIKE :search OR u.email LIKE :search OR u.user_identifier LIKE :search)";
+            $sql .= " AND CONCAT_WS(' ', u.user_identifier, u.full_name, u.email, u.department) LIKE :search";
             $params[':search'] = '%' . $search . '%';
         }
 

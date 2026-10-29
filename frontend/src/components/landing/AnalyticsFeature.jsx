@@ -23,7 +23,6 @@ export default function AnalyticsFeature() {
         </div>
 
         <div className="analytics-card reveal-on-scroll">
-          {/* Metrics Column */}
           <div className="analytics-metrics-col">
             <div className="analytics-stat">
               <span className="analytics-stat-label">AVERAGE RESOLUTION TIME</span>
