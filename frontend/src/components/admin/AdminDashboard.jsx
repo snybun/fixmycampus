@@ -32,6 +32,7 @@ import {
   restoreReport,
   addStaffMember,
   removeStaffMember,
+  restoreStaffMember,
   addBuilding,
   updateBuilding,
   deleteBuilding,
@@ -342,15 +343,28 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
     }
   };
 
-  // Remove Maintenance Staff Member from Database
+  // Archive Maintenance Staff Member in Database
   const handleRemoveStaff = async (staffId, details) => {
     const res = await removeStaffMember(staffId, details);
     if (res?.success) {
-      showToast(res.message || 'Staff member removed successfully.');
+      showToast(res.message || 'Staff member archived successfully.');
       await refreshData();
       return true;
     } else {
-      alert(res?.message || res?.error || 'Failed to remove staff member.');
+      alert(res?.message || res?.error || 'Failed to archive staff member.');
+      return false;
+    }
+  };
+
+  // Restore Archived Maintenance Staff Member in Database
+  const handleRestoreStaff = async (staffId, staffName = 'Staff member') => {
+    const res = await restoreStaffMember(staffId);
+    if (res?.success) {
+      showToast(res.message || `${staffName} restored to active maintenance staff.`);
+      await refreshData();
+      return true;
+    } else {
+      alert(res?.message || res?.error || 'Failed to restore staff member.');
       return false;
     }
   };
@@ -738,6 +752,7 @@ export default function AdminDashboard({ currentUser, onNavigate, onLogout, onUp
           <HistoryLogView
             onViewReport={(rep, fromTab) => handleViewReport(rep, fromTab || 'history-logs')}
             onRestoreReport={handleRestoreReport}
+            onRestoreStaff={handleRestoreStaff}
           />
         )}
 
